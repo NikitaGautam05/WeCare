@@ -25,7 +25,7 @@ const splash = () => {
           Signup 
           </button>
       </div>
-      <div className='absolute z-10 top-4 right-48'>
+      <div className='absolute z-10 top-3 left-3 text-xl '>
         <button 
         style={{backgroundColor:'transparent', height:'35px',textAlign:'center',lineHeight:'8px',color:'grey'
         }}
