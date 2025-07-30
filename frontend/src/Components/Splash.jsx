@@ -1,6 +1,8 @@
 import React from 'react'
+import {useNavigate} from 'react-router-dom'
 
 const splash = () => {
+  const navigate=useNavigate()
   return (
     <div className='w-screen h-screen relative overflow-hidden'> 
       <img 
@@ -9,9 +11,9 @@ const splash = () => {
       />
       <div className='absolute z-10 top-4 right-30  '> 
         <button 
-        style={{backgroundColor:"grey", height:'35px',textAlign:'center',lineHeight:'8px'
-
+        style={{backgroundColor:"grey", height:'35px',textAlign:'center',lineHeight:'8px'  
         }}
+        onClick={()=> navigate('/login')}
         > 
           Login 
           </button>
