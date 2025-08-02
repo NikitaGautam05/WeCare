@@ -14,15 +14,30 @@ const Login = () => {
       
       > Home </button>
       </div>
-        <div className=' relative bg-grey-200 rounded z-10 top-60 '>
-            <form className='bg-grey-200 rounded text-white text-center '  > 
-              <h2 className='text-2xl italic font-semibold'> Elder Ease </h2><br></br>
-              <input type='text' name='username' placeholder='   Type your username' className='border border-gray-400 w-[250px] h-[40px] mb-4 p-2 text-white'/><br/>
-              <input type='text' name='Password' placeholder='Type your password'className='border border-gray-400 w-[250px] h-[40px] mb-4 p-2 text-black'/>
-            </form>
-        <button className='bg-green-400'> Login</button>
+        <div className="relative bg-gray-100 rounded-lg shadow-lg z-10 top-60 p-8 max-w-sm mx-auto">
+  <form className="text-center">
+    <h2 className="text-3xl italic font-semibold mb-6 text-gray-800">Elder Ease</h2>
+    <input
+      type="text"
+      name="username"
+      placeholder="Type your username"
+      className="w-full mb-4 p-3 rounded border border-gray-300 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400"
+    />
+    <input
+      type="password"
+      name="password"
+      placeholder="Type your password"
+      className="w-full mb-6 p-3 rounded border border-gray-300 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400"
+    />
+    <button
+      type="submit"
+      className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded transition-colors duration-300"
+    >
+      Login
+    </button>
+  </form>
+</div>
 
-        </div>
       
          
       
