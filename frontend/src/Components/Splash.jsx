@@ -35,6 +35,14 @@ const splash = () => {
          About Us 
           </button>
       </div>
+      <div className='absolute z-10 top-3 left-6 text-xl '>
+        <button 
+        style={{backgroundColor:'transparent', height:'35px',textAlign:'center',lineHeight:'8px',color:'grey'
+        }}
+        > <h1></h1>
+         Contact Us 
+          </button>
+      </div>
     </div>
   )
 }
