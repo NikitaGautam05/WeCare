@@ -31,16 +31,11 @@ const Login = () => {
     />
     <button
       type="submit"
-      className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded transition-colors duration-300"
-    >
+      className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded transition-colors duration-300">
       Login
     </button>
   </form>
-</div>
-
-      
-         
-      
+</div>   
     </div>
   )
 }

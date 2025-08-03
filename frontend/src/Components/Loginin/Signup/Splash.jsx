@@ -21,8 +21,8 @@ const splash = () => {
       <div className='absolute z-10 top-4 right-5  '> 
         <button 
         style={{backgroundColor:"grey", height:'35px',textAlign:'center',lineHeight:'8px'
-
         }}
+        onClick={()=> navigate('/signup')}
         > 
           Signup 
           </button>
@@ -31,6 +31,7 @@ const splash = () => {
         <button 
         style={{backgroundColor:'transparent', height:'35px',textAlign:'center',lineHeight:'8px',color:'grey'
         }}
+        onClick={()=>navigate('aboutUs')}
         > 
          About Us 
           </button>
