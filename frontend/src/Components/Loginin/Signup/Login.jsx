@@ -30,6 +30,7 @@ const Login = () => {
       className="w-full mb-6 p-3 rounded border border-gray-300 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400"
     />
     <button
+    onClick={()=>navigate('/dash')}
       type="submit"
       className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded transition-colors duration-300">
       Login
