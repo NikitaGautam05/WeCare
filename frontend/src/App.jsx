@@ -2,9 +2,12 @@ import { useState } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import React from 'react'
-import Splash from './Components/Login/Splash'  
-import Login from './Components/Login/Login'
+import Splash from './Components/Loginin/Signup/Splash'  
+import Login from './Components/Loginin/Signup/Login'
 import {BrowserRouter as Router,Routes, Route} from 'react-router-dom'
+import Signup from './Components/Loginin/Signup/Signup'
+import Aboutus from './Components/About us/Aboutus'
+import Dashboard from './Components/Dashboard/Dashboard'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -14,6 +17,9 @@ function App() {
       <Routes>
         <Route path='/' element={<Splash/>}></Route>
         <Route path='/login' element={<Login/>}></Route>
+        <Route path='/signup' element={<Signup/>}></Route>
+        <Route path='/aboutUs' element={<Aboutus/>}></Route>
+         <Route path='/dash' element={<Dashboard/>}></Route>
       </Routes>
     </Router>
   )
