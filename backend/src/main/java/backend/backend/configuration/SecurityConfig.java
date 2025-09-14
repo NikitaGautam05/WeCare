@@ -11,7 +11,7 @@ import org.springframework.security.web.SecurityFilterChain;
 
 public class SecurityConfig {
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {  //security filter chain is added to add extra rules for security in http request
         return http.build();
     }
 
