@@ -34,12 +34,14 @@ public class SecurityConfig {
    }
     @Bean
     public UserDetailsService userDetailsService() {
-        UserDetails user = User.withUsername("nikita")
+        UserDetails user = User
+                .withUsername("nikita")
                 .password("{noop}niki") // no password encoder
                 .roles("USER")
                 .build();
         return new InMemoryUserDetailsManager(user);
     }
+
 
 
 }
