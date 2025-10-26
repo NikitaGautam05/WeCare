@@ -1,5 +1,6 @@
 package backend.backend.service;
 
+import backend.backend.model.UserPrincipal;
 import backend.backend.model.Users;
 import backend.backend.repository.UserRepo;
 import org.apache.catalina.User;
@@ -10,7 +11,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 @Service
-public class MyUserDetailService implements UserDetailsService {
+public class MyUserDetailService implements UserDetailsService { //userDetails is a inbuilt interface which is made for user authetication so when i implement it,it will know that username and password are not random variable but a things user for user authetication
     @Autowired
     private UserRepo repo;
 
@@ -21,6 +22,6 @@ public class MyUserDetailService implements UserDetailsService {
             System.out.println("no users found");
             throw new UsernameNotFoundException("user not found");
         }
-        return null;
+        return new UserPrincipal(user);
     }
 }
