@@ -10,6 +10,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class MyUserDetailService implements UserDetailsService { //userDetails is a inbuilt interface which is made for user authetication so when i implement it,it will know that username and password are not random variable but a things user for user authetication
     @Autowired
@@ -24,4 +26,20 @@ public class MyUserDetailService implements UserDetailsService { //userDetails i
         }
         return new UserPrincipal(user);
     }
+    public Users saveUser(Users user){
+        user=repo.save(user);
+        return user;
+    }
+    public Users updateUser(Users user){
+        user=repo.save(user);
+        return user;
+    }
+    public Boolean deleteUsers(Users user){
+        repo.deleteById(user.getId());
+        return true;
+    }
+    public List<Users> getAllUsers(){
+       return repo.findAll();
+    }
 }
+
