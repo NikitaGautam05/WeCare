@@ -18,5 +18,8 @@ public class UserController {
         return userService.getAllUsers();
 
 }
-
+    @PostMapping("/save")
+    public Users saveUser(@RequestBody Users user){
+         return userService.saveUser(user);
+    }
 }
