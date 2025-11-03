@@ -27,7 +27,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         //security filter chain is added to add extra rules for security in http request
         http.csrf(cutomizer ->cutomizer.disable());
-        http.authorizeHttpRequests(request-> request.requestMatchers("/login").permitAll().anyRequest().authenticated()); //requires evervy user to be authenticated hence login
+        http.authorizeHttpRequests(request-> request.requestMatchers("/login","/save").permitAll().anyRequest().authenticated()); //requires evervy user to be authenticated hence login
         http.formLogin(Customizer.withDefaults());
         http.httpBasic(Customizer.withDefaults());
 
@@ -41,11 +41,11 @@ public class SecurityConfig {
         return provider;
 
     }
-//   @Bean
-//    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-//       return  config.getAuthenticationManager();
-//
-//   }
+   @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+       return  config.getAuthenticationManager();
+
+   }
 //    @Bean
 //    public UserDetailsService userDetailsService() {
 //        UserDetails user1 = User
