@@ -2,12 +2,14 @@ package backend.backend.controller;
 
 import backend.backend.model.Users;
 import backend.backend.service.MyUserDetailService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 public class UserController {
+    @Autowired
     MyUserDetailService userService;
 
     @GetMapping("/users")
