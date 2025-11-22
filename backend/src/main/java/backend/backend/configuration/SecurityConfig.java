@@ -33,7 +33,7 @@ public class SecurityConfig {
         http.httpBasic(Customizer.withDefaults())
 
         .formLogin(form->form
-                .loginPage("/login")
+//                .loginPage("/login")
                 . defaultSuccessUrl("/dash",true).permitAll()) //to navigate from login to dashboardc
                 .logout(logout->logout.permitAll());
 
