@@ -25,9 +25,12 @@ public class SecurityConfig {
     private UserDetailsService userDetailsService;
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .cors(cors->{})
+
         //security filter chain is added to add extra rules for security in http request
-        http.csrf(cutomizer ->cutomizer.disable());
-        http.authorizeHttpRequests(request-> request.requestMatchers("/login","/save")
+                .csrf(customizer ->customizer.disable());
+        http.authorizeHttpRequests(request-> request.requestMatchers("/api/login","/save")
                 .permitAll().anyRequest().authenticated()); //requires evervy user to be authenticated hence login
         http.formLogin(Customizer.withDefaults());
         http.httpBasic(Customizer.withDefaults())
