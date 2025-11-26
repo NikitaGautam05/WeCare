@@ -21,7 +21,7 @@ const Login = () => {
 
     try {
       // Use /api/login to leverage Vite proxy
-      const response = await axios.post("/api/login", dataToSend);
+      const response = await axios.post("http://localhost:8080/api/login", dataToSend);
 
       console.log("Response:", response.data);
       setMessage(response.data);
