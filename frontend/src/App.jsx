@@ -8,7 +8,7 @@ import {BrowserRouter as Router,Routes, Route} from 'react-router-dom'
 import Signup from './Components/Loginin/Signup/Signup'
 import Aboutus from './Components/About us/Aboutus'
 import Dashboard from './Components/Dashboard/Dashboard'
-
+import OptionLogin from './Components/Loginin/optionLogin'
 function App() {
   const [count, setCount] = useState(0)
 
@@ -20,6 +20,7 @@ function App() {
         <Route path='/signup' element={<Signup/>}></Route>
         <Route path='/aboutUs' element={<Aboutus/>}></Route>
          <Route path='/dash' element={<Dashboard/>}></Route>
+         <Route path ='/optionLogin' element={<OptionLogin/>}></Route>
       </Routes>
     </Router>
   )
