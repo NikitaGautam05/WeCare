@@ -13,7 +13,7 @@ const splash = () => {
         <button 
         style={{backgroundColor:"grey", height:'35px',textAlign:'center',lineHeight:'8px'  
         }}
-        onClick={()=> navigate('/login')}
+        onClick={()=> navigate('/optionLogin')}
         > 
           Login 
           </button>
