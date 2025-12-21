@@ -32,7 +32,7 @@ public class SecurityConfig {
         //security filter chain is added to add extra rules for security in http request
                 .csrf(customizer ->customizer.disable());
         http.authorizeHttpRequests(request-> request.requestMatchers("/api/login","/save")
-                .permitAll().anyRequest().authenticated()); //requires evervy user to be authenticated hence login
+                .permitAll().anyRequest().authenticated()); //requires every user to be authenticated hence login
 
         http.formLogin(Customizer.withDefaults());
         http.httpBasic(Customizer.withDefaults())
