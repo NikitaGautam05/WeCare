@@ -1,9 +1,43 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
 
 const Signup = () => {
   const navigate = useNavigate()
-  return (
+
+  const [user,setUser]=useState({
+    userName:'',
+    password:''
+  })
+  // Runs whenever user types in input field
+  const handleChange=(e)=>
+{
+  setUser({
+    ...user,[e.target.name]:e.target.value
+  })
+} 
+
+//for create Account click
+const handleSubmit=async(e)=>{
+  e.preventDefault()
+  // prevents page reload (VERY IMPORTANT)
+ try{
+  // POST request → sends data to backend
+  const res=await axios.post(
+    'http://localhost:8080/api/register',user
+  )
+  alert (res,data)
+  if(res.data==="Registration complete"){
+    navigate('/login')
+  }
+ }
+ catch(error){
+  console.error(error)
+  alert('signup failed')
+ }
+}
+
+return (
     <div className='w-screen h-screen relative overflow-hidden bg-grey-400'>
       <img
         src="https://www.momshomecare.com/images/LARGE__bigstock-Young-Caregiver-Giving-Water-T-453584489.jpg"
