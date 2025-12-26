@@ -71,7 +71,7 @@ return (
           />
           <input
             type="text"
-            name="username"
+            name="userName"
             placeholder="Username"
             className="w-full mb-4 p-3 rounded border border-gray-300 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400"
           />
