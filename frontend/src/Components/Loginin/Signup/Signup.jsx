@@ -26,7 +26,7 @@ const handleSubmit=async(e)=>{
   const res=await axios.post(
     'http://localhost:8080/api/register',user
   )
-  alert (res,data)
+  alert (res.data)
   if(res.data==="Registration complete"){
     navigate('/login')
   }
@@ -54,7 +54,7 @@ return (
       </div>
 
       <div className="relative bg-gray-100 rounded-lg shadow-lg z-10 top-40 p-8 max-w-sm mx-auto">
-        <form className="text-center">
+        <form className="text-center" onSubmit={handleSubmit}>
           <h2 className="text-3xl italic font-semibold mb-6 text-gray-800">Sign Up</h2>
 
           <input
@@ -72,12 +72,16 @@ return (
           <input
             type="text"
             name="userName"
+            value={user.userName}
+            onChange={handleChange}
             placeholder="Username"
             className="w-full mb-4 p-3 rounded border border-gray-300 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400"
           />
           <input
             type="password"
             name="password"
+             value={user.password}
+            onChange={handleChange}
             placeholder="Password"
             className="w-full mb-6 p-3 rounded border border-gray-300 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400"
           />
