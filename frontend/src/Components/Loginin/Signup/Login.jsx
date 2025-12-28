@@ -92,7 +92,8 @@ const Login = () => {
           <div className="text-right">
           <span
               className="font-bold text-gray-500 cursor-pointer hover:underline"
-              onClick={() => console.log("Forgot Password clicked")}
+              // onClick={() => console.log("Forgot Password clicked")}
+              onClick={() => navigate('/forgetPassword')}
   >
     Forgot Password?
   </span>
