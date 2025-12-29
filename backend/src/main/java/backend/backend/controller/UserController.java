@@ -36,7 +36,7 @@ public class UserController {
     }
 
     @DeleteMapping("/delete/{id}")
-    public String deleteUser(@PathVariable int id) {
+    public String deleteUser(@PathVariable String id) {
         Users user = new Users();
         user.setId(id);
         userService.deleteUsers(user);
@@ -51,7 +51,17 @@ public class UserController {
                 .findFirst()
                 .orElse(null);
     }
+@PostMapping("/api/register")
+public String register(@RequestBody Users user){
+        boolean exists=userService.getAllUsers().stream().anyMatch(u->u.getUserName().equals(user.getUserName()));
+        if (exists){
+            return "Username already exists";
 
+        }
+        userService.saveUser(user);
+        return "Registration complete";
+
+}
     @PostMapping("/api/login")
     public String login(@RequestBody Users loginRequest) {
 
@@ -68,4 +78,5 @@ public class UserController {
 
         return "Login Success";
     }
+
 }
