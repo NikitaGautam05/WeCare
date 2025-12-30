@@ -5,40 +5,44 @@ import axios from 'axios'
 const Signup = () => {
   const navigate = useNavigate()
 
-  const [user,setUser]=useState({
-    userName:'',
-    password:''
+  // Include all fields in state
+  const [user, setUser] = useState({
+    name: '',
+    email: '',
+    userName: '',
+    password: ''
   })
-  // Runs whenever user types in input field
-  const handleChange=(e)=>
-{
-  setUser({
-    ...user,[e.target.name]:e.target.value
-  })
-} 
 
-//for create Account click
-const handleSubmit=async(e)=>{
-  e.preventDefault()
-  // prevents page reload (VERY IMPORTANT)
- try{
-  // POST request → sends data to backend
-  const res=await axios.post(
-    'http://localhost:8080/api/register',user
-  )
-  alert (res.data)
-  if(res.data==="Registration complete"){
-    navigate('/login')
+  const [loading, setLoading] = useState(false)
+
+  // Update state on input change
+  const handleChange = (e) => {
+    setUser({
+      ...user,
+      [e.target.name]: e.target.value
+    })
   }
- }
- catch(error){
-  console.error(error)
-  alert('signup failed')
- }
-}
 
-return (
-    <div className='w-screen h-screen relative overflow-hidden bg-grey-400'>
+  // Handle form submission
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      const res = await axios.post('http://localhost:8080/api/register', user)
+      alert(res.data)
+      if (res.data === "Registration complete") {
+        navigate('/login')
+      }
+    } catch (error) {
+      console.error(error)
+      alert('Signup failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className='w-screen h-screen relative overflow-hidden bg-gray-100'>
       <img
         src="https://www.momshomecare.com/images/LARGE__bigstock-Young-Caregiver-Giving-Water-T-453584489.jpg"
         className='absolute opacity-40 w-full h-full object-cover'
@@ -46,29 +50,37 @@ return (
       />
       <div>
         <button
-          className='absolute bg-grey-200 top-8 left-5 z-10 px-4 py-2 rounded  font-semibold'
+          className='absolute bg-gray-200 top-8 left-5 z-10 px-4 py-2 rounded font-semibold'
           onClick={() => navigate('/')}
         >
           Home
         </button>
       </div>
 
-      <div className="relative bg-gray-100 rounded-lg shadow-lg z-10 top-40 p-8 max-w-sm mx-auto">
+      <div className="relative bg-white rounded-lg shadow-lg z-10 top-40 p-8 max-w-sm mx-auto">
         <form className="text-center" onSubmit={handleSubmit}>
           <h2 className="text-3xl italic font-semibold mb-6 text-gray-800">Sign Up</h2>
 
           <input
             type="text"
             name="name"
+            value={user.name}
+            onChange={handleChange}
             placeholder="Full Name"
             className="w-full mb-4 p-3 rounded border border-gray-300 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400"
+            required
           />
+
           <input
             type="email"
             name="email"
+            value={user.email}
+            onChange={handleChange}
             placeholder="Email Address"
             className="w-full mb-4 p-3 rounded border border-gray-300 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400"
+            required
           />
+
           <input
             type="text"
             name="userName"
@@ -76,21 +88,25 @@ return (
             onChange={handleChange}
             placeholder="Username"
             className="w-full mb-4 p-3 rounded border border-gray-300 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400"
+            required
           />
+
           <input
             type="password"
             name="password"
-             value={user.password}
+            value={user.password}
             onChange={handleChange}
             placeholder="Password"
             className="w-full mb-6 p-3 rounded border border-gray-300 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400"
+            required
           />
 
           <button
             type="submit"
             className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded transition-colors duration-300"
+            disabled={loading}
           >
-            Create Account
+            {loading ? 'Creating...' : 'Create Account'}
           </button>
 
           <p className="text-sm text-gray-600 mt-4">
