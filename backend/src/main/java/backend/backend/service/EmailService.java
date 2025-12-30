@@ -7,19 +7,22 @@ import org.springframework.stereotype.Service;
 
 import java.util.Random;
 
+
 @Service
 public class EmailService {
 
     @Autowired
     private JavaMailSender mailSender;
 
-    public String sendOtp(String toEmail) {
-        String otp = String.format("%06d", new Random().nextInt(999999));
+    public void sendOtp(String to, String otp) {
+        if (to == null || to.isEmpty()) {
+            throw new IllegalArgumentException("Email address is null or empty");
+        }
+
         SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(toEmail);
+        message.setTo(to);
         message.setSubject("Your OTP Code");
         message.setText("Your OTP is: " + otp);
         mailSender.send(message);
-        return otp;
     }
 }

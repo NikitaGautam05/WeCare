@@ -3,14 +3,7 @@ package backend.backend.controller;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import backend.backend.model.Users;
 import backend.backend.service.MyUserDetailService;
@@ -51,17 +44,24 @@ public class UserController {
                 .findFirst()
                 .orElse(null);
     }
-@PostMapping("/api/register")
-public String register(@RequestBody Users user){
-        boolean exists=userService.getAllUsers().stream().anyMatch(u->u.getUserName().equals(user.getUserName()));
-        if (exists){
-            return "Username already exists";
-
+    @PostMapping("/api/register")
+    public String register(@RequestBody Users user){
+        // Check email
+        if(user.getEmail() == null || user.getEmail().isEmpty()){
+            return "Email is required";
         }
+
+        // Check username uniqueness
+        boolean exists = userService.getAllUsers()
+                .stream()
+                .anyMatch(u -> u.getUserName().equals(user.getUserName()));
+        if (exists) return "Username already exists";
+
+        // Save user
         userService.saveUser(user);
         return "Registration complete";
+    }
 
-}
     @PostMapping("/api/login")
     public String login(@RequestBody Users loginRequest) {
 
@@ -78,5 +78,21 @@ public String register(@RequestBody Users user){
 
         return "Login Success";
     }
+    // Update email for a specific username
+    @PutMapping("/api/update-email")
+    public String updateEmail(@RequestParam String username, @RequestParam String email) {
+        Users user = userService.getAllUsers()
+                .stream()
+                .filter(u -> u.getUserName().equals(username))
+                .findFirst()
+                .orElse(null);
+
+        if (user == null) return "User not found";
+
+        user.setEmail(email);
+        userService.updateUser(user); // saves updated email
+        return "Email updated successfully for " + username;
+    }
+
 
 }

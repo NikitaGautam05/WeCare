@@ -29,10 +29,19 @@ public class ForgetPasswordController {
         if (user == null) {
             return "Username not found!";
         }
-        String otp = emailService.sendOtp(user.getEmail());
-        otpStorage.put(user.getUserName(), otp); // store OTP temporarily
+
+        // Generate OTP
+        String otp = String.valueOf((int)(Math.random() * 900000) + 100000);
+
+        // Send OTP email
+        emailService.sendOtp(user.getEmail(), otp);
+
+        // Store OTP temporarily
+        otpStorage.put(user.getUserName(), otp);
+
         return "OTP sent to registered email!";
     }
+
 
     // DTO for username input
     public static class UsernameRequest {

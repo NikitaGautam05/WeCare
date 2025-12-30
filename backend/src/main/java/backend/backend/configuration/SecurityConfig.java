@@ -26,25 +26,39 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .cors(cors->{})
+                .cors(cors -> cors.configurationSource(request -> {
+                    var corsConfig = new org.springframework.web.cors.CorsConfiguration();
+                    corsConfig.setAllowedOrigins(java.util.List.of("http://localhost:5173"));
+                    corsConfig.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                    corsConfig.setAllowCredentials(true);
+                    corsConfig.setAllowedHeaders(java.util.List.of("*"));
+                    return corsConfig;
+                }))
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/api/forgetPassword",
+                                "/api/verify-otp",
+                                "/api/login",
+                                "/api/register",
+                                "/api/reset-password",
+                                "/save",
+                                "/login",
+                                "/oauth2/**"
+                        ).permitAll()
+                        .anyRequest().authenticated()
+                )
+                .formLogin(form -> form
+                        .defaultSuccessUrl("/dash", true)
+                        .permitAll()
+                )
                 .oauth2Login(Customizer.withDefaults())
-
-        //security filter chain is added to add extra rules for security in http request
-                .csrf(customizer ->customizer.disable());
-        http.authorizeHttpRequests(request-> request.requestMatchers("/api/login","/api/register","/api/verify-otp","/save")
-                .permitAll().anyRequest().authenticated()); //requires every user to be authenticated hence login
-
-        http.formLogin(Customizer.withDefaults());
-        http.httpBasic(Customizer.withDefaults())
-
-        .formLogin(form->form
-//                .loginPage("/login")
-                . defaultSuccessUrl("/dash",true).permitAll()) //to navigate from login to dashboardc
-                .logout(logout->logout.permitAll());
-
+                .logout(logout -> logout.permitAll());
 
         return http.build();
     }
+
+
     @Bean
     public AuthenticationProvider authenticationProvider(){
         DaoAuthenticationProvider provider=new DaoAuthenticationProvider();
