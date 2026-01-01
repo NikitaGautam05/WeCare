@@ -1,7 +1,10 @@
 package backend.backend.controller;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import backend.backend.service.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -62,8 +65,11 @@ public class UserController {
         return "Registration complete";
     }
 
+    @Autowired
+    private JwtService jwtService;
+
     @PostMapping("/api/login")
-    public String login(@RequestBody Users loginRequest) {
+    public Map<String, String> login(@RequestBody Users loginRequest) {
 
         Users user = userService.getAllUsers()
                 .stream()
@@ -71,13 +77,26 @@ public class UserController {
                 .findFirst()
                 .orElse(null);
 
-        if (user == null) return "User not found";
+        Map<String, String> response = new HashMap<>();
 
-        if (!user.getPassword().equals(loginRequest.getPassword()))
-            return "Wrong password";
+        if (user == null) {
+            response.put("error", "User not found");
+            return response;
+        }
 
-        return "Login Success";
+        if (!user.getPassword().equals(loginRequest.getPassword())) {
+            response.put("error", "Wrong password");
+            return response;
+        }
+
+        // Generate JWT
+        String token = jwtService.generateToken(user.getUserName());
+        response.put("token", token); // return JWT
+        return response;
     }
+
+
+
     // Update email for a specific username
     @PutMapping("/api/update-email")
     public String updateEmail(@RequestParam String username, @RequestParam String email) {
