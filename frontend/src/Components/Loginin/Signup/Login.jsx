@@ -8,32 +8,29 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+ const handleLogin = async (e) => {
+  e.preventDefault();
 
-    // Trim inputs to avoid extra spaces
-    const dataToSend = {
+  try {
+    const response = await axios.post("http://localhost:8080/api/login", {
       userName: userName.trim(),
       password: password.trim()
-    };
+    });
 
-    console.log("Sending:", dataToSend);
-
-    try {
-      // Use /api/login to leverage Vite proxy
-      const response = await axios.post("http://localhost:8080/api/login", dataToSend);
-
-      console.log("Response:", response.data);
-      setMessage(response.data);
-
-      if (response.data === "Login Success") {
-        navigate("/dash"); // only navigate on success
-      }
-
-    } catch (error) {
-      setMessage(error.response?.data || "Login failed");
+    if (response.data.token) {
+      localStorage.setItem("jwtToken", response.data.token); // save JWT
+      console.log("JWT Token:", response.data.token); // <-- ADD THIS
+      setMessage("Login Success");
+      navigate("/CareGiverDash"); // go to dashboard
+    } else if (response.data.error) {
+      setMessage(response.data.error);
     }
-  };
+
+  } catch (error) {
+    setMessage(error.response?.data || "Login failed");
+  }
+};
+
 
   return (
     <div className='w-screen h-screen relative overflow-hidden bg-grey-400'>

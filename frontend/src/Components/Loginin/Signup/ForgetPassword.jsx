@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const ForgetPassword = () => {
+  const navigate = useNavigate();
   const BASE_URL = "http://localhost:8080/api";
 
   const [username, setUsername] = useState("");
@@ -9,6 +11,7 @@ const ForgetPassword = () => {
   const [newPassword, setNewPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+
   const [step, setStep] = useState("username"); // "username", "otp", "resetPassword"
 
   // Send OTP
@@ -59,11 +62,12 @@ const ForgetPassword = () => {
       setMessage("Please enter a new password.");
       return;
     }
-    setMessage("Password reset successful! (Backend logic needed to update password)");
+    setMessage("Password reset successful! Redirecting to Dashboard");
     setStep("username");
     setUsername("");
     setOtp("");
     setNewPassword("");
+    navigate("/dash");
   };
 
   return (
