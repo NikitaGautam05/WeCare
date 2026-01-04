@@ -8,8 +8,10 @@ import {BrowserRouter as Router,Routes, Route} from 'react-router-dom'
 import Signup from './Components/Loginin/Signup/Signup'
 import Aboutus from './Components/About us/Aboutus'
 import Dashboard from './Components/Dashboard/Dashboard'
-import OptionLogin from './Components/Loginin/optionLogin'
+import OptionLogin from './Components/Loginin/OptionLogin';
 import ForgetPassword from './Components/Loginin/Signup/ForgetPassword'
+import CareGiverDash from './Components/Dashboard/CareGiverDash';
+
 function App() {
   const [count, setCount] = useState(0)
 
@@ -23,6 +25,7 @@ function App() {
          <Route path='/dash' element={<Dashboard/>}></Route>
          <Route path ='/optionLogin' element={<OptionLogin/>}></Route>
          <Route path ='/forgetPassword' element={<ForgetPassword/>}></Route>
+         <Route path ='/CareGiverDash' element={<CareGiverDash/>}></Route>
       </Routes>
     </Router>
   )

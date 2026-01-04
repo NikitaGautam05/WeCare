@@ -19,13 +19,13 @@ const splash = () => {
           </button>
       </div>
       <div className='absolute z-10 top-4 right-5  '> 
-        <button 
-        style={{backgroundColor:"grey", height:'35px',textAlign:'center',lineHeight:'8px'
-        }}
-        onClick={()=> navigate('/signup')}
-        > 
-          Signup 
-          </button>
+       <button 
+  style={{backgroundColor:"grey", height:'35px', textAlign:'center', lineHeight:'8px'}}
+  onClick={()=> navigate('/optionLogin', { state: { mode: "SIGNUP" } })}
+> 
+  Signup 
+</button>
+
       </div>
       <div className='absolute z-10 top-3 left-3 text-xl '>
         <button 
