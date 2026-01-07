@@ -14,13 +14,18 @@ import backend.backend.service.MyUserDetailService;
 @RestController
 @CrossOrigin(origins="http://localhost:5173")
 public class UserController {
+
     @Autowired
     MyUserDetailService userService;
+
+    @Autowired
+    private JwtService jwtService;
 
     @GetMapping("/users")
     public List<Users> getAllUser() {
         return userService.getAllUsers();
     }
+
     @PostMapping("/save")
     public Users saveUser(@RequestBody Users user) {
         return userService.saveUser(user);
@@ -38,6 +43,7 @@ public class UserController {
         userService.deleteUsers(user);
         return "User deleted successfully";
     }
+
     @GetMapping("/{username}")
     public Users getUserByUsername(@PathVariable String username) {
         return userService.getAllUsers()
@@ -46,6 +52,7 @@ public class UserController {
                 .findFirst()
                 .orElse(null);
     }
+
     @PostMapping("/api/register")
     public String register(@RequestBody Users user){
 
@@ -58,25 +65,20 @@ public class UserController {
                 .anyMatch(u -> u.getUserName().equals(user.getUserName()));
         if (exists) return "Username already exists";
 
-        // 🔐 DEFAULT ROLE (IMPORTANT)
+        // 🔐 DEFAULT ROLE + normalize
         if(user.getRole() == null || user.getRole().isEmpty()){
-            user.setRole("USER"); // default role
+            user.setRole("USER");
         } else {
-            // normalize role if provided
-            user.setRole(user.getRole().toUpperCase().trim());
+            // uppercase + remove spaces
+            user.setRole(user.getRole().toUpperCase().replaceAll("\\s",""));
         }
 
         userService.saveUser(user);
         return "Registration complete";
     }
 
-
-    @Autowired
-    private JwtService jwtService;
-
     @PostMapping("/api/login")
     public Map<String, String> login(@RequestBody Users loginRequest) {
-
         Users user = userService.getAllUsers()
                 .stream()
                 .filter(u -> u.getUserName().equals(loginRequest.getUserName()))
@@ -96,15 +98,10 @@ public class UserController {
         }
 
         String token = jwtService.generateToken(user);
-
         response.put("token", token);
-        response.put("role", user.getRole()); // optional (frontend help)
-
+        response.put("role", user.getRole()); // CAREGIVER or USER
         return response;
     }
-
-
-
 
     // Update email for a specific username
     @PutMapping("/api/update-email")
