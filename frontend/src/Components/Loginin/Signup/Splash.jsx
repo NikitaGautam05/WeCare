@@ -4,48 +4,44 @@ import {useNavigate} from 'react-router-dom'
 const splash = () => {
   const navigate=useNavigate()
   return (
-    <div className='w-screen h-screen relative overflow-hidden'> 
-      <img 
-      src="https://www.momshomecare.com/images/LARGE__bigstock-Young-Caregiver-Giving-Water-T-453584489.jpg"
-      className=' w-full h-full object-cover absolute z-0'  //absolute + z-0 on the image to push it behind.
-      />
-      <div className='absolute z-10 top-4 right-30  '> 
-        <button 
-        style={{backgroundColor:"grey", height:'35px',textAlign:'center',lineHeight:'8px'  
-        }}
-        onClick={()=> navigate('/optionLogin')}
-        > 
-          Login 
-          </button>
-      </div>
-      <div className='absolute z-10 top-4 right-5  '> 
-       <button 
-  style={{backgroundColor:"grey", height:'35px', textAlign:'center', lineHeight:'8px'}}
-  onClick={()=> navigate('/optionLogin', { state: { mode: "SIGNUP" } })}
-> 
-  Signup 
-</button>
+   <div className="w-screen h-screen relative overflow-hidden">
+  <img 
+    src="https://www.momshomecare.com/images/LARGE__bigstock-Young-Caregiver-Giving-Water-T-453584489.jpg"
+    className="absolute w-full h-full object-cover z-0"
+  />
 
-      </div>
-      <div className='absolute z-10 top-3 left-3 text-xl '>
-        <button 
-        style={{backgroundColor:'transparent', height:'35px',textAlign:'center',lineHeight:'8px',color:'grey'
-        }}
-        onClick={()=>navigate('aboutUs')}
-        > 
-         About Us 
-          </button>
-      </div>
-      <div className='absolute z-10 top-3 left-30 text-xl '>
-        <button 
-        style={{backgroundColor:'transparent', height:'35px',textAlign:'center',lineHeight:'8px',color:'grey'
-        }}
-  
-        >
-         Contact Us 
-          </button>
-      </div>
-    </div>
+  {/* Top nav buttons */}
+  <div className="absolute z-10 top-5 right-5 flex gap-4">
+    <button
+      className="px-4 py-2 bg-gray-700 rounded text-white hover:bg-gray-600"
+      onClick={() => navigate('/optionLogin')}
+    >
+      Login
+    </button>
+    <button
+      className="px-4 py-2 bg-gray-700 rounded text-white hover:bg-gray-600"
+      onClick={() => navigate('/optionLogin', { state: { mode: "SIGNUP" } })}
+    >
+      Signup
+    </button>
+  </div>
+
+  <div className="absolute z-10 top-5 left-5 flex gap-4">
+    <button
+      className="px-4 py-2 text-gray-700 hover:underline bg-white/20 rounded"
+      onClick={() => navigate('/aboutUs')}
+    >
+      About Us
+    </button>
+    <button
+      className="px-4 py-2 text-gray-700 hover:underline bg-white/20 rounded"
+      onClick={() => navigate('/contactUs')}
+    >
+      Contact Us
+    </button>
+  </div>
+</div>
+
   )
 }
 

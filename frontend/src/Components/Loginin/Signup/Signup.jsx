@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
+import { GoogleLogin } from "@react-oauth/google"; // ✅ import GoogleLogin
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -36,6 +37,33 @@ const Signup = () => {
       alert("Registration failed");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ✅ Google login handler
+  const handleGoogleLogin = async (credentialResponse) => {
+    try {
+      const token = credentialResponse.credential;
+
+      const res = await axios.post(
+        "http://localhost:8080/api/google-signup",
+        token,
+        { headers: { "Content-Type": "text/plain" } } // backend expects raw string
+      );
+
+      if (res.data.token) {
+        localStorage.setItem("jwtToken", res.data.token);
+        const role = res.data.role.toLowerCase();
+
+        alert("Google signup/login successful!");
+        if (role === "caregiver") navigate("/CareGiverDash");
+        else navigate("/dash");
+      } else {
+        alert(res.data.error || res.data);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Google login failed");
     }
   };
 
@@ -117,17 +145,23 @@ const Signup = () => {
           >
             {loading ? "Creating..." : "Create Account"}
           </button>
-
-          <p className="text-sm text-gray-600 mt-4">
-            Already have an account?{" "}
-            <span
-              className="text-green-500 cursor-pointer hover:underline"
-              onClick={() => navigate("/optionLogin", { state: { mode: "LOGIN" } })}
-            >
-              Login here
-            </span>
-          </p>
         </form>
+
+        {/* Google login button */}
+        <div className="text-gray-500 mt-4 mb-2 text-center">OR</div>
+        <div className="flex justify-center">
+          <GoogleLogin onSuccess={handleGoogleLogin} onError={() => alert("Google login failed")} />
+        </div>
+
+        <p className="text-sm text-gray-600 mt-4 text-center">
+          Already have an account?{" "}
+          <span
+            className="text-green-500 cursor-pointer hover:underline"
+            onClick={() => navigate("/optionLogin", { state: { mode: "LOGIN" } })}
+          >
+            Login here
+          </span>
+        </p>
       </div>
     </div>
   );
