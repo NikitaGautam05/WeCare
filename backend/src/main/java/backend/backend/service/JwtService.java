@@ -1,5 +1,6 @@
 package backend.backend.service;
 
+import backend.backend.model.Users;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -27,14 +28,17 @@ public class JwtService {
     }
 
     // Generate JWT token
-    public String generateToken(String username) {
+    public String generateToken(Users user) {
+
         return Jwts.builder()
-                .setSubject(username)
+                .setSubject(user.getUserName())
+                .claim("role", user.getRole())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expirationTime))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
+
 
     // Extract username from token
     public String extractUsername(String token) {

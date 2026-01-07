@@ -11,6 +11,15 @@ public class Users {
     private String userName;
     private String password;
 
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    private String role;
     public String getEmail() {
         return email;
     }

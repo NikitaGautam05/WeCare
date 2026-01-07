@@ -1,7 +1,10 @@
 package backend.backend.controller;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
+import backend.backend.service.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,48 +24,65 @@ public class GoogleSignupController {
 
     @Autowired
     private MyUserDetailService userService;
+    @Autowired
+    private JwtService jwtService;
 
-    private static final String GOOGLE_CLIENT_ID = "666312206626-sh7vgk5h08df0l9tu3ckbm9hfg0h7slb.apps.googleusercontent.com";
+
+    private static final String GOOGLE_CLIENT_ID = "666312206626-bp4glho27euf5tr9041vq247fr707fi5.apps.googleusercontent.com";
 
     @PostMapping("/google-signup")
-    public String googleSignup(@RequestBody String token) {
+    public Map<String, String> googleSignup(@RequestBody String token) {
+
+        Map<String, String> response = new HashMap<>();
+
         try {
             GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
                     GoogleNetHttpTransport.newTrustedTransport(),
                     JacksonFactory.getDefaultInstance()
-            ).setAudience(Collections.singletonList(GOOGLE_CLIENT_ID))
+            )
+                    .setAudience(Collections.singletonList(GOOGLE_CLIENT_ID))
                     .build();
 
             GoogleIdToken idToken = verifier.verify(token);
-            if (idToken != null) {
-                Payload payload = idToken.getPayload();
-                String email = payload.getEmail();
-                String name = (String) payload.get("name");
 
-                // Check if user already exists
-                Users user = userService.getAllUsers()
-                        .stream()
-                        .filter(u -> u.getEmail().equals(email))
-                        .findFirst()
-                        .orElse(null);
-
-                if (user == null) {
-                    // Create new user
-                    Users newUser = new Users();
-                    newUser.setEmail(email);
-                    newUser.setUserName(name);
-                    newUser.setPassword(""); // optional, Google users may not need a password
-                    userService.saveUser(newUser);
-                    return "User registered successfully via Google!";
-                } else {
-                    return "User already exists, login instead.";
-                }
-            } else {
-                return "Invalid Google token";
+            if (idToken == null) {
+                response.put("error", "Invalid Google token");
+                return response;
             }
+
+            Payload payload = idToken.getPayload();
+            String email = payload.getEmail();
+            String name = (String) payload.get("name");
+
+            Users user = userService.getAllUsers()
+                    .stream()
+                    .filter(u -> email.equals(u.getEmail()))
+                    .findFirst()
+                    .orElse(null);
+
+            //  SIGNUP
+            if (user == null) {
+                user = new Users();
+                user.setEmail(email);
+                user.setUserName(name);
+                user.setPassword(""); // Google users don't use password
+                user.setRole("USER"); // default role
+                userService.saveUser(user);
+            }
+
+            //  LOGIN (JWT)
+            String jwt = jwtService.generateToken(user);
+
+            response.put("token", jwt);
+            response.put("role", user.getRole());
+
+            return response;
+
         } catch (Exception e) {
             e.printStackTrace();
-            return "Google signup failed";
+            response.put("error", "Google authentication failed");
+            return response;
         }
     }
+
 }

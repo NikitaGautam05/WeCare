@@ -10,28 +10,29 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+
+import java.util.List;
 
 @Configuration
-@EnableWebSecurity  //this turn on spring security and allow to customize security
-
+@EnableWebSecurity
 public class SecurityConfig {
+
     @Autowired
     private UserDetailsService userDetailsService;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(request -> {
                     var corsConfig = new org.springframework.web.cors.CorsConfiguration();
-                    corsConfig.setAllowedOrigins(java.util.List.of("http://localhost:5173"));
-                    corsConfig.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                    corsConfig.setAllowedOrigins(List.of("http://localhost:5173"));
+                    corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                     corsConfig.setAllowCredentials(true);
-                    corsConfig.setAllowedHeaders(java.util.List.of("*"));
+                    corsConfig.setAllowedHeaders(List.of("*"));
                     return corsConfig;
                 }))
                 .csrf(csrf -> csrf.disable())
@@ -42,56 +43,75 @@ public class SecurityConfig {
                                 "/api/login",
                                 "/api/register",
                                 "/api/reset-password",
+                                "/api/google-signup",
                                 "/save",
                                 "/login",
                                 "/oauth2/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
+                // Custom success handler for login to trigger OTP/email if needed
                 .formLogin(form -> form
-                        .defaultSuccessUrl("/dash", true)
+                        .loginPage("/login")
+                        .successHandler(customOtpSuccessHandler()) // Call OTP/email logic here
                         .permitAll()
                 )
-                .oauth2Login(Customizer.withDefaults())
+                // OAuth2 login uses the same success handler
+                .oauth2Login(oauth -> oauth
+                        .loginPage("/login")
+                        .successHandler(customOtpSuccessHandler())
+                )
                 .logout(logout -> logout.permitAll());
 
         return http.build();
     }
 
+    // Success handler to send OTP or trigger other actions after login
+    @Bean
+    public AuthenticationSuccessHandler customOtpSuccessHandler() {
+        return (request, response, authentication) -> {
+            String username = authentication.getName();
+            System.out.println("Login success: " + username);
+            // TODO: Call your OTP/email service here if needed
+            // Example: otpService.sendOtp(username);
+
+            // Redirect to dashboard
+            response.sendRedirect("/dash");
+        };
+    }
 
     @Bean
-    public AuthenticationProvider authenticationProvider(){
-        DaoAuthenticationProvider provider=new DaoAuthenticationProvider();
+    public AuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setPasswordEncoder(NoOpPasswordEncoder.getInstance());
         provider.setUserDetailsService(userDetailsService);
         return provider;
-
     }
-   @Bean
+
+    @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-       return  config.getAuthenticationManager();
+        return config.getAuthenticationManager();
+    }
 
-   }
+    // Uncomment for in-memory testing
+    /*
+    @Bean
+    public UserDetailsService userDetailsService() {
+        UserDetails user1 = User
+                .withDefaultPasswordEncoder()
+                .username("nikita")
+                .password("niki")
+                .roles("USER")
+                .build();
 
-//    @Bean
-//    public UserDetailsService userDetailsService() {
-//        UserDetails user1 = User
-//                .withDefaultPasswordEncoder()
-//                .username("nikita")
-//                .password("niki") // no password encoder
-//                .roles("USER")
-//                .build();
-//
-//        UserDetails user2 =User
-//                .withDefaultPasswordEncoder()
-//                .username("mili")
-//                .password("{noop}mil")
-//                .roles("USER")
-//                .build();
-//
-//        return new InMemoryUserDetailsManager(user1,user2);
-//    }
+        UserDetails user2 = User
+                .withDefaultPasswordEncoder()
+                .username("mili")
+                .password("{noop}mil")
+                .roles("USER")
+                .build();
 
-
-
+        return new InMemoryUserDetailsManager(user1, user2);
+    }
+    */
 }

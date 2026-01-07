@@ -38,7 +38,6 @@ public class UserController {
         userService.deleteUsers(user);
         return "User deleted successfully";
     }
-
     @GetMapping("/{username}")
     public Users getUserByUsername(@PathVariable String username) {
         return userService.getAllUsers()
@@ -49,21 +48,28 @@ public class UserController {
     }
     @PostMapping("/api/register")
     public String register(@RequestBody Users user){
-        // Check email
+
         if(user.getEmail() == null || user.getEmail().isEmpty()){
             return "Email is required";
         }
 
-        // Check username uniqueness
         boolean exists = userService.getAllUsers()
                 .stream()
                 .anyMatch(u -> u.getUserName().equals(user.getUserName()));
         if (exists) return "Username already exists";
 
-        // Save user
+        // 🔐 DEFAULT ROLE (IMPORTANT)
+        if(user.getRole() == null || user.getRole().isEmpty()){
+            user.setRole("USER"); // default role
+        } else {
+            // normalize role if provided
+            user.setRole(user.getRole().toUpperCase().trim());
+        }
+
         userService.saveUser(user);
         return "Registration complete";
     }
+
 
     @Autowired
     private JwtService jwtService;
@@ -89,11 +95,14 @@ public class UserController {
             return response;
         }
 
-        // Generate JWT
-        String token = jwtService.generateToken(user.getUserName());
-        response.put("token", token); // return JWT
+        String token = jwtService.generateToken(user);
+
+        response.put("token", token);
+        response.put("role", user.getRole()); // optional (frontend help)
+
         return response;
     }
+
 
 
 
@@ -112,6 +121,4 @@ public class UserController {
         userService.updateUser(user); // saves updated email
         return "Email updated successfully for " + username;
     }
-
-
 }
