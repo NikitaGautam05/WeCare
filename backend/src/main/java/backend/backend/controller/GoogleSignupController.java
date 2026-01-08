@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import backend.backend.service.EmailService;
 import backend.backend.service.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +27,8 @@ public class GoogleSignupController {
     private MyUserDetailService userService;
     @Autowired
     private JwtService jwtService;
+    @Autowired
+    EmailService emailService;
 
 
     private static final String GOOGLE_CLIENT_ID = "666312206626-bp4glho27euf5tr9041vq247fr707fi5.apps.googleusercontent.com";
@@ -68,6 +71,11 @@ public class GoogleSignupController {
                 user.setPassword(""); // Google users don't use password
                 user.setRole("USER"); // default role
                 userService.saveUser(user);
+                try {
+                    emailService.signupNotification(user.getEmail(), user.getUserName());
+                } catch (Exception e) {
+                    System.err.println("Failed to send welcome email: " + e.getMessage());
+                }
             }
 
             //  LOGIN (JWT)

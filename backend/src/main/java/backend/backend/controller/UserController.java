@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import backend.backend.service.EmailService;
 import backend.backend.service.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +21,8 @@ public class UserController {
 
     @Autowired
     private JwtService jwtService;
+    @Autowired
+    EmailService emailService;
 
     @GetMapping("/users")
     public List<Users> getAllUser() {
@@ -74,7 +77,15 @@ public class UserController {
         }
 
         userService.saveUser(user);
+        try {
+            emailService.signupNotification(user.getEmail(), user.getUserName());
+        } catch (Exception e) {
+            // log error but don't block registration
+            System.err.println("Failed to send welcome email: " + e.getMessage());
+        }
         return "Registration complete";
+
+
     }
 
     @PostMapping("/api/login")

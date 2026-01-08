@@ -25,4 +25,17 @@ public class EmailService {
         message.setText("Your OTP is: " + otp);
         mailSender.send(message);
     }
+    public void signupNotification(String to,String name){
+        if (to== null || to .isEmpty()){
+            throw new IllegalArgumentException("Email address is empty.");
+
+        }
+        SimpleMailMessage message= new SimpleMailMessage();
+        message.setTo(to);
+        message.setSubject("Welcome to ElderEase");
+        message.setText("Hello"+name+",\n\n"+
+                "Thank you for signing up! We're excited to have you on board.\n\n" +
+                "Best regards,\nElderEase Team");
+        mailSender.send(message);
+    }
 }
