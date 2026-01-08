@@ -76,7 +76,7 @@ const Login = () => {
 
       <div className="absolute top-5 right-10 flex gap-4 z-10">
         <button onClick={() => navigate('/')} className="px-4 py-2 text-white bg-gray-700 bg-opacity-50 rounded-lg hover:bg-opacity-70 transition">Home</button>
-        <button onClick={() => navigate('/register')} className="px-4 py-2 text-white bg-gray-700 bg-opacity-50 rounded-lg hover:bg-opacity-70 transition">Register</button>
+        <button onClick={() => navigate('/signup')} className="px-4 py-2 text-white bg-gray-700 bg-opacity-50 rounded-lg hover:bg-opacity-70 transition">Register</button>
       </div>
 
       <div className="relative z-10 top-1/2 transform -translate-y-1/2 max-w-sm mx-auto bg-white/30 backdrop-blur-md rounded-xl shadow-xl p-10">
