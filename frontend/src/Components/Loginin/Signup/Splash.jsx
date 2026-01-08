@@ -14,10 +14,10 @@ const Splash = () => {
     className="absolute w-full h-full object-cover brightness-75 contrast-110"
   />
 
-  {/* Overlay (FIXED) */}
+  
   <div className="absolute inset-0 bg-black/40 pointer-events-none" />
 
-  {/* Login / Signup (UNCHANGED LOGIC) */}
+  
   <div className="absolute z-20 top-5 right-5 flex gap-4">
     <button
       className="px-4 py-2 bg-gray-700 rounded text-white hover:bg-gray-600"
@@ -37,15 +37,23 @@ const Splash = () => {
 
   {/* Hero Content */}
   <div className="relative z-10 h-full flex flex-col justify-center items-center text-center px-6 text-white">
-    <h1 className="text-4xl md:text-6xl font-bold mb-6">
-      Compassionate Care, <br /> Right at Your Home
-    </h1>
+  <h1 className="text-4xl md:text-6xl font-bold mb-6">
+    Compassionate Care, <br /> Right at Your Home
+  </h1>
 
-    <p className="text-lg md:text-xl text-gray-200 max-w-2xl mb-8">
-      Connecting families with trusted caregivers to ensure comfort,
-      dignity, and quality care for your loved ones.
-    </p>
-  </div>
+  <p className="text-lg md:text-xl text-gray-200 max-w-2xl mb-8">
+    Connecting families with trusted caregivers to ensure comfort,
+    dignity, and quality care for your loved ones.
+  </p>
+
+  {/* Learn More Button */}
+  <button
+    onClick={() => document.getElementById("about")?.scrollIntoView({ behavior: "smooth" })}
+    className="px-6 py-3 bg-green-500 rounded-full font-semibold hover:bg-green-600 transition"
+  >
+    Learn More
+  </button>
+</div>
 </section>
 
       {/* ABOUT US SECTION */}

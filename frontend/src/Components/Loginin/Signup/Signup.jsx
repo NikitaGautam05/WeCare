@@ -2,12 +2,13 @@ import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
-import { GoogleLogin } from "@react-oauth/google"; // ✅ import GoogleLogin
+import { GoogleLogin } from "@react-oauth/google"; 
 
 const Signup = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const selectedRole = location.state?.role || null;
+  
 
   const [showPassword, setShowPassword] = useState(false);
   const [user, setUser] = useState({
@@ -22,25 +23,38 @@ const Signup = () => {
     setUser({ ...user, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
 
-    try {
-      const res = await axios.post("http://localhost:8080/api/register", user);
-      console.log("Registration result:", res.data);
-      alert(res.data);
+  try {
+    const payload = {
+      ...user,
+      role: selectedRole   
+    };
 
-      navigate("/login", { state: { role: selectedRole, registeredUser: user } });
-    } catch (error) {
-      console.error("Registration failed", error);
-      alert("Registration failed");
-    } finally {
-      setLoading(false);
-    }
-  };
+    const res = await axios.post(
+      "http://localhost:8080/api/register",
+      payload
+    );
 
-  // ✅ Google login handler
+    alert(res.data);
+
+    navigate("/login", { 
+      state: { role: selectedRole, registeredUser: user } 
+    });
+
+  } catch (error) {
+    console.error("Registration failed", error);
+    alert("Registration failed");
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+
+  // Google login handler
   const handleGoogleLogin = async (credentialResponse) => {
     try {
       const token = credentialResponse.credential;
@@ -52,15 +66,18 @@ const Signup = () => {
       );
 
       if (res.data.token) {
-        localStorage.setItem("jwtToken", res.data.token);
-        const role = res.data.role.toLowerCase();
+    localStorage.setItem("jwtToken", res.data.token);
+    const role = res.data.role ? res.data.role.toLowerCase() : "user";
 
-        alert("Google signup/login successful!");
-        if (role === "caregiver") navigate("/CareGiverDash");
-        else navigate("/dash");
-      } else {
-        alert(res.data.error || res.data);
-      }
+    alert("Google signup/login successful!");
+    if (role === "caregiver") {
+        navigate("/CareGiverDash");
+    } else {
+        navigate("/dash");
+    }
+} else {
+    alert(res.data.error || res.data);
+}
     } catch (err) {
       console.error(err);
       alert("Google login failed");
@@ -95,7 +112,7 @@ const Signup = () => {
             value={user.name}
             onChange={handleChange}
             placeholder="Full Name"
-            className="w-full mb-4 p-3 rounded-lg border border-gray-300 bg-white/60 placeholder-gray-700 focus:outline-none focus:ring-2 focus:ring-green-400"
+            className="w-full mb-4 p-3 text-black rounded-lg border border-gray-300 bg-white/60 placeholder-gray-700 focus:outline-none focus:ring-2 focus:ring-green-400"
             required
           />
 
@@ -105,7 +122,7 @@ const Signup = () => {
             value={user.email}
             onChange={handleChange}
             placeholder="Email Address"
-            className="w-full mb-4 p-3 rounded-lg border border-gray-300 bg-white/60 placeholder-gray-700 focus:outline-none focus:ring-2 focus:ring-green-400"
+            className="w-full mb-4 p-3 text-black rounded-lg border border-gray-300 bg-white/60 placeholder-gray-700 focus:outline-none focus:ring-2 focus:ring-green-400"
             required
           />
 
@@ -115,7 +132,7 @@ const Signup = () => {
             value={user.userName}
             onChange={handleChange}
             placeholder="Username"
-            className="w-full mb-4 p-3 rounded-lg border border-gray-300 bg-white/60 placeholder-gray-700 focus:outline-none focus:ring-2 focus:ring-green-400"
+            className="w-full mb-4 p-3 text-black rounded-lg border border-gray-300 bg-white/60 placeholder-gray-700 focus:outline-none focus:ring-2 focus:ring-green-400"
             required
           />
 
@@ -127,7 +144,7 @@ const Signup = () => {
               value={user.password}
               onChange={handleChange}
               placeholder="Password"
-              className="w-full p-3 rounded-lg border border-gray-300 bg-white/60 placeholder-gray-700 focus:outline-none focus:ring-2 focus:ring-green-400 pr-12"
+              className="w-full p-3 text-black rounded-lg border border-gray-300 bg-white/60 placeholder-gray-700 focus:outline-none focus:ring-2 focus:ring-green-400 pr-12"
               required
             />
             <span
@@ -156,7 +173,7 @@ const Signup = () => {
         <p className="text-sm text-gray-600 mt-4 text-center">
           Already have an account?{" "}
           <span
-            className="text-green-500 cursor-pointer hover:underline"
+            className="text-blue-5600 cursor-pointer hover:underline"
             onClick={() => navigate("/optionLogin", { state: { mode: "LOGIN" } })}
           >
             Login here

@@ -75,13 +75,13 @@ const ForgetPassword = () => {
       <div className="bg-white p-6 rounded-lg shadow-md w-80 text-center">
         {step === "username" && (
           <>
-            <p className="mb-4 font-bold">Enter your username</p>
+            <p className="mb-4 font-bold text-black">Enter your username</p>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Username"
-              className="border p-2 mb-4 w-full rounded bg-gray-200"
+              className="border p-2 mb-4 w-full rounded bg-gray-200 text-gray-700"
             />
             <button
               onClick={sendOtp}

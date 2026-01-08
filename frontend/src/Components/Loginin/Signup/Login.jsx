@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 import { GoogleLogin } from "@react-oauth/google";
 
 const Login = () => {
@@ -8,6 +9,7 @@ const Login = () => {
   const [userName, setUserName] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+   const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -21,17 +23,10 @@ const Login = () => {
       if (response.data.token) {
         localStorage.setItem("jwtToken", response.data.token);
         const role = response.data.role || "USER";
-
-        // normalize and remove spaces
         const normalizedRole = role.toLowerCase().replace(/\s/g,'');
-        console.log("Backend role:", role);
-        console.log("Normalized role:", normalizedRole);
 
-        if (normalizedRole.includes("caregiver")) {
-          navigate("/CareGiverDash");
-        } else {
-          navigate("/dash"); // default for USER / care receivers
-        }
+        if (normalizedRole.includes("caregiver")) navigate("/CareGiverDash");
+        else navigate("/dash");
       } else if(response.data.error){
         setMessage(response.data.error);
       }
@@ -76,15 +71,32 @@ const Login = () => {
 
       <div className="absolute top-5 right-10 flex gap-4 z-10">
         <button onClick={() => navigate('/')} className="px-4 py-2 text-white bg-gray-700 bg-opacity-50 rounded-lg hover:bg-opacity-70 transition">Home</button>
-        <button onClick={() => navigate('/signup')} className="px-4 py-2 text-white bg-gray-700 bg-opacity-50 rounded-lg hover:bg-opacity-70 transition">Register</button>
+        {/* <button onClick={() => navigate('/signup')} className="px-4 py-2 text-white bg-gray-700 bg-opacity-50 rounded-lg hover:bg-opacity-70 transition">Register</button> */}
       </div>
 
       <div className="relative z-10 top-1/2 transform -translate-y-1/2 max-w-sm mx-auto bg-white/30 backdrop-blur-md rounded-xl shadow-xl p-10">
         <form onSubmit={handleLogin} className="text-center">
           <h2 className="text-3xl font-bold mb-6 text-gray-800">LOGIN</h2>
-          <input type="text" placeholder="Username" value={userName} onChange={e => setUserName(e.target.value)} className="w-full mb-4 p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-400 bg-white/60 placeholder-gray-700"/>
-          <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} className="w-full mb-6 p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-400 bg-white/60 placeholder-gray-700"/>
-          
+          <input 
+          type="text" placeholder="Username" 
+          value={userName} 
+          onChange={e => setUserName(e.target.value)}
+           className="w-full mb-4 p-3 text-black rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-400 bg-white/60 placeholder-gray-700"/>
+           <div className="relative mb-6">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              className="w-full p-3 text-black rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-400 bg-white/60 placeholder-gray-700 pr-12"
+            />
+            <span
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 cursor-pointer hover:text-gray-800 transition "
+            >
+              {showPassword ? <AiOutlineEyeInvisible size={22} /> : <AiOutlineEye size={22} />}
+            </span>
+          </div>
           <div className="flex items-center justify-between mb-4">
             <label className="text-gray-700 text-sm flex items-center gap-2">
               <input type="checkbox" className="accent-green-500"/> Remember Me
@@ -100,6 +112,17 @@ const Login = () => {
           </div>
 
           {message && <p className="mt-4 text-red-500 text-sm font-semibold">{message}</p>}
+
+          {/* NEW: Sign up link */}
+          <p className="text-sm text-gray-600 mt-4 text-center">
+            Don't have an account?{" "}
+            <span
+              className="text-blue-600 cursor-pointer hover:underline"
+              onClick={() => navigate("/signup", { state: { mode: "SIGNUP" } })}
+            >
+              Sign up here
+            </span>
+          </p>
         </form>
       </div>
     </div>

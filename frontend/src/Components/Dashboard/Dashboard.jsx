@@ -1,6 +1,8 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const dummyCaregivers = [
+  
   {
     id: 1,
     name: "Ramesh Thapa",
@@ -15,6 +17,7 @@ const dummyCaregivers = [
       { name: "Sita Gurung", photo: "https://randomuser.me/api/portraits/women/44.jpg" },
       { name: "Hari Bahadur", photo: "https://randomuser.me/api/portraits/men/45.jpg" },
     ],
+    favourite: true
   },
   {
     id: 2,
@@ -30,6 +33,7 @@ const dummyCaregivers = [
       { name: "Gita Sharma", photo: "https://randomuser.me/api/portraits/women/68.jpg" },
       { name: "Ramesh Thapa", photo: "https://randomuser.me/api/portraits/men/32.jpg" },
     ],
+    favourite: false
   },
   {
     id: 3,
@@ -44,6 +48,7 @@ const dummyCaregivers = [
     topProfiles: [
       { name: "Sita Gurung", photo: "https://randomuser.me/api/portraits/women/44.jpg" },
     ],
+    favourite: true
   },
   {
     id: 4,
@@ -59,11 +64,17 @@ const dummyCaregivers = [
       { name: "Hari Bahadur", photo: "https://randomuser.me/api/portraits/men/45.jpg" },
       { name: "Ramesh Thapa", photo: "https://randomuser.me/api/portraits/men/32.jpg" },
     ],
+    favourite: false
   },
 ];
 
 const Dashboard = () => {
   const [search, setSearch] = useState("");
+  const navigate = useNavigate();
+
+  //  Later you can decode JWT instead of this
+  const userName = localStorage.getItem("userName") || "Nikita";
+  const role = localStorage.getItem("role") || "User";
 
   const filteredCaregivers = dummyCaregivers.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -71,7 +82,9 @@ const Dashboard = () => {
     c.location.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Collect all unique top interest profiles
+  const favouriteCaregivers = dummyCaregivers.filter(c => c.favourite);
+
+  // Collect unique top interest profiles
   const topInterestProfiles = [];
   dummyCaregivers.forEach((c) => {
     c.topProfiles.forEach((tp) => {
@@ -83,161 +96,199 @@ const Dashboard = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-50 font-sans">
-      {/* Sidebar */}
-      <aside className="w-64 bg-white shadow-md fixed h-full">
+
+      {/* SIDEBAR */}
+      <aside className="w-72 bg-white shadow-lg fixed h-full flex flex-col justify-between border-r">
         <div className="p-6">
-          <div className="flex items-center gap-3 mb-10">
-            <div className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center text-white font-bold text-xl">
-              E
+          {/* App Name */}
+          <h1 className="text-3xl font-extrabold mb-10 text-gray-900 tracking-wide">
+            ElderEase
+          </h1>
+
+          {/* Profile Section */}
+          <div className="flex items-center gap-4 mb-10 p-4 bg-gray-100 rounded-xl">
+            <img
+              src="https://randomuser.me/api/portraits/women/65.jpg"
+              alt="Profile"
+              className="w-14 h-14 rounded-full object-cover border"
+            />
+            <div>
+              <h3 className="font-semibold text-gray-900">{userName}</h3>
+              <p className="text-sm text-gray-600">{role}</p>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">ElderEase</h1>
           </div>
 
+          {/* Navigation */}
           <nav className="space-y-2">
             {[
-              { name: "Dashboard", active: false },
-              { name: "My Caregivers", active: true },
-              { name: "Schedule", active: false },
-              { name: "Messages", active: false },
-              { name: "Analytics", active: false },
-              { name: "Transactions", active: false },
+              "Dashboard",
+              "My Caregivers",
+              "History",
+              "Top Interest",
+              "Favourites",
+              "Profile",
+              
             ].map((item) => (
               <button
-                key={item.name}
-                className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg text-left transition ${
-                  item.active
-                    ? "bg-gray-100 text-gray-900 font-semibold"
-                    : "text-gray-600 hover:bg-gray-50"
-                }`}
+                key={item}
+                className="w-full text-left px-4 py-3 rounded-lg
+                           text-white-800 font-medium
+                           hover:bg-gray-200 transition"
               >
-                <span className="text-lg">{item.name}</span>
+                {item}
               </button>
             ))}
           </nav>
+        </div>
 
-          <div className="mt-12 pt-8 border-t border-gray-200">
-            <nav className="space-y-2">
-              {["Settings", "Help & Support"].map((item) => (
-                <button
-                  key={item}
-                  className="w-full flex items-center gap-4 px-4 py-3 rounded-lg text-left text-gray-600 hover:bg-gray-50 transition"
-                >
-                  <span className="text-lg">{item}</span>
-                </button>
-              ))}
-            </nav>
-          </div>
+        {/* Logout */}
+        <div className="p-6 border-t bg-white">
+           <button
+        onClick={() => navigate("/")}
+        className="w-full bg-red-500 text-white py-2.5 rounded-lg
+                   font-semibold hover:bg-red-600 transition"
+      >
+        Logout
+      </button>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 ml-64 p-8">
-        {/* Header */}
-        <header className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-bold text-gray-900">My Caregivers</h2>
-          <button className="bg-gray-900 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-gray-800 transition shadow-md">
-            + Add Caregiver
-          </button>
-        </header>
+      {/* MAIN CONTENT*/}
+      <main className="flex-1 ml-72 p-8">
 
-        {/* Search Bar */}
+        {/*  Welcome Message */}
+       <div className="mb-6 bg-gray-200 rounded-2xl shadow-md p-6 max-w-3xl">
+  <h2 className="text-3xl font-bold text-gray-900">
+    Welcome, {userName} 👋
+  </h2>
+  <p className="text-gray-700 mt-2 text-lg">
+    Discover caring hands who feel like family
+  </p>
+</div>
+
+
+        {/* Search */}
         <div className="mb-6">
-          <div className="relative max-w-md">
-            <input
-              type="text"
-              placeholder="Search..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 rounded-full border border-gray-300 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent text-gray-900 placeholder-gray-500"
-            />
-            <svg
-              className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-          </div>
+          <input
+            type="text"
+            placeholder="Search caregivers..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full max-w-md text-gray-400 px-5 py-3 rounded-full border border-gray-300 shadow-sm focus:ring-2 focus:ring-gray-400"
+          />
         </div>
 
         {/* Caregiver Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
           {filteredCaregivers.map((c) => (
             <div
               key={c.id}
-              className="bg-white rounded-2xl shadow-md hover:shadow-xl transition cursor-pointer flex flex-col overflow-hidden"
+              className="bg-gray-200 rounded-2xl shadow-md hover:shadow-xl transition overflow-hidden"
             >
-              {/* Profile */}
-              <div className="flex items-center gap-4 p-4 border-b border-gray-200">
-                <img
-                  src={c.photo}
-                  alt={c.name}
-                  className="w-16 h-16 rounded-full object-cover"
-                />
+              <div className="flex items-center gap-4 p-4 border-b">
+                <img src={c.photo} alt={c.name} className="w-16 h-16 rounded-full" />
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900">{c.name}</h3>
-                  <p className="text-gray-600 text-sm">{c.specialty}</p>
-                  <p className="text-gray-500 text-xs">{c.location}</p>
+                  <h3 className="font-semibold text-gray-400">{c.name}</h3>
+                  <p className="text-sm text-gray-600">{c.specialty}</p>
+                  <p className="text-xs text-gray-500">{c.location}</p>
                 </div>
-                <span className="text-gray-800 font-bold">{c.rating} ⭐</span>
+                <span className="font-bold text-gray-400">{c.rating} ⭐</span>
               </div>
 
-              {/* Details */}
-              <div className="flex justify-between px-4 py-3 text-gray-600 text-sm">
-                <div className="flex flex-col items-center">
-                  <span className="font-semibold">{c.beds}</span>
-                  <span>Beds</span>
+              <div className="p-4 border-t">
+                <p className="text-gray-600 text-sm mb-3">
+                  Short intro about {c.name} and experience. Specialty: {c.specialty}.
+                </p>
+                <div className="flex gap-2">
+                  <button className="flex-1 bg-gray-900 text-white py-2 rounded-lg">
+                    View Profile
+                  </button>
+                  <button className="flex-1 bg-gray-100 py-2 rounded-lg">
+                    Interested
+                  </button>
                 </div>
-                <div className="flex flex-col items-center">
-                  <span className="font-semibold">{c.baths}</span>
-                  <span>Baths</span>
-                </div>
-                <div className="flex flex-col items-center">
-                  <span className="font-semibold">{c.sqft}</span>
-                  <span>sqft</span>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-2 p-4 border-t border-gray-200">
-                <button className="flex-1 bg-gray-900 text-white py-2 rounded-lg font-medium hover:bg-gray-800 transition">
-                  Book
-                </button>
-                <button className="flex-1 bg-gray-100 text-gray-800 py-2 rounded-lg font-medium hover:bg-gray-200 transition">
-                  Message
-                </button>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Top Interest Profiles Section */}
-        <section className="mt-12">
-          <h3 className="text-2xl font-bold text-gray-900 mb-6">Top Interest Profiles</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {topInterestProfiles.map((profile, index) => (
-              <div
-                key={index}
-                className="flex flex-col items-center p-3 rounded-xl bg-green-50 hover:bg-green-100 transition cursor-pointer shadow-sm"
-              >
-                <img
-                  src={profile.photo}
-                  alt={profile.name}
-                  className="w-16 h-16 rounded-full object-cover border-2 border-green-100 shadow-sm"
-                />
-                <span className="mt-2 text-sm font-medium text-gray-900 text-center">
-                  {profile.name}
-                </span>
-              </div>
-            ))}
+        {/* Favourites Section */}
+        {favouriteCaregivers.length > 0 && (
+          <section className="mb-12">
+            <h3 className="text-2xl font-bold bg text-gray-400 mb-6">Favourites</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {favouriteCaregivers.map((c) => (
+                <div
+                  key={c.id}
+                  className="bg-pink-100 rounded-2xl shadow-md hover:shadow-xl transition overflow-hidden"
+                >
+                  <div className="flex items-center  gap-4 p-4 border-b">
+                    <img src={c.photo} alt={c.name} className="w-16 h-16 rounded-full" />
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-400">{c.name}</h3>
+                      <p className="text-sm text-gray-600">{c.specialty}</p>
+                      <p className="text-xs text-gray-500">{c.location}</p>
+                    </div>
+                    <span className="font-bold text-gray-400">{c.rating} ⭐</span>
+                  </div>
+
+                  <div className="p-4 border-t">
+                    <p className="text-gray-600 text-sm mb-3">
+                      I am {c.name} and experience. Specialty: {c.specialty}.
+                    </p>
+                    <div className="flex gap-2">
+                      <button className="flex-1 bg-gray-900 text-white py-2 rounded-lg">
+                        View Profile
+                      </button>
+                      <button className="flex-1 bg-gray-100 py-2 rounded-lg">
+                        Interested
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* TOP INTEREST PROFILES  */}
+        <section className="mb-12">
+  <h3 className="text-2xl font-bold text-gray-900 mb-6">
+    Top Interest Profiles
+  </h3>
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    {topInterestProfiles.map((profile, index) => (
+      <div
+        key={index}
+        className="bg-green-100 rounded-2xl shadow-md hover:shadow-xl transition overflow-hidden"
+      >
+        {/* Profile Header */}
+        <div className="flex items-center gap-4 p-4 border-b">
+          <img
+            src={profile.photo}
+            alt={profile.name}
+            className="w-16 h-16 rounded-full object-cover"
+          />
+          <div className="flex-1">
+            <h3 className="font-semibold text-gray-900">{profile.name}</h3>
+            <p className="text-sm text-gray-600">Top Caregiver</p>
           </div>
-        </section>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-2 p-4">
+          <button className="flex-1 bg-gray-900 text-white py-2 rounded-lg">
+            View Profile
+          </button>
+          <button className="flex-1 bg-gray-100 py-2 rounded-lg">
+            Interested
+          </button>
+        </div>
+      </div>
+    ))}
+  </div>
+</section>
+
       </main>
     </div>
   );
