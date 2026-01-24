@@ -1,103 +1,180 @@
-import React, { useState } from 'react';
-import ProfileForm from './ProfileForm';
+import React, { useState } from "react";
+import ProfileForm from "./ProfileForm";
+
+const demoProfiles = [
+  {
+    id: 1,
+    name: "Ramesh Thapa",
+    photo: "https://randomuser.me/api/portraits/men/32.jpg",
+    specialty: "Elderly Care",
+    location: "Kathmandu",
+    rating: 4.5,
+  },
+  {
+    id: 2,
+    name: "Sita Gurung",
+    photo: "https://randomuser.me/api/portraits/women/44.jpg",
+    specialty: "Alzheimer's Care",
+    location: "Pokhara",
+    rating: 4.7,
+  },
+  {
+    id: 3,
+    name: "Hari Bahadur",
+    photo: "https://randomuser.me/api/portraits/men/45.jpg",
+    specialty: "Post-Surgery Care",
+    location: "Biratnagar",
+    rating: 4.8,
+  },
+];
 
 const CareGiverDash = () => {
-  const [activeTab, setActiveTab] = useState('profile');
-  const [showWarning, setShowWarning] = useState(false);
+  const [activeTab, setActiveTab] = useState("profile");
 
-
-  const notifications = [
-    { id: 1, message: 'New care request assigned to you.' },
-    { id: 2, message: 'Profile approved successfully.' },
-    { id: 3, message: 'Reminder: Update your experience details.' },
-  ];
+  const currentProfile = {
+    name: "Nikita Sharma",
+    photo: "https://randomuser.me/api/portraits/women/65.jpg",
+    completedSteps: 3,
+  };
 
   return (
-    <div className="min-h-screen w-screen bg-gray-100 font-sans flex flex-col">
-     {/* Hanging Poster Header */}
-<header className="relative flex justify-center pt-12 mb-6">
-  {/* Threads */}
-  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[90%] max-w-4xl flex justify-between px-12">
-    <div className="w-px h-14 bg-gray-400"></div>
-    <div className="w-px h-14 bg-gray-400"></div>
-  </div>
+    <div className="min-h-screen w-screen bg-gray-100">
 
-  {/* Poster */}
-  <div className="relative bg-gray-500 text-white px-12 py-10 rounded-md shadow-2xl w-[90%] max-w-4xl text-center transform rotate-[-1deg]">
-    {/* Thread connection dots */}
-    <div className="absolute -top-2 left-10 w-3 h-3 bg-gray-300 rounded-full shadow-inner"></div>
-    <div className="absolute -top-2 right-10 w-3 h-3 bg-gray-300 rounded-full shadow-inner"></div>
+      {/* HEADER (GENERIC) */}
+      <header className="bg-gray-600 text-white py-6 shadow w-full">
+        <div className="px-6">
+          <h1 className="text-3xl md:text-4xl font-bold">Welcome, Caregiver</h1>
+          <p className="text-gray-200 mt-1">
+            Manage your profile and availability from here
+          </p>
+        </div>
+      </header>
 
-    <h1 className="text-4xl font-bold mb-3">Welcome, Caregiver!</h1>
-    <p className="text-lg mb-3">
-      We're glad to have you here. Update your profile to help care receivers connect with you.
-    </p>
-    
-  </div>
-</header>
+      {/* BODY */}
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_300px] gap-6 p-6">
 
+        {/* LEFT SIDEBAR (UNCHANGED STYLE) */}
+        <aside className="bg-white border rounded-xl p-5 h-fit">
 
-      <div className="flex flex-1 w-full mt-6 gap-6 px-6">
-        {/* Sidebar */}
-        <aside className="w-64 bg-white rounded shadow p-4 flex flex-col gap-4">
+          {/* NAME */}
+          <div className="flex items-center gap-3 mb-4">
+            <img
+              src={currentProfile.photo}
+              alt={currentProfile.name}
+              className="w-12 h-12 rounded-full object-cover border"
+            />
+            <h3 className="font-semibold text-gray-900">
+              {currentProfile.name}
+            </h3>
+          </div>
+
+          {/* PROFILE BUTTON */}
           <button
-            className={`py-2 px-4 rounded text-left ${
-              activeTab === 'profile' ? 'bg-green-500 text-white font-semibold' : 'text-gray-700 hover:bg-gray-100'
-            }`}
-            onClick={() => setActiveTab('profile')}
+            onClick={() => setActiveTab("profile")}
+            className={`w-full text-left px-4 py-2 rounded-lg font-medium mb-2
+              ${activeTab === "profile"
+                ? "bg-black text-white"
+                : "hover:bg-gray-100 text-gray-700"}`}
           >
             Profile
           </button>
 
+          {/* PROFILE STEPS */}
+          {activeTab === "profile" && (
+            <div className="ml-2 mt-3 space-y-2 text-sm">
+              <p className="text-gray-400 uppercase text-xs mb-1">
+                Profile Steps
+              </p>
+              <ul className="space-y-2">
+                {["Documents", "Personal", "Professional", "Charges"].map(
+                  (label, i) => (
+                    <li key={i} className="flex items-center gap-2 text-gray-700">
+                      <span
+                        className={`w-5 h-5 flex items-center justify-center rounded-full text-xs
+                          ${i < currentProfile.completedSteps
+                            ? "bg-black text-white"
+                            : "bg-gray-300 text-gray-700"}`}
+                      >
+                        {i + 1}
+                      </span>
+                      {label}
+                    </li>
+                  )
+                )}
+              </ul>
+            </div>
+          )}
+
+          {/* NOTIFICATIONS (UNCHANGED) */}
           <button
-            className={`py-2 px-4 rounded text-left ${
-              activeTab === 'notifications' ? 'bg-green-500 text-white font-semibold' : 'text-gray-700 hover:bg-gray-100'
-            }`}
-            onClick={() => setActiveTab('notifications')}
+            onClick={() => setActiveTab("notifications")}
+            className={`w-full text-left px-4 py-2 rounded-lg font-medium mt-6
+              ${activeTab === "notifications"
+                ? "bg-black text-white"
+                : "hover:bg-gray-100 text-gray-500"}`}
           >
             Notifications
           </button>
+          {/* HELP SECTION */}
+{/* HELP BUTTON */}
+<button
+  onClick={() => console.log("Help clicked")}
+  className={`w-full text-left px-4 py-2 rounded-lg font-medium mt-2
+    hover:bg-gray-100 text-grey-00`}
+>
+  Help?
+</button>
+
         </aside>
 
-        {/* Main Content */}
-        <main className="flex-1 bg-white rounded shadow p-8">
-          {activeTab === 'profile' && (
-  <ProfileForm onFirstFocus={() => setShowWarning(true)} />
-)}
+        {/* CENTER CONTENT */}
+        <main className="w-full">
+          {activeTab === "profile" && (
+            <div className="bg-white border rounded-xl p-6">
+              <ProfileForm />
+            </div>
+          )}
 
-          {activeTab === 'notifications' && (
-            <div>
-              <h2 className="text-2xl font-semibold mb-4">Notifications</h2>
-              <ul className="flex flex-col gap-3">
-                {notifications.map((n) => (
-                  <li key={n.id} className="border-l-4 border-green-500 bg-gray-50 p-4 rounded shadow-sm">
-                    {n.message}
-                  </li>
-                ))}
+          {activeTab === "notifications" && (
+            <div className="bg-white border rounded-xl p-6">
+              <h2 className="text-xl font-semibold mb-4">Notifications</h2>
+              <ul className="space-y-3">
+                <li className="border-l-4 border-black bg-gray-50 p-4 rounded">
+                  New care request assigned
+                </li>
+                <li className="border-l-4 border-black bg-gray-50 p-4 rounded">
+                  Profile approved successfully
+                </li>
               </ul>
             </div>
           )}
         </main>
-        {/* Floating Warning Popup */}
-{showWarning && (
-  <div className="fixed bottom-6 right-6 z-50 bg-yellow-100 text-yellow-900 px-6 py-4 rounded-xl shadow-2xl max-w-sm animate-slideIn">
-    <div className="flex items-start gap-3">
-      <span className="text-xl">⚠️</span>
-      <div>
-        <p className="font-semibold">Important</p>
-        <p className="text-sm">
-          Please ensure all information you enter is accurate and truthful.
-        </p>
-      </div>
-      <button
-        onClick={() => setShowWarning(false)}
-        className="ml-auto text-yellow-700 hover:text-yellow-900"
-      >
-        ✕
-      </button>
-    </div>
-  </div>
-)}
+
+        {/* RIGHT PANEL */}
+        <aside className="bg-gray-50 border rounded-xl p-6 h-fit">
+          <h3 className="font-semibold mb-4 text-black">Suggested Ideal Profile </h3>
+          <div className="space-y-4">
+            {demoProfiles.map((p) => (
+              <div
+                key={p.id}
+                className="bg-white border rounded-xl p-4 flex items-center gap-3"
+              >
+                <img
+                  src={p.photo}
+                  alt={p.name}
+                  className="w-12 h-12 rounded-full object-cover"
+                />
+                <div>
+                  <p className="font-semibold">{p.name}</p>
+                  <p className="text-sm text-gray-600">{p.specialty}</p>
+                  <p className="text-xs text-gray-500">
+                    {p.location} • {p.rating} ⭐
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </aside>
 
       </div>
     </div>
