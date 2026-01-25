@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import ProfileForm from "./ProfileForm";
+import { FaUserCircle, FaBell } from "react-icons/fa";
+
 
 const demoProfiles = [
   {
@@ -30,6 +32,7 @@ const demoProfiles = [
 
 const CareGiverDash = () => {
   const [activeTab, setActiveTab] = useState("profile");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const currentProfile = {
     name: "Nikita Sharma",
@@ -40,15 +43,64 @@ const CareGiverDash = () => {
   return (
     <div className="min-h-screen w-screen bg-gray-100">
 
-      {/* HEADER (GENERIC) */}
-      <header className="bg-gray-600 text-white py-6 shadow w-full">
-        <div className="px-6">
-          <h1 className="text-3xl md:text-4xl font-bold">Welcome, Caregiver</h1>
-          <p className="text-gray-200 mt-1">
-            Manage your profile and availability from here
-          </p>
-        </div>
-      </header>
+      <header className="bg-gray-600 text-white py-6 shadow w-full flex items-center justify-between px-6">
+  <div>
+    <h1 className="text-3xl md:text-4xl font-bold">Welcome, Caregiver</h1>
+    <p className="text-gray-200 mt-1">
+      Manage your profile and availability from here
+    </p>
+  </div>
+  <button
+    onClick={() => setSidebarOpen(!sidebarOpen)}
+    className="p-2 rounded-md hover:bg-gray-500 md:hidden"
+  >
+    <svg
+      className="w-6 h-6 text-white"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  </button>
+</header>
+
+      {/* TOP TAB BAR (Full Width) */}
+<div className="bg-white border-b">
+  <div className="grid grid-cols-2 text-center">
+
+    {/* PROFILE TAB */}
+    <div
+      onClick={() => setActiveTab("profile")}
+      className={`py-4 cursor-pointer flex justify-center items-center border-b-4 transition
+        ${activeTab === "profile"
+          ? "border-black text-black bg-gray-50"
+          : "border-transparent text-gray-400 hover:bg-gray-100"}`}
+    >
+      <FaUserCircle size={22} />
+    </div>
+
+    {/* NOTIFICATION TAB */}
+    <div
+      onClick={() => setActiveTab("notifications")}
+      className={`relative py-4 cursor-pointer flex justify-center items-center border-b-4 transition
+        ${activeTab === "notifications"
+          ? "border-black text-black bg-gray-50"
+          : "border-transparent text-gray-400 hover:bg-gray-100"}`}
+    >
+      <FaBell size={20} />
+
+      {/* Badge */}
+      <span className="absolute top-2 right-[40%] bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+        2
+      </span>
+    </div>
+
+  </div>
+</div>
+
+
 
       {/* BODY */}
       <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_300px] gap-6 p-6">
