@@ -1,8 +1,10 @@
 import React, { useState } from "react";
+import axios from "axios";
 
 const ProfileForm = () => {
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
     fullName: "",
@@ -57,6 +59,53 @@ const ProfileForm = () => {
   const next = () => validateStep() && setStep(step + 1);
   const back = () => setStep(step - 1);
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateStep()) return;
+
+    const formData = new FormData();
+    formData.append("profilePhoto", form.profilePhoto);
+    formData.append("citizenshipPhoto", form.citizenshipPhoto);
+    formData.append("fullName", form.fullName);
+    formData.append("address", form.address);
+    formData.append("phoneNumber", form.phone);
+    formData.append("email", form.email);
+    formData.append("details", form.description);
+    formData.append("experience", form.experience);
+    formData.append("speciality", form.speciality);
+    formData.append("chargeMin", form.chargeMin);
+    formData.append("chargeMax", form.chargeMax);
+
+    try {
+      setLoading(true);
+      const res = await axios.post("http://localhost:8080/api/caregivers/add", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      console.log("Saved:", res.data);
+      alert("Caregiver profile submitted successfully!");
+      setLoading(false);
+      // Optionally reset form
+      setForm({
+        fullName: "",
+        address: "",
+        phone: "",
+        email: "",
+        description: "",
+        experience: "",
+        chargeMin: "",
+        chargeMax: "",
+        speciality: "",
+        profilePhoto: null,
+        citizenshipPhoto: null,
+      });
+      setStep(1);
+    } catch (err) {
+      console.error("Submission error:", err);
+      alert("Error submitting profile. Check console.");
+      setLoading(false);
+    }
+  };
+
   const input = (name) =>
     `w-full rounded-lg px-4 py-3
      bg-gray-200
@@ -71,7 +120,6 @@ const ProfileForm = () => {
 
   return (
     <div className="bg-white w-full border rounded-2xl shadow-md p-8 space-y-8">
-
       {/* HEADER */}
       <div>
         <h2 className="text-3xl font-bold text-gray-800">Caregiver Profile Setup</h2>
@@ -100,13 +148,11 @@ const ProfileForm = () => {
         </div>
       </div>
 
-      <form className="space-y-8">
-
+      <form className="space-y-8" onSubmit={handleSubmit}>
         {/* STEP 1 */}
         {step === 1 && (
           <div className="bg-gray-100 border rounded-xl p-6 space-y-6">
             <h3 className="text-lg font-semibold text-gray-800">Identity Verification</h3>
-
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <label className="text-sm text-gray-700 mb-1 block">Profile Photo</label>
@@ -187,15 +233,31 @@ const ProfileForm = () => {
 
         {/* ACTIONS */}
         <div className="flex justify-between">
-          {step > 1 && (
-            <button onClick={back} type="button" className="px-6 py-2 border rounded-lg">
-              ← Back
-            </button>
-          )}
-          <button onClick={next} type="button" className="ml-auto px-8 py-2 bg-black text-white rounded-lg">
-            {step === 4 ? "Submit Profile" : "Continue →"}
-          </button>
-        </div>
+  {step > 1 && (
+    <button onClick={back} type="button" className="px-6 py-2 border rounded-lg">
+      ← Back
+    </button>
+  )}
+
+  {step < 4 ? (
+    <button
+      type="button"
+      onClick={next}
+      className="ml-auto px-8 py-2 bg-black text-white rounded-lg"
+    >
+      Continue →
+    </button>
+  ) : (
+    <button
+      type="submit"
+      className="ml-auto px-8 py-2 bg-black text-white rounded-lg"
+      disabled={loading}
+    >
+      {loading ? "Submitting..." : "Submit Profile"}
+    </button>
+  )}
+</div>
+
       </form>
     </div>
   );
