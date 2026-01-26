@@ -13,8 +13,11 @@ public class CaregiverService {
         this.caregiverRepository=caregiverRepository;
     }
     public Caregiver saveCaregiver(Caregiver caregiver){
-        return caregiverRepository.save(caregiver);
+        Caregiver saved = caregiverRepository.save(caregiver);
+        System.out.println("Saved to DB: " + saved.getId());
+        return saved;
     }
+
     public List <Caregiver> getAllCaregivers(){
         return caregiverRepository.findAll();
     }

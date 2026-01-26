@@ -6,7 +6,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -35,8 +34,11 @@ public class SecurityConfig {
                     corsConfig.setAllowedHeaders(List.of("*"));
                     return corsConfig;
                 }))
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf
+                        .ignoringRequestMatchers("/api/caregivers/**") // ignore CSRF only for caregiver endpoints
+                )
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/caregivers/**").permitAll()
                         .requestMatchers(
                                 "/api/forgetPassword",
                                 "/api/verify-otp",
@@ -50,13 +52,11 @@ public class SecurityConfig {
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
-                // Custom success handler for login to trigger OTP/email if needed
                 .formLogin(form -> form
                         .loginPage("/login")
-                        .successHandler(customOtpSuccessHandler()) // Call OTP/email logic here
+                        .successHandler(customOtpSuccessHandler())
                         .permitAll()
                 )
-                // OAuth2 login uses the same success handler
                 .oauth2Login(oauth -> oauth
                         .loginPage("/login")
                         .successHandler(customOtpSuccessHandler())
@@ -66,20 +66,22 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // Success handler to send OTP or trigger other actions after login
+
+    // === Success handler for login (OTP/email) ===
     @Bean
     public AuthenticationSuccessHandler customOtpSuccessHandler() {
         return (request, response, authentication) -> {
             String username = authentication.getName();
             System.out.println("Login success: " + username);
-            // TODO: Call your OTP/email service here if needed
+            // TODO: Call OTP/email service if needed
             // Example: otpService.sendOtp(username);
 
-            // Redirect to dashboard
+            // Redirect after successful login
             response.sendRedirect("/dash");
         };
     }
 
+    // === Authentication provider (login) ===
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
@@ -93,8 +95,8 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    // Uncomment for in-memory testing
     /*
+    // Optional in-memory test users
     @Bean
     public UserDetailsService userDetailsService() {
         UserDetails user1 = User

@@ -13,6 +13,7 @@ import backend.backend.model.Users;
 import backend.backend.service.MyUserDetailService;
 
 @RestController
+@RequestMapping("/api/users")
 @CrossOrigin(origins="http://localhost:5173")
 public class UserController {
 
@@ -47,7 +48,7 @@ public class UserController {
         return "User deleted successfully";
     }
 
-    @GetMapping("/{username}")
+    @GetMapping("/user/{username}")
     public Users getUserByUsername(@PathVariable String username) {
         return userService.getAllUsers()
                 .stream()
