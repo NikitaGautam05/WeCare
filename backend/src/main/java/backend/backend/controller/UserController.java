@@ -7,6 +7,7 @@ import java.util.Map;
 import backend.backend.service.EmailService;
 import backend.backend.service.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import backend.backend.model.Users;
@@ -57,37 +58,36 @@ public class UserController {
                 .orElse(null);
     }
 
-    @PostMapping("/api/register")
-    public String register(@RequestBody Users user){
+    @PostMapping("/register")
+    public ResponseEntity<Map<String, String>> register(@RequestBody Users user) {
+        Map<String, String> resp = new HashMap<>();
 
         if(user.getEmail() == null || user.getEmail().isEmpty()){
-            return "Email is required";
+            resp.put("error", "Email is required");
+            return ResponseEntity.badRequest().body(resp);
         }
 
         boolean exists = userService.getAllUsers()
                 .stream()
                 .anyMatch(u -> u.getUserName().equals(user.getUserName()));
-        if (exists) return "Username already exists";
-
-        // 🔐 DEFAULT ROLE + normalize
-        if(user.getRole() == null || user.getRole().isEmpty()){
-            user.setRole("USER");
-        } else {
-            // uppercase + remove spaces
-            user.setRole(user.getRole().toUpperCase().replaceAll("\\s",""));
+        if (exists) {
+            resp.put("error", "Username already exists");
+            return ResponseEntity.badRequest().body(resp);
         }
 
+        user.setRole(user.getRole() == null ? "USER" : user.getRole().toUpperCase().replaceAll("\\s",""));
         userService.saveUser(user);
+
         try {
             emailService.signupNotification(user.getEmail(), user.getUserName());
         } catch (Exception e) {
-            // log error but don't block registration
             System.err.println("Failed to send welcome email: " + e.getMessage());
         }
-        return "Registration complete";
 
-
+        resp.put("message", "Registration complete");
+        return ResponseEntity.ok(resp);
     }
+
 
     @PostMapping("/api/login")
     public Map<String, String> login(@RequestBody Users loginRequest) {

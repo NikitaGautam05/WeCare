@@ -34,28 +34,27 @@ public class GoogleSignupController {
     private static final String GOOGLE_CLIENT_ID = "666312206626-bp4glho27euf5tr9041vq247fr707fi5.apps.googleusercontent.com";
 
     @PostMapping("/google-signup")
-    public Map<String, String> googleSignup(@RequestBody String token) {
+    public Map<String, String> googleSignup(@RequestBody Map<String, String> payload) {
 
         Map<String, String> response = new HashMap<>();
+        String token = payload.get("token");
+        String roleFromFrontend = payload.getOrDefault("role", "USER");
 
         try {
             GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
                     GoogleNetHttpTransport.newTrustedTransport(),
                     JacksonFactory.getDefaultInstance()
-            )
-                    .setAudience(Collections.singletonList(GOOGLE_CLIENT_ID))
-                    .build();
+            ).setAudience(Collections.singletonList(GOOGLE_CLIENT_ID)).build();
 
             GoogleIdToken idToken = verifier.verify(token);
-
             if (idToken == null) {
                 response.put("error", "Invalid Google token");
                 return response;
             }
 
-            Payload payload = idToken.getPayload();
-            String email = payload.getEmail();
-            String name = (String) payload.get("name");
+            Payload payloadData = idToken.getPayload();
+            String email = payloadData.getEmail();
+            String name = (String) payloadData.get("name");
 
             Users user = userService.getAllUsers()
                     .stream()
@@ -63,34 +62,27 @@ public class GoogleSignupController {
                     .findFirst()
                     .orElse(null);
 
-            //  SIGNUP
-            if (user == null) {
+            if (user == null) { // New signup
                 user = new Users();
                 user.setEmail(email);
                 user.setUserName(name);
-                user.setPassword(""); // Google users don't use password
-                user.setRole("USER"); // default role
+                user.setPassword("");
+                user.setRole(roleFromFrontend.toUpperCase().replaceAll("\\s","")); // CAREGIVER or USER
                 userService.saveUser(user);
-                try {
-                    emailService.signupNotification(user.getEmail(), user.getUserName());
-                } catch (Exception e) {
-                    System.err.println("Failed to send welcome email: " + e.getMessage());
-                }
             }
 
-            //  LOGIN (JWT)
             String jwt = jwtService.generateToken(user);
-
             response.put("token", jwt);
             response.put("role", user.getRole());
-
-            return response;
 
         } catch (Exception e) {
             e.printStackTrace();
             response.put("error", "Google authentication failed");
-            return response;
         }
+
+        return response;
     }
+
+
 
 }

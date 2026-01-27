@@ -26,6 +26,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                // CORS config
                 .cors(cors -> cors.configurationSource(request -> {
                     var corsConfig = new org.springframework.web.cors.CorsConfiguration();
                     corsConfig.setAllowedOrigins(List.of("http://localhost:5173"));
@@ -34,33 +35,37 @@ public class SecurityConfig {
                     corsConfig.setAllowedHeaders(List.of("*"));
                     return corsConfig;
                 }))
+                // Disable CSRF for APIs
                 .csrf(csrf -> csrf
-                        .ignoringRequestMatchers("/api/caregivers/**") // ignore CSRF only for caregiver endpoints
-                )
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/caregivers/**").permitAll()
-                        .requestMatchers(
-                                "/api/forgetPassword",
-                                "/api/verify-otp",
+                        .ignoringRequestMatchers(
                                 "/api/login",
                                 "/api/register",
-                                "/api/reset-password",
                                 "/api/google-signup",
-                                "/save",
-                                "/login",
-                                "/oauth2/**"
-                        ).permitAll()
-                        .anyRequest().authenticated()
+                                "/api/forgetPassword",
+                                "/api/verify-otp",
+                                "/api/reset-password",
+                                "/api/caregivers/**"
+                        )
                 )
+                // Authorize requests
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/**").permitAll()   // open your APIs
+                        .anyRequest().authenticated()             // everything else needs login
+                )
+                // Form login
                 .formLogin(form -> form
-                        .loginPage("/login")
+                        .loginProcessingUrl("/api/login")
+                        .usernameParameter("userName")   // match your frontend
+                        .passwordParameter("password")
                         .successHandler(customOtpSuccessHandler())
                         .permitAll()
                 )
+                // OAuth2 login
                 .oauth2Login(oauth -> oauth
                         .loginPage("/login")
                         .successHandler(customOtpSuccessHandler())
                 )
+                // Logout
                 .logout(logout -> logout.permitAll());
 
         return http.build();
