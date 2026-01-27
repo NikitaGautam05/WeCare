@@ -34,7 +34,7 @@ const OptionLogin = () => {
             )
           }
         >
-          I am a Care Reciever
+          I am a Care Receiver
         </button>
       </div>
     </div>

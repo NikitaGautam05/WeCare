@@ -55,34 +55,36 @@ const Signup = () => {
 
 
   // Google login handler
-  const handleGoogleLogin = async (credentialResponse) => {
-    try {
-      const token = credentialResponse.credential;
+ const handleGoogleLogin = async (credentialResponse) => {
+  try {
+    const token = credentialResponse.credential;
+    const selectedRole = location.state?.role || "USER"; // get role from signup option
 
-      const res = await axios.post(
-        "http://localhost:8080/api/google-signup",
-        token,
-        { headers: { "Content-Type": "text/plain" } } // backend expects raw string
-      );
+    const payload = {
+      token: token,
+      role: selectedRole.toUpperCase(), // CAREGIVER or USER
+    };
 
-      if (res.data.token) {
-    localStorage.setItem("jwtToken", res.data.token);
-    const role = res.data.role ? res.data.role.toLowerCase() : "user";
+    const res = await axios.post(
+      "http://localhost:8080/api/google-signup",
+      payload
+    );
 
-    alert("Google signup/login successful!");
-    if (role === "caregiver") {
-        navigate("/welcome");
+    if (res.data.token) {
+      localStorage.setItem("jwtToken", res.data.token);
+      const role = res.data.role.toLowerCase();
+      alert("Google signup/login successful!");
+
+      if (role === "caregiver") navigate("/welcome");
+      else navigate("/dash");
     } else {
-        navigate("/dash");
+      alert(res.data.error || res.data);
     }
-} else {
-    alert(res.data.error || res.data);
-}
-    } catch (err) {
-      console.error(err);
-      alert("Google login failed");
-    }
-  };
+  } catch (err) {
+    console.error(err);
+    alert("Google login failed");
+  }
+};
 
   return (
     <div className="w-screen h-screen relative overflow-hidden">

@@ -6,30 +6,39 @@ const GoogleButton = () => {
   const navigate = useNavigate();
 
   const handleGoogleLogin = async (credentialResponse) => {
-    try {
-      const token = credentialResponse.credential;
+  try {
+    const token = credentialResponse.credential;
 
-      const res = await axios.post(
-        "http://localhost:8080/api/google-signup",
-        token,
-        { headers: { "Content-Type": "text/plain" } } // backend expects raw string
-      );
+    // Assume you have the role saved from a previous selection
+    const selectedRole = localStorage.getItem("selectedRole") || "USER"; 
+    // CAREGIVER or USER
 
-      if (res.data.token) {
-        localStorage.setItem("jwtToken", res.data.token);
-        const role = res.data.role.toLowerCase();
+    const payload = {
+      token: token,
+      role: selectedRole.toUpperCase()
+    };
 
-        alert("Google login successful!");
-        if (role === "caregiver") navigate("/welcome");
-        else navigate("/dash");
-      } else {
-        alert(res.data.error || res.data);
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Google login failed");
+    const res = await axios.post(
+      "http://localhost:8080/api/google-signup",
+      payload
+    );
+
+    if (res.data.token) {
+      localStorage.setItem("jwtToken", res.data.token);
+
+      const role = res.data.role.toLowerCase();
+      if (role.includes("caregiver")) navigate("/welcome");
+      else navigate("/dash");
+
+    } else {
+      alert(res.data.error || res.data);
     }
-  };
+  } catch (err) {
+    console.error(err);
+    alert("Google login failed");
+  }
+};
+
 
   return <GoogleLogin onSuccess={handleGoogleLogin} onError={() => alert("Google login failed")} />;
 };
