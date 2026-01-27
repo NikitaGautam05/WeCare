@@ -11,6 +11,7 @@ import Dashboard from './Components/Dashboard/Dashboard'
 import OptionLogin from './Components/Loginin/OptionLogin';
 import ForgetPassword from './Components/Loginin/Signup/ForgetPassword'
 import CareGiverDash from './Components/Dashboard/CareGiverDash';
+import Welcome from './Components/Dashboard/Welcome'
 
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
          <Route path ='/optionLogin' element={<OptionLogin/>}></Route>
          <Route path ='/forgetPassword' element={<ForgetPassword/>}></Route>
          <Route path ='/CareGiverDash' element={<CareGiverDash/>}></Route>
+         <Route path ='/welcome' element={<Welcome/>}></Route>
       </Routes>
     </Router>
   )

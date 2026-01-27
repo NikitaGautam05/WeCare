@@ -25,7 +25,7 @@ const Login = () => {
         const role = response.data.role || "USER";
         const normalizedRole = role.toLowerCase().replace(/\s/g,'');
 
-        if (normalizedRole.includes("caregiver")) navigate("/CareGiverDash");
+        if (normalizedRole.includes("caregiver")) navigate("/welcome");
         else navigate("/dash");
       } else if(response.data.error){
         setMessage(response.data.error);
@@ -50,7 +50,7 @@ const Login = () => {
         localStorage.setItem("jwtToken", res.data.token);
         const role = res.data.role.toLowerCase();
 
-        if (role.includes("caregiver")) navigate("/CareGiverDash");
+        if (role.includes("caregiver")) navigate("/welcome");
         else navigate("/dash");
       } else {
         alert(res.data.error || res.data);

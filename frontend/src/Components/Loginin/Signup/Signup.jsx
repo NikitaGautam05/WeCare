@@ -71,7 +71,7 @@ const Signup = () => {
 
     alert("Google signup/login successful!");
     if (role === "caregiver") {
-        navigate("/CareGiverDash");
+        navigate("/welcome");
     } else {
         navigate("/dash");
     }

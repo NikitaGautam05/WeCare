@@ -20,7 +20,7 @@ const GoogleButton = () => {
         const role = res.data.role.toLowerCase();
 
         alert("Google login successful!");
-        if (role === "caregiver") navigate("/CareGiverDash");
+        if (role === "caregiver") navigate("/welcome");
         else navigate("/dash");
       } else {
         alert(res.data.error || res.data);
