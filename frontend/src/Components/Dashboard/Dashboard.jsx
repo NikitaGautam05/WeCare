@@ -68,12 +68,12 @@ const Dashboard = () => {
           </div>
 
           {/* Navigation */}
-          <nav className="space-y-2">
+          <nav className="space-y-2 text-white">
             {["Dashboard", "My Caregivers", "History", "Top Interest", "Favourites", "Profile"].map(
               (item) => (
                 <button
                   key={item}
-                  className="w-full text-left px-4 py-3 rounded-lg text-gray-700 font-medium hover:bg-gray-200 transition"
+                  className="w-full text-left px-4 py-3  text-white rounded-lg text-gray-700 font-medium hover:bg-gray-200 transition"
                 >
                   {item}
                 </button>

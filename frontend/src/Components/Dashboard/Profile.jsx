@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom"; // <-- added useNavigate
 import axios from "axios";
+import { FaHome } from "react-icons/fa";
 
 const Profile = () => {
   const { id } = useParams();
+  const navigate = useNavigate(); // <-- added navigation
   const [profile, setProfile] = useState(null);
 
   useEffect(() => {
@@ -19,6 +21,7 @@ const Profile = () => {
 
   if (!profile) {
     return (
+        
       <div className="fixed inset-0 w-screen h-full bg-gray-100 flex items-center justify-center z-50">
         <div className="text-center px-4">
           <div className="animate-pulse text-2xl sm:text-3xl md:text-4xl font-medium text-gray-700">
@@ -34,68 +37,85 @@ const Profile = () => {
   const citizenshipPhoto = profile.citizenshipPhoto?.replace(/\s+/g, "_");
 
   return (
-<div className="relative z-10 w-full max-w-screen-2xl mx-auto px-5 ...">
-  {/* Cloud background layers */}
-  <div className="pointer-events-none absolute inset-0 z-0">
-   <div className="absolute -top-52 left-1/4 w-[900px] h-[900px] bg-white/80 rounded-full blur-[180px]" />
-<div className="absolute top-32 right-[-300px] w-[1000px] h-[1000px] bg-gray-50/80 rounded-full blur-[200px]" />
-<div className="absolute bottom-[-400px] left-[-300px] w-[1100px] h-[1100px] bg-gray-100/60 rounded-full blur-[220px]" />
-
-  </div>
-
-
-  {/* HERO SECTION */}
-<div className="relative z-10 bg-transparent overflow-hidden w-screen border-b border-gray-100">
-  
-
-<div className="relative z-10 w-full max-w-screen-2xl mx-auto px-5 sm:px-8 lg:px-12 xl:px-16 2xl:px-20 py-16 lg:py-20 space-y-20 lg:space-y-24">
-    {/* Top Row */}
-    <div className="flex flex-col items-center text-center gap-8">
-
-      {/* Profile Photo */}
-      <div className="relative">
-        <div className="absolute inset-0 rounded-full bg-white shadow-2xl" />
-        <img
-          src={photo ? `http://localhost:8080/uploads/${photo}` : "/default-avatar.png"}
-          alt={profile.fullName}
-          className="relative w-40 h-40 lg:w-48 lg:h-48 rounded-full object-cover border-8 border-white shadow-xl"
-        />
-      </div>
-
-      {/* Name & Speciality */}
-      <div>
-        <h1 className="text-4xl lg:text-5xl font-black text-gray-900">
-          {profile.fullName}
-        </h1>
-        <p className="mt-3 text-xl lg:text-2xl font-semibold text-gray-600">
-          {profile.speciality}
-        </p>
-      </div>
-
-      {/* CTA */}
-      <button className="mt-6 bg-black text-white px-12 py-4 rounded-xl text-lg font-semibold shadow-lg hover:scale-105 transition">
-        I'm Interested
+    <div className="relative z-10 w-full max-w-screen-2xl mx-auto px-5 ...">
+   {/* Header (scrollable, full-width background) */}
+<div className="w-full bg-white/50 backdrop-blur-md shadow-md border-b border-gray-200 py-4">
+  {/* Full-width background */}
+  <div className="w-full">
+    {/* Inner content constrained but centered */}
+    <div className="max-w-screen-2xl mx-auto px-5 sm:px-8 lg:px-12 xl:px-16 2xl:px-20 flex items-center justify-between relative">
+      
+      {/* Home Button */}
+      <button
+        onClick={() => navigate("/dash")}
+        className="bg-white/70 hover:bg-white/80 text-white px-4 py-2 rounded-full flex items-center gap-2 transition shadow-sm"
+        title="Back to Dashboard"
+      >
+        <FaHome size={20} />
+        <span className="font-medium">Home</span>
       </button>
-    </div>
 
-    {/* ✅ Stats Row — NOW INSIDE HERO */}
-    <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6">
-      <StatCard title="Experience" value={`${profile.experience || "2"} Years`} />
-      <StatCard title="Charges" value={`Rs ${profile.chargeMin || 40000} – ${profile.chargeMax || 60000}`} />
-      <StatCard title="Rating" value={profile.rating || "New"} />
-      <StatCard title="Location" value={profile.address?.split(",")[0] || "Tinkune"} />
+      {/* Page Title */}
+      <h1 className="text-xl font-semibold text-gray-900 text-center absolute left-1/2 transform -translate-x-1/2">
+        Caregiver Profile
+      </h1>
+
     </div>
   </div>
 </div>
 
+      {/* Cloud background layers */}
+      <div className="pointer-events-none absolute inset-0 z-0">
+        <div className="absolute -top-52 left-1/4 w-[900px] h-[900px] bg-white/80 rounded-full blur-[180px]" />
+        <div className="absolute top-32 right-[-300px] w-[1000px] h-[1000px] bg-gray-50/80 rounded-full blur-[200px]" />
+        <div className="absolute bottom-[-400px] left-[-300px] w-[1100px] h-[1100px] bg-gray-100/60 rounded-full blur-[220px]" />
+      </div>
 
-      {/* </div> */}
+      {/* HERO SECTION */}
+      <div className="relative z-10 bg-transparent overflow-hidden w-screen border-b border-gray-100">
+        <div className="relative z-10 w-full max-w-screen-2xl mx-auto px-5 sm:px-8 lg:px-12 xl:px-16 2xl:px-20 py-16 lg:py-20 space-y-20 lg:space-y-24">
+          {/* Top Row */}
+          <div className="flex flex-col items-center text-center gap-8">
+            {/* Profile Photo */}
+            <div className="relative">
+              <div className="absolute inset-0 rounded-full bg-white shadow-2xl" />
+              <img
+                src={photo ? `http://localhost:8080/uploads/${photo}` : "/default-avatar.png"}
+                alt={profile.fullName}
+                className="relative w-40 h-40 lg:w-48 lg:h-48 rounded-full object-cover border-8 border-white shadow-xl"
+              />
+            </div>
 
-      {/* Main content - also full-width friendly */}
+            {/* Name & Speciality */}
+            <div>
+              <h1 className="text-4xl lg:text-5xl font-black text-gray-900">
+                {profile.fullName}
+              </h1>
+              <p className="mt-3 text-xl lg:text-2xl font-semibold text-gray-600">
+                {profile.speciality}
+              </p>
+            </div>
+
+            {/* CTA */}
+            <button className="mt-6 bg-black text-white px-12 py-4 rounded-xl text-lg font-semibold shadow-lg hover:scale-105 transition">
+              I'm Interested
+            </button>
+          </div>
+
+          {/* Stats Row */}
+          <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6">
+            <StatCard title="Experience" value={`${profile.experience || "2"} Years`} />
+            <StatCard title="Charges" value={`Rs ${profile.chargeMin || 40000} – ${profile.chargeMax || 60000}`} />
+            <StatCard title="Rating" value={profile.rating || "New"} />
+            <StatCard title="Location" value={profile.address?.split(",")[0] || "Tinkune"} />
+          </div>
+        </div>
+      </div>
+
+      {/* Main content */}
       <div className="w-full max-w-screen-2xl mx-auto px-5 sm:px-8 lg:px-12 xl:px-16 2xl:px-20 py-16 lg:py-20 space-y-20 lg:space-y-24">
         {/* About */}
         <section className="bg-gray-100/80 backdrop-blur-sm rounded-3xl shadow-xl p-10 lg:p-14 border border-gray-200">
-
           <h2 className="text-4xl lg:text-5xl font-black text-gray-950 mb-10 tracking-tight">About Me</h2>
           <p className="text-xl leading-relaxed text-gray-700">
             {profile.details || "Detailed description coming soon... Feel free to contact for more information."}
@@ -104,7 +124,6 @@ const Profile = () => {
 
         {/* Contact & Details */}
         <section className="bg-gray-100/80 backdrop-blur-sm rounded-3xl shadow-xl p-10 lg:p-14 border border-gray-200">
-
           <h2 className="text-4xl lg:text-5xl font-black text-gray-950 mb-12 tracking-tight">Contact & Details</h2>
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16">
             <div className="space-y-10">
@@ -122,8 +141,7 @@ const Profile = () => {
         </section>
 
         {/* Document */}
-        <section  className="bg-gray-100/80 backdrop-blur-sm rounded-3xl shadow-2xl p-8 lg:p-12 border border-gray-200">
-
+        <section className="bg-gray-100/80 backdrop-blur-sm rounded-3xl shadow-2xl p-8 lg:p-12 border border-gray-200">
           <h2 className="text-4xl lg:text-5xl font-black text-gray-950 mb-10 tracking-tight">Verification Document</h2>
           {citizenshipPhoto ? (
             <div className="bg-white rounded-3xl shadow-2xl p-8 lg:p-12 border border-gray-200">
@@ -158,8 +176,6 @@ const StatCard = ({ title, value }) => (
     </p>
   </div>
 );
-
-
 
 const Info = ({ label, value }) => (
   <div>
