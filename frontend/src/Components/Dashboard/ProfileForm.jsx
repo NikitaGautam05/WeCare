@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const ProfileForm = () => {
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-
+  const navigate=useNavigate();
   const [form, setForm] = useState({
     fullName: "",
     address: "",
@@ -59,32 +60,41 @@ const ProfileForm = () => {
   const next = () => validateStep() && setStep(step + 1);
   const back = () => setStep(step - 1);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateStep()) return;
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!validateStep()) return;
 
-    const formData = new FormData();
-    formData.append("profilePhoto", form.profilePhoto);
-    formData.append("citizenshipPhoto", form.citizenshipPhoto);
-    formData.append("fullName", form.fullName);
-    formData.append("address", form.address);
-    formData.append("phoneNumber", form.phone);
-    formData.append("email", form.email);
-    formData.append("details", form.description);
-    formData.append("experience", form.experience);
-    formData.append("speciality", form.speciality);
-    formData.append("chargeMin", form.chargeMin);
-    formData.append("chargeMax", form.chargeMax);
+  const formData = new FormData();
+  formData.append("profilePhoto", form.profilePhoto);
+  formData.append("citizenshipPhoto", form.citizenshipPhoto);
+  formData.append("fullName", form.fullName);
+  formData.append("address", form.address);
+  formData.append("phoneNumber", form.phone);
+  formData.append("email", form.email);
+  formData.append("details", form.description);
+  formData.append("experience", form.experience);
+  formData.append("speciality", form.speciality);
+  formData.append("chargeMin", form.chargeMin);
+  formData.append("chargeMax", form.chargeMax);
 
-    try {
-      setLoading(true);
-      const res = await axios.post("http://localhost:8080/api/caregivers/add", formData, {
+  try {
+    setLoading(true);
+    const res = await axios.post(
+      "http://localhost:8080/api/caregivers/add",
+      formData,
+      {
         headers: { "Content-Type": "multipart/form-data" },
-      });
-      console.log("Saved:", res.data);
-      alert("Caregiver profile submitted successfully!");
-      setLoading(false);
-      // Optionally reset form
+      }
+    );
+
+    console.log("Saved:", res.data);
+    alert("Caregiver profile submitted successfully!");
+
+    // Redirect to the new profile page using the returned caregiver ID
+    if (res.data?.id) {
+      navigate(`/profile/${res.data.id}`);
+    } else {
+      // Fallback: reset form if ID not returned
       setForm({
         fullName: "",
         address: "",
@@ -99,13 +109,15 @@ const ProfileForm = () => {
         citizenshipPhoto: null,
       });
       setStep(1);
-    } catch (err) {
-      console.error("Submission error:", err);
-      alert("Error submitting profile. Check console.");
-      setLoading(false);
     }
-  };
 
+    setLoading(false);
+  } catch (err) {
+    console.error("Submission error:", err);
+    alert("Error submitting profile. Check console.");
+    setLoading(false);
+  }
+};
   const input = (name) =>
     `w-full rounded-lg px-4 py-3
      bg-gray-200

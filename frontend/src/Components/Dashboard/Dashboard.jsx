@@ -167,9 +167,12 @@ const Dashboard = () => {
 
       {/* Buttons */}
       <div className="flex gap-2 p-4">
-        <button className="flex-1 bg-gray-900 text-white py-2 rounded-lg">
-          View Profile
-        </button>
+        <button
+  onClick={() => navigate(`/profile/${c.id}`)}
+  className="flex-1 bg-gray-900 text-white py-2 rounded-lg"
+>
+  View Profile
+</button>
         <button className="flex-1 bg-gray-100 py-2 rounded-lg">
           Interested
         </button>
