@@ -8,9 +8,9 @@ const ProfileForm = ({ onSubmitSuccess }) => {
   const [form, setForm] = useState({
     fullName: "",
     address: "",
-    phone: "",
+    phoneNumber: "",   // must match backend
     email: "",
-    description: "",
+    details: "",       // must match backend
     experience: "",
     chargeMin: "",
     chargeMax: "",
@@ -34,11 +34,11 @@ const ProfileForm = ({ onSubmitSuccess }) => {
     if (step === 2) {
       if (!form.fullName) newErrors.fullName = "Full name required";
       if (!form.address) newErrors.address = "Address required";
-      if (!form.phone) newErrors.phone = "Phone required";
+      if (!form.phoneNumber) newErrors.phoneNumber = "Phone required";
       if (!form.email) newErrors.email = "Email required";
     }
     if (step === 3) {
-      if (!form.description) newErrors.description = "Description required";
+      if (!form.details) newErrors.details = "Description required";
       if (!form.experience) newErrors.experience = "Experience required";
       if (!form.speciality) newErrors.speciality = "Speciality required";
     }
@@ -69,8 +69,7 @@ const ProfileForm = ({ onSubmitSuccess }) => {
       alert("Caregiver profile submitted successfully!");
       setLoading(false);
 
-      // Pass saved profile to parent
-      onSubmitSuccess(res.data);
+      onSubmitSuccess?.(res.data);
     } catch (err) {
       console.error(err);
       alert("Error submitting profile. Check console.");
@@ -124,7 +123,7 @@ const ProfileForm = ({ onSubmitSuccess }) => {
           <div className="bg-gray-100 border rounded-xl p-6 space-y-4">
             <h3 className="text-lg font-semibold">Personal Information</h3>
             <div className="grid md:grid-cols-2 gap-5">
-              {["fullName", "address", "phone", "email"].map((name) => (
+              {["fullName", "address", "phoneNumber", "email"].map((name) => (
                 <input key={name} name={name} placeholder={name} onChange={handleChange} className={input(name)} />
               ))}
             </div>
@@ -134,7 +133,13 @@ const ProfileForm = ({ onSubmitSuccess }) => {
         {step === 3 && (
           <div className="bg-gray-100 border rounded-xl p-6 space-y-4">
             <h3 className="text-lg font-semibold">Professional Details</h3>
-            <textarea name="description" rows="4" placeholder="Describe your experience" onChange={handleChange} className={input("description")} />
+            <textarea
+              name="details"
+              rows="4"
+              placeholder="Describe your experience"
+              onChange={handleChange}
+              className={input("details")}
+            />
             <div className="grid md:grid-cols-2 gap-5">
               {["experience", "speciality"].map((name) => (
                 <input key={name} name={name} placeholder={name} onChange={handleChange} className={input(name)} />
