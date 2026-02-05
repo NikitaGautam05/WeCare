@@ -3,6 +3,9 @@ package backend.backend.model;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Document(collection = "caregivers")
 public class Caregiver {
 
@@ -21,6 +24,16 @@ public class Caregiver {
 
     private String profilePhoto;       // store filename or URL
     private String citizenshipPhoto;   // store filename or URL
+
+    public List<String> getNotifications() {
+        return notifications;
+    }
+
+    public void setNotifications(List<String> notifications) {
+        this.notifications = notifications;
+    }
+
+    private List<String> notifications = new ArrayList<>();
 
     // Getters and Setters
     public String getId() { return id; }

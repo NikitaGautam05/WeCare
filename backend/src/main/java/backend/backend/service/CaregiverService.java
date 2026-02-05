@@ -21,4 +21,9 @@ public class CaregiverService {
     public List <Caregiver> getAllCaregivers(){
         return caregiverRepository.findAll();
     }
+
+    public Caregiver getCaregiverById(String id){
+        return caregiverRepository.findById(id).orElse(null);
+    }
+
 }
