@@ -169,7 +169,7 @@ const CareGiverDash = () => {
         </main>
 
         {/* RIGHT PANEL */}
-        <aside className="bg-white border rounded-xl p-6 shadow-lg h-full">
+        <aside className="bg-grey-800 border rounded-xl p-6 shadow-lg h-full">
           <h3 className="font-semibold mb-4 text-gray-900">Suggested Ideal Profile</h3>
           <div className="space-y-4">
             {demoProfiles.map((p) => (

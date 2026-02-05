@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { FaTimes, FaCheck } from "react-icons/fa";
 
 const Dashboard = () => {
   const [search, setSearch] = useState("");
   const [caregivers, setCaregivers] = useState([]);
   const [favouriteCaregivers, setFavouriteCaregivers] = useState([]);
   const [topInterestProfiles, setTopInterestProfiles] = useState([]);
+  const [dialogue, setDialogue] = useState(null); // <-- Dialogue state
   const navigate = useNavigate();
 
-  // User info (from localStorage for now)
+  // User info
   const userName = localStorage.getItem("userName") || "Nikita";
   const role = localStorage.getItem("role") || "User";
 
@@ -21,11 +23,9 @@ const Dashboard = () => {
         const data = res.data;
         setCaregivers(data);
 
-        // Favourites
         const favourites = data.filter((c) => c.favourite);
         setFavouriteCaregivers(favourites);
 
-        // Top Interest Profiles (unique)
         const topProfiles = [];
         data.forEach((c) => {
           c.topProfiles?.forEach((tp) => {
@@ -42,19 +42,24 @@ const Dashboard = () => {
     (c) =>
       c.fullName?.toLowerCase().includes(search.toLowerCase()) ||
       c.speciality?.toLowerCase().includes(search.toLowerCase()) ||
-      c.address?.toLowerCase().includes(search.toLowerCase())
+      c.address?.toLowerCase().includes(search.toLower())
   );
+
+  // Handle Interested click
+  const handleInterested = (caregiver) => {
+    setDialogue({
+      caregiver,
+      message: `${caregiver.fullName} has been notified of your interest!`,
+    });
+  };
 
   return (
     <div className="flex min-h-screen bg-gray-50 font-sans">
       {/* SIDEBAR */}
       <aside className="w-72 bg-white shadow-lg fixed h-full flex flex-col justify-between border-r">
         <div className="p-6">
-          <h1 className="text-3xl font-extrabold mb-10 text-gray-900 tracking-wide">
-            ElderEase
-          </h1>
+          <h1 className="text-3xl font-extrabold mb-10 text-gray-900 tracking-wide">ElderEase</h1>
 
-          {/* Profile Section */}
           <div className="flex items-center gap-4 mb-10 p-4 bg-gray-100 rounded-xl">
             <img
               src="https://randomuser.me/api/portraits/women/65.jpg"
@@ -67,7 +72,6 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Navigation */}
           <nav className="space-y-2 text-white">
             {["Dashboard", "My Caregivers", "History", "Top Interest", "Favourites", "Profile"].map(
               (item) => (
@@ -82,7 +86,6 @@ const Dashboard = () => {
           </nav>
         </div>
 
-        {/* Logout */}
         <div className="p-6 border-t bg-white">
           <button
             onClick={() => navigate("/")}
@@ -95,17 +98,11 @@ const Dashboard = () => {
 
       {/* MAIN CONTENT */}
       <main className="flex-1 ml-72 p-8">
-        {/* Welcome Message */}
         <div className="mb-6 bg-gray-200 rounded-2xl shadow-md p-6 max-w-3xl">
-          <h2 className="text-3xl font-bold text-gray-900">
-            Welcome, {userName} 👋
-          </h2>
-          <p className="text-gray-700 mt-2 text-lg">
-            Discover caring hands who feel like family
-          </p>
+          <h2 className="text-3xl font-bold text-gray-900">Welcome, {userName} 👋</h2>
+          <p className="text-gray-700 mt-2 text-lg">Discover caring hands who feel like family</p>
         </div>
 
-        {/* Search */}
         <div className="mb-6">
           <input
             type="text"
@@ -116,73 +113,97 @@ const Dashboard = () => {
           />
         </div>
 
-        {/* CAREGIVERS GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
           {filteredCaregivers.map((c) => {
-  const cleanPhoto = c.profilePhoto?.replace(/\s+/g, "_").trim();
+            const cleanPhoto = c.profilePhoto?.replace(/\s+/g, "_").trim();
 
-  return (
-    <div
-      key={c.id}
-      className="bg-gray-200 rounded-2xl shadow-md hover:shadow-xl transition overflow-hidden"
-    >
-      {/* Top Section: Photo + Name + Address only */}
-      <div className="flex items-center gap-4 p-4 border-b">
-        <img
-          src={`http://localhost:8080/uploads/${cleanPhoto}`}
-          alt={c.fullName}
-          className="w-16 h-16 rounded-full object-cover"
-          onError={(e) => (e.target.src = "/default-avatar.png")}
-        />
-        <div className="flex-1">
-          <h3 className="font-semibold text-gray-700">{c.fullName}</h3>
-          <p className="text-xs text-gray-500">{c.address}</p>
+            return (
+              <div
+                key={c.id}
+                className="bg-gray-200 rounded-2xl shadow-md hover:shadow-xl transition overflow-hidden"
+              >
+                <div className="flex items-center gap-4 p-4 border-b">
+                  <img
+                    src={`http://localhost:8080/uploads/${cleanPhoto}`}
+                    alt={c.fullName}
+                    className="w-16 h-16 rounded-full object-cover"
+                    onError={(e) => (e.target.src = "/default-avatar.png")}
+                  />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-700">{c.fullName}</h3>
+                    <p className="text-xs text-gray-500">{c.address}</p>
+                  </div>
+                  <span className="font-bold text-gray-500">{c.rating} ⭐</span>
+                </div>
+
+                <div className="grid grid-cols-3 text-center py-4 text-sm text-gray-600 border-b">
+                  <div>
+                    <p className="font-semibold">{c.experience || "5+"}</p>
+                    <p className="text-xs">Years</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold">{c.rating || "4.5"}</p>
+                    <p className="text-xs">Rating</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold">Rs {c.charge || "500"}</p>
+                    <p className="text-xs">Per Day</p>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-gray-100 border-t">
+                  <p className="text-gray-700 text-sm">
+                    Specialities: <span className="font-medium">{c.speciality}</span>
+                  </p>
+                </div>
+
+                <div className="flex gap-2 p-4">
+                  <button
+                    onClick={() => navigate(`/profile/${c.id}`)}
+                    className="flex-1 bg-gray-900 text-white py-2 rounded-lg"
+                  >
+                    View Profile
+                  </button>
+                  <button
+                    onClick={() => handleInterested(c)}
+                    className="flex-1 bg-gray-100 py-2 rounded-lg"
+                  >
+                    Interested
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
-        <span className="font-bold text-gray-500">{c.rating} ⭐</span>
-      </div>
-
-      {/* Info Box: Years / Rating / Charge */}
-      <div className="grid grid-cols-3 text-center py-4 text-sm text-gray-600 border-b">
-        <div>
-          <p className="font-semibold">{c.experience || "5+"}</p>
-          <p className="text-xs">Years</p>
-        </div>
-        <div>
-          <p className="font-semibold">{c.rating || "4.5"}</p>
-          <p className="text-xs">Rating</p>
-        </div>
-        <div>
-          <p className="font-semibold">Rs {c.charge || "500"}</p>
-          <p className="text-xs">Per Day</p>
-        </div>
-      </div>
-
-      {/* Short Intro */}
-      <div className="p-4 bg-gray-100 border-t">
-        <p className="text-gray-700 text-sm">
-          <span className="font-bold"></span> Specialities:{" "}
-          <span className="font-medium">{c.speciality}</span>
-        </p>
-      </div>
-
-      {/* Buttons */}
-      <div className="flex gap-2 p-4">
-        <button
-  onClick={() => navigate(`/profile/${c.id}`)}
-  className="flex-1 bg-gray-900 text-white py-2 rounded-lg"
->
-  View Profile
-</button>
-        <button className="flex-1 bg-gray-100 py-2 rounded-lg">
-          Interested
-        </button>
-      </div>
-    </div>
-  );
-})}
-
-            </div>
       </main>
+
+      {/* Big Notification Dialogue */}
+      {dialogue && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-400 text-white rounded-2xl shadow-2xl max-w-md w-full p-8 flex flex-col items-center relative">
+            {/* Close button */}
+            <button
+              className="absolute top-4 right-4 text-gray-400 hover:text-white"
+              onClick={() => setDialogue(null)}
+            >
+              <FaTimes size={20} />
+            </button>
+
+            {/* Green tick */}
+            <FaCheck className="text-green-500 text-6xl mb-6" />
+
+            {/* Message */}
+            <p className="text-center text-xl font-semibold">
+              {dialogue.message}
+            </p>
+
+            {/* Extra info */}
+            <p className="mt-4 text-center text-gray-300">
+              The caregiver will be notified and can contact you if interested.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -5,12 +5,14 @@ const ProfileForm = ({ onSubmitSuccess }) => {
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [submittedProfile, setSubmittedProfile] = useState(null);
+
   const [form, setForm] = useState({
     fullName: "",
     address: "",
-    phoneNumber: "",   // must match backend
+    phoneNumber: "",
     email: "",
-    details: "",       // must match backend
+    details: "",
     experience: "",
     chargeMin: "",
     chargeMax: "",
@@ -66,20 +68,63 @@ const ProfileForm = ({ onSubmitSuccess }) => {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      alert("Caregiver profile submitted successfully!");
+      setSubmittedProfile(res.data);
       setLoading(false);
-
       onSubmitSuccess?.(res.data);
     } catch (err) {
       console.error(err);
-      alert("Error submitting profile. Check console.");
+      alert("Error submitting profile.");
       setLoading(false);
     }
   };
 
   const input = (name) =>
-    `w-full rounded-lg px-4 py-3 bg-gray-200 border border-gray-400 text-gray-800 placeholder-gray-500 focus:outline-none focus:border-black focus:bg-gray-100 transition ${errors[name] ? "border-red-500" : ""}`;
+    `w-full rounded-lg px-4 py-3 bg-gray-200 border border-gray-400 text-gray-800 placeholder-gray-500 focus:outline-none focus:border-black focus:bg-gray-100 transition ${
+      errors[name] ? "border-red-500" : ""
+    }`;
 
+  /* ================= PROFILE PREVIEW ================= */
+  if (submittedProfile) {
+    const photo = submittedProfile.profilePhoto?.replace(/\s+/g, "_");
+
+    return (
+      <div className="bg-white w-full border border-gray-300 rounded-2xl shadow-xl p-10 space-y-10">
+        <div className="flex flex-col items-center text-center">
+          <img
+            src={`http://localhost:8080/uploads/${photo}`}
+            alt={submittedProfile.fullName}
+            className="w-36 h-36 rounded-full object-cover border-4 border-gray-400 shadow-lg"
+          />
+          <h1 className="mt-5 text-3xl font-bold text-black">{submittedProfile.fullName}</h1>
+          <p className="text-gray-600 text-lg">{submittedProfile.speciality}</p>
+          <p className="mt-2 text-sm font-semibold text-green-600">
+            ✔ Profile Submitted Successfully
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          <ProfileRow label="Phone Number" value={submittedProfile.phoneNumber} />
+          <ProfileRow label="Email Address" value={submittedProfile.email} />
+          <ProfileRow label="Home Address" value={submittedProfile.address} />
+          <ProfileRow label="Experience" value={`${submittedProfile.experience} Years`} />
+          <ProfileRow label="Service Charges" value={`Rs ${submittedProfile.chargeMin} - ${submittedProfile.chargeMax}`} />
+          <ProfileRow label="About" value={submittedProfile.details} />
+        </div>
+
+        <button
+          onClick={() => {
+            setSubmittedProfile(null);
+            setStep(1);
+          }}
+          className="w-full py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition font-semibold shadow"
+        >
+          ✏ Edit Profile
+        </button>
+      </div>
+    );
+  }
+
+  /* ================= FORM UI ================= */
   return (
     <div className="bg-white w-full border rounded-2xl shadow-md p-8 space-y-8">
       <div>
@@ -110,7 +155,9 @@ const ProfileForm = ({ onSubmitSuccess }) => {
             <div className="grid md:grid-cols-2 gap-6">
               {["profilePhoto", "citizenshipPhoto"].map((name) => (
                 <div key={name}>
-                  <label className="text-sm text-gray-700 mb-1 block">{name === "profilePhoto" ? "Profile Photo" : "Citizenship Photo"}</label>
+                  <label className="text-sm text-gray-700 mb-1 block">
+                    {name === "profilePhoto" ? "Profile Photo" : "Citizenship Photo"}
+                  </label>
                   <input type="file" name={name} onChange={handleChange} className="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border file:border-gray-400 file:bg-gray-300 file:text-gray-800" />
                   {errors[name] && <p className="text-red-500 text-sm">{errors[name]}</p>}
                 </div>
@@ -133,13 +180,7 @@ const ProfileForm = ({ onSubmitSuccess }) => {
         {step === 3 && (
           <div className="bg-gray-100 border rounded-xl p-6 space-y-4">
             <h3 className="text-lg font-semibold">Professional Details</h3>
-            <textarea
-              name="details"
-              rows="4"
-              placeholder="Describe your experience"
-              onChange={handleChange}
-              className={input("details")}
-            />
+            <textarea name="details" rows="4" placeholder="Describe your experience" onChange={handleChange} className={input("details")} />
             <div className="grid md:grid-cols-2 gap-5">
               {["experience", "speciality"].map((name) => (
                 <input key={name} name={name} placeholder={name} onChange={handleChange} className={input(name)} />
@@ -173,5 +214,12 @@ const ProfileForm = ({ onSubmitSuccess }) => {
     </div>
   );
 };
+
+const ProfileRow = ({ label, value }) => (
+  <div className="bg-gray-100 border border-gray-300 rounded-xl p-4 shadow-sm hover:shadow-md transition">
+    <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
+    <p className="text-gray-900 font-semibold mt-1">{value || "—"}</p>
+  </div>
+);
 
 export default ProfileForm;
