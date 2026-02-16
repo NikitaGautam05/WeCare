@@ -134,6 +134,12 @@ const CareGiverDash = () => {
             >
               Help?
             </button>
+            <button
+  onClick={() => navigate('/terms')}
+  className="w-full text-left px-4 py-3 rounded-lg font-medium mt-2 hover:bg-gray-200 text-gray-300 transition"
+>
+  Terms and services
+</button>
               {/* LOGOUT BUTTON */}
             <button
              onClick={() => navigate("/")}
