@@ -15,10 +15,7 @@ function TermsAndServices() {
           >
             <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
               Terms & Services
-            </h1>
-            <p className="mt-4 text-gray-300 text-sm">
-              Last Updated: {new Date().toLocaleDateString()}
-            </p>
+            </h1>            
           </motion.div>
         </div>
       </div>

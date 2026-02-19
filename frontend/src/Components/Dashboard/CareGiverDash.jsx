@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import ProfileForm from "./ProfileForm";
 import { FaUserCircle, FaBell } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
-
+import { useNavigate,useParams } from "react-router-dom";
+import axios from 'axios';
 const demoProfiles = [
   { id: 1, name: "Ramesh Thapa", photo: "https://randomuser.me/api/portraits/men/32.jpg", specialty: "Elderly Care", location: "Kathmandu", rating: 4.5 },
   { id: 2, name: "Sita Gurung", photo: "https://randomuser.me/api/portraits/women/44.jpg", specialty: "Alzheimer's Care", location: "Pokhara", rating: 4.7 },
@@ -10,6 +10,7 @@ const demoProfiles = [
 ];
 
 const CareGiverDash = () => {
+  const { id } = useParams(); 
   const [activeTab, setActiveTab] = useState("profile");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
@@ -18,6 +19,17 @@ const CareGiverDash = () => {
     photo: "https://randomuser.me/api/portraits/women/65.jpg",
     completedSteps: 3,
   };
+  const [notifications, setNotifications] = useState([]);
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    if (!id) return; // safeguard
+    axios
+      .get(`http://localhost:8080/api/caregivers/${id}`)
+      .then((res) => setProfile(res.data))
+      .catch((err) => console.error(err));
+  }, [id]);
+
 
   return (
     <div className="min-h-screen w-screen bg-gray-100">
@@ -163,13 +175,19 @@ const CareGiverDash = () => {
             <div className="bg-white border rounded-xl p-8 shadow-lg min-h-[600px]">
               <h2 className="text-xl font-semibold mb-4 text-gray-900">Notifications</h2>
               <ul className="space-y-3">
-                <li className="border-l-4 border-gray-700 bg-gray-50 p-4 rounded text-gray-700">
-                  New care request assigned
-                </li>
-                <li className="border-l-4 border-gray-700 bg-gray-50 p-4 rounded text-gray-700">
-                  Profile approved successfully
-                </li>
-              </ul>
+  {notifications.length === 0 ? (
+    <p className="text-gray-500">No notifications yet</p>
+  ) : (
+    notifications.map((msg, index) => (
+      <li
+        key={index}
+        className="border-l-4 border-gray-700 bg-gray-50 p-4 rounded text-gray-700"
+      >
+        {msg}
+      </li>
+    ))
+  )}
+</ul>
             </div>
           )}
         </main>
