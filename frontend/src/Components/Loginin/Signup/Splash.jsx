@@ -1,5 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import logo from "../../../assets/logo.jpg";
+
 
 const Splash = () => {
   const navigate = useNavigate();
@@ -10,12 +12,21 @@ const Splash = () => {
       {/* NAVBAR */}
       <nav className="fixed top-0 w-full z-50 bg-black/50 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center text-white">
-          <h1
-            className="text-2xl font-bold text-white-400 cursor-pointer"
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          >
-            Elder Ease
-          </h1>
+          
+           <div
+    className="flex items-center gap-3 cursor-pointer"
+    onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+  >
+    <img
+      src={logo}
+      alt="Elder Ease Logo"
+      className="h-10 w-auto"
+    />
+    <h1 className="text-2xl font-bold">
+      Elder Ease
+    </h1>
+  </div>
+          
 
           <div className="flex gap-4">
             <button
