@@ -23,53 +23,75 @@ public class SecurityConfig {
     @Autowired
     private UserDetailsService userDetailsService;
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                // CORS config
-                .cors(cors -> cors.configurationSource(request -> {
-                    var corsConfig = new org.springframework.web.cors.CorsConfiguration();
-                    corsConfig.setAllowedOrigins(List.of("http://localhost:5173"));
-                    corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-                    corsConfig.setAllowCredentials(true);
-                    corsConfig.setAllowedHeaders(List.of("*"));
-                    return corsConfig;
-                }))
-                // Disable CSRF for APIs
-                .csrf(csrf -> csrf
-                        .ignoringRequestMatchers(
-                                "/api/login",
-                                "/api/register",
-                                "/api/google-signup",
-                                "/api/forgetPassword",
-                                "/api/verify-otp",
-                                "/api/reset-password",
-                                "/api/caregivers/**"
-                        )
-                )
-                // Authorize requests
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/**").permitAll()   // open your APIs
-                        .anyRequest().authenticated()             // everything else needs login
-                )
-                // Form login
-                .formLogin(form -> form
-                        .loginProcessingUrl("/api/login")
-                        .usernameParameter("userName")   // match your frontend
-                        .passwordParameter("password")
-                        .successHandler(customOtpSuccessHandler())
-                        .permitAll()
-                )
-                // OAuth2 login
-                .oauth2Login(oauth -> oauth
-                        .loginPage("/login")
-                        .successHandler(customOtpSuccessHandler())
-                )
-                // Logout
-                .logout(logout -> logout.permitAll());
+//    @Bean
+//    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+//        http
+//                // CORS config
+//                .cors(cors -> cors.configurationSource(request -> {
+//                    var corsConfig = new org.springframework.web.cors.CorsConfiguration();
+//                    corsConfig.setAllowedOrigins(List.of("http://localhost:5173"));
+//                    corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+//                    corsConfig.setAllowCredentials(true);
+//                    corsConfig.setAllowedHeaders(List.of("*"));
+//                    return corsConfig;
+//                }))
+//                // Disable CSRF for APIs
+//                .csrf(csrf -> csrf
+//                        .ignoringRequestMatchers(
+//                                "/api/login",
+//                                "/api/register",
+//                                "/api/google-signup",
+//                                "/api/forgetPassword",
+//                                "/api/verify-otp",
+//                                "/api/reset-password",
+//                                "/api/caregivers/**"
+//                        )
+//                )
+//                // Authorize requests
+//                .authorizeHttpRequests(auth -> auth
+//                        .requestMatchers("/api/**").permitAll()   // open your APIs
+//                        .anyRequest().authenticated()             // everything else needs login
+//                )
+//                // Form login
+//                .formLogin(form -> form
+//                        .loginProcessingUrl("/api/login")
+//                        .usernameParameter("userName")   // match your frontend
+//                        .passwordParameter("password")
+//                        .successHandler(customOtpSuccessHandler())
+//                        .permitAll()
+//                )
+//                // OAuth2 login
+//                .oauth2Login(oauth -> oauth
+//                        .loginPage("/login")
+//                        .successHandler(customOtpSuccessHandler())
+//                )
+//                // Logout
+//                .logout(logout -> logout.permitAll());
+//
+//        return http.build();
+//    }
+@Bean
+public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    http
+            .cors(cors -> cors.configurationSource(request -> {
+                var corsConfig = new org.springframework.web.cors.CorsConfiguration();
+                corsConfig.setAllowedOriginPatterns(List.of("*")); // allow all dev origins
+                corsConfig.setAllowedMethods(List.of("*"));
+                corsConfig.setAllowedHeaders(List.of("*"));
+                corsConfig.setAllowCredentials(false); // easier for dev
+                return corsConfig;
+            }))
+            .csrf(csrf -> csrf.disable()) // 🔥 DISABLE CSRF
+            .authorizeHttpRequests(auth -> auth
+                    .requestMatchers("/api/**").permitAll()
+                    .anyRequest().authenticated()
+            )
+            .formLogin(form -> form.disable())
+            .oauth2Login(oauth -> oauth.disable())
+            .logout(logout -> logout.disable());
 
-        return http.build();
-    }
+    return http.build();
+}
 
 
     // === Success handler for login (OTP/email) ===

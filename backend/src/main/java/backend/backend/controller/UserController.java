@@ -89,7 +89,7 @@ public class UserController {
     }
 
 
-    @PostMapping("/api/login")
+    @PostMapping("/login")
     public Map<String, String> login(@RequestBody Users loginRequest) {
         Users user = userService.getAllUsers()
                 .stream()

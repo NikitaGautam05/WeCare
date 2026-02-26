@@ -14,12 +14,9 @@ import java.util.List;
 @RequestMapping("/api/caregivers")
 @CrossOrigin(origins = "http://localhost:5173")
 public class CaregiverController {
-
     @Autowired
     private CaregiverService caregiverService;
-
     private final String uploadDir = "D:/fyp demo/backend/uploads/";
-
 
     @PostMapping("/add")
     public Caregiver addCaregiver(
@@ -81,8 +78,6 @@ public class CaregiverController {
 
         return saved;
     }
-
-
     @GetMapping("/all")
     public List<Caregiver> getAllCaregivers() {
         return caregiverService.getAllCaregivers();
@@ -104,5 +99,4 @@ public class CaregiverController {
         caregiver.getNotifications().add(message);
         return caregiverService.saveCaregiver(caregiver);
     }
-
 }
