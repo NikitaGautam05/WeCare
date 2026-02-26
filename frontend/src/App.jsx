@@ -13,6 +13,10 @@ import ForgetPassword from './Components/Loginin/Signup/ForgetPassword'
 import CareGiverDash from './Components/Dashboard/CareGiverDash';
 import Welcome from './Components/Dashboard/Welcome'
 import Profile from  './Components/Dashboard/Profile'
+import TermsAndServices from './Components/Dashboard/TermsAndServices'
+import Caregivers from './Components/NavBar/Caregivers'
+import ProfileUser from './Components/NavBar/ProfileUser'
+import Favourites from './Components/NavBar/Favourites'
 
 
 function App() {
@@ -28,9 +32,13 @@ function App() {
          <Route path='/dash' element={<Dashboard/>}></Route>
          <Route path ='/optionLogin' element={<OptionLogin/>}></Route>
          <Route path ='/forgetPassword' element={<ForgetPassword/>}></Route>
-         <Route path ='/CareGiverDash' element={<CareGiverDash/>}></Route>
+         <Route path ='/CareGiverDash/:id' element={<CareGiverDash/>}></Route>
          <Route path ='/welcome' element={<Welcome/>}></Route>
          <Route path="/profile/:id" element={<Profile />} />
+         <Route path ="/terms" element={<TermsAndServices/>}></Route>
+         <Route path ="my-caregivers" element={<Caregivers/>}></Route>
+         <Route path="/my-profile" element={<ProfileUser />} /> 
+         <Route path ="/favourites" element={<Favourites/>}></Route>
       </Routes>
     </Router>
   )
