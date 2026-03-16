@@ -5,7 +5,7 @@ import logo from "../../assets/logo.jpg";
 
 const BASE_URL = "http://localhost:8080/api";
 
-export default function Pending() {
+export default function Blocked() {
   const navigate = useNavigate();
 
   const [all, setAll]                     = useState([]);
@@ -16,24 +16,25 @@ export default function Pending() {
   const [toast, setToast]                 = useState(null); // { msg, type }
 
   // ── Fetch all caregivers, filter for PENDING ──────────────────────────────
-const fetchPending = async () => {
+  const fetchBlocked = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${BASE_URL}/caregivers/admin/pending`);
+      const res = await axios.get(`${BASE_URL}/caregivers/admin/blocked`);
       const data = Array.isArray(res.data) ? res.data
         : Array.isArray(res.data?.content) ? res.data.content
         : Array.isArray(res.data?.data) ? res.data.data
         : [];
-      setAll(data); // ✅ moved here from catch block
+      // show caregivers who are PENDING or have no status yet
+      setAll(data); // TODO: change to data.filter((c) => c.status === "BLOCKED") when backend ready
     } catch (err) {
       console.error("Failed to fetch:", err);
-      setAll([]); // ✅ empty array on error
+      // setAll([]);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchPending(); }, []);
+  useEffect(() => { fetchBlocked(); }, []);
 
   // ── Show toast ────────────────────────────────────────────────────────────
   const showToast = (msg, type = "success") => {
@@ -41,37 +42,19 @@ const fetchPending = async () => {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // ── Verify action ─────────────────────────────────────────────────────────
-  const verify = async (id) => {
+  // ── Unblock action ────────────────────────────────────────────────────────
+  const unblock = async (id) => {
     setActionLoading(id);
     try {
-      await axios.post(`${BASE_URL}/caregivers/admin/${id}/verify`, {}, {
+      await axios.post(`${BASE_URL}/caregivers/admin/${id}/unblock`, {}, {
         headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
       });
       setAll((prev) => prev.filter((c) => c.id !== id));
       if (selected?.id === id) setSelected(null);
-      showToast("Caregiver verified successfully! ✅");
+      showToast("Caregiver unblocked! ↩", "success");
     } catch (err) {
       console.error(err);
-      showToast("Failed to verify. Try again.", "error");
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  // ── Reject / Block action ─────────────────────────────────────────────────
-  const reject = async (id) => {
-    setActionLoading(id + "_reject");
-    try {
-      await axios.post(`${BASE_URL}/caregivers/admin/${id}/block`, {}, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
-      });
-      setAll((prev) => prev.filter((c) => c.id !== id));
-      if (selected?.id === id) setSelected(null);
-      showToast("Caregiver rejected & blocked. 🚫", "warning");
-    } catch (err) {
-      console.error(err);
-      showToast("Failed to reject. Try again.", "error");
+      showToast("Failed to unblock. Try again.", "error");
     } finally {
       setActionLoading(null);
     }
@@ -93,7 +76,7 @@ const fetchPending = async () => {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen w-screen bg-amber-50 font-sans">
+    <div className="min-h-screen w-screen bg-red-50 font-sans">
 
       {/* ── TOAST ── */}
       {toast && (
@@ -106,14 +89,14 @@ const fetchPending = async () => {
       )}
 
       {/* ── HEADER ── */}
-      <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-amber-100 shadow-sm">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-red-100 shadow-sm">
         <div className="flex items-center justify-between px-6 py-3">
           {/* Brand */}
           <div className="flex items-center gap-3">
             <img src={logo} alt="ElderEase" className="h-9 w-auto" />
             <div className="border-l border-gray-200 pl-3">
-              <p className="text-xs text-amber-500 uppercase tracking-widest leading-none font-semibold">Admin</p>
-              <h1 className="text-base font-bold text-gray-800 leading-tight">Pending Verifications</h1>
+              <p className="text-xs text-red-500 uppercase tracking-widest leading-none font-semibold">Admin</p>
+              <h1 className="text-base font-bold text-gray-800 leading-tight">Blocked Caregivers</h1>
             </div>
           </div>
 
@@ -121,7 +104,7 @@ const fetchPending = async () => {
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate("/admin/dashboard")}
-              className="text-sm text-white hover:white border border-gray-200 hover:border-gray-300 px-4 py-1.5 rounded-lg transition-all font-medium"
+              className="text-sm text-white hover:text-white border border-gray-200 hover:border-gray-300 px-4 py-1.5 rounded-lg transition-all font-medium"
             >
               ← Dashboard
             </button>
@@ -139,7 +122,7 @@ const fetchPending = async () => {
       <main className="pt-[57px]">
 
         {/* ── HERO BANNER ── */}
-        <div className="w-full bg-gradient-to-br from-amber-400 via-amber-500 to-orange-400 px-6 py-10 relative overflow-hidden">
+        <div className="w-full bg-gradient-to-br from-red-500 via-red-600 to-rose-500 px-6 py-10 relative overflow-hidden">
           {/* Decorative circles */}
           <div className="absolute -top-10 -right-10 w-52 h-52 rounded-full bg-white/10" />
           <div className="absolute bottom-0 left-1/3 w-36 h-36 rounded-full bg-white/10" />
@@ -149,12 +132,12 @@ const fetchPending = async () => {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest">
-                  ⏳ Awaiting Review
+                  🚫 Blocked
                 </span>
               </div>
-              <h2 className="text-3xl font-bold text-white leading-tight">Pending Caregivers</h2>
+              <h2 className="text-3xl font-bold text-white leading-tight">Blocked Caregivers</h2>
               <p className="text-amber-100 mt-1.5 text-sm max-w-md">
-                Review caregiver registrations below. Verified caregivers will appear in the care receiver dashboard.
+                These caregivers have been blocked and are not visible to care receivers on ElderEase.
               </p>
             </div>
 
@@ -178,12 +161,12 @@ const fetchPending = async () => {
           {/* Search + Refresh row */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
             <div>
-              <h3 className="text-base font-bold text-amber-900">Unverified Registrations</h3>
-              <p className="text-xs text-amber-600 mt-0.5">Tap a card to view full profile before verifying</p>
+              <h3 className="text-base font-bold text-red-900">Blocked Accounts</h3>
+              <p className="text-xs text-red-500 mt-0.5">These caregivers are currently suspended from ElderEase</p>
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <div className="relative flex-1 sm:w-72">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
                 </svg>
                 <input
@@ -191,12 +174,12 @@ const fetchPending = async () => {
                   placeholder="Search by name, email, speciality..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-amber-200 bg-white text-sm text-gray-700 placeholder-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-300 transition"
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-red-200 bg-white text-sm text-gray-700 placeholder-red-300 focus:outline-none focus:ring-2 focus:ring-red-300 transition"
                 />
               </div>
               <button
-                onClick={fetchPending}
-                className="p-2.5 rounded-xl border border-amber-200 bg-white text-amber-500 hover:text-amber-700 hover:border-amber-300 transition-all"
+                onClick={fetchBlocked}
+                className="p-2.5 rounded-xl border border-red-200 bg-white text-red-500 hover:text-red-700 hover:border-red-300 transition-all"
                 title="Refresh"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -209,20 +192,20 @@ const fetchPending = async () => {
           {/* ── Loading ── */}
           {loading ? (
             <div className="flex flex-col items-center justify-center py-36">
-              <div className="w-14 h-14 rounded-full border-4 border-amber-200 border-t-amber-500 animate-spin mb-4" />
-              <p className="text-amber-600 font-medium text-sm">Fetching pending caregivers...</p>
+              <div className="w-14 h-14 rounded-full border-4 border-red-200 border-t-red-500 animate-spin mb-4" />
+              <p className="text-red-500 font-medium text-sm">Fetching blocked caregivers...</p>
             </div>
 
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-36">
-              <div className="w-20 h-20 bg-amber-100 rounded-3xl flex items-center justify-center text-4xl mb-4 border border-amber-200">
+              <div className="w-20 h-20 bg-red-100 rounded-3xl flex items-center justify-center text-4xl mb-4 border border-red-200">
                 {search ? "🔍" : "🎉"}
               </div>
-              <p className="text-lg font-bold text-amber-800">
-                {search ? "No results found" : "All caught up!"}
+              <p className="text-lg font-bold text-red-800">
+                {search ? "No results found" : "No blocked caregivers"}
               </p>
               <p className="text-sm text-amber-500 mt-1">
-                {search ? "Try clearing the search." : "No pending caregivers at the moment."}
+                {search ? "Try clearing the search." : "No caregivers have been blocked yet."}
               </p>
             </div>
 
@@ -230,35 +213,35 @@ const fetchPending = async () => {
             /* ── Cards Grid ── */
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {filtered.map((c, idx) => {
-                const busy        = actionLoading === c.id || actionLoading === c.id + "_reject";
+                const busy        = actionLoading === c.id;
                 const photo       = c.profilePhoto?.replace(/\s+/g, "_").trim();
                 const initials    = (c.fullName || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
                 return (
                   <div
                     key={c.id}
-                    className="bg-white rounded-2xl border border-amber-100 overflow-hidden flex flex-col hover:shadow-xl hover:-translate-y-1 transition-all duration-200 group"
+                    className="bg-white rounded-2xl border border-red-100 overflow-hidden flex flex-col hover:shadow-xl hover:-translate-y-1 transition-all duration-200 group"
                     style={{ animationDelay: `${idx * 40}ms` }}
                   >
                     {/* Photo */}
-                    <div className="relative h-44 bg-amber-50 overflow-hidden">
+                    <div className="relative h-44 bg-red-50 overflow-hidden">
                       <img
                         src={`http://localhost:8080/uploads/${photo}`}
                         alt={c.fullName}
                         className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
                         onError={(e) => {
                           e.target.onerror = null;
-                          e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(c.fullName || "C")}&background=fde68a&color=92400e&size=200&bold=true`;
+                          e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(c.fullName || "C")}&background=fee2e2&color=991b1b&size=200&bold=true`;
                         }}
                       />
                       {/* Pending badge */}
                       <div className="absolute top-3 left-3">
-                        <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-amber-400 text-white shadow-sm">
-                          ⏳ Pending
+                        <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-red-500 text-white shadow-sm">
+                          🚫 Blocked
                         </span>
                       </div>
                       {/* Registration number */}
-                      <div className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm rounded-lg px-2 py-0.5 text-xs font-bold text-amber-700 shadow-sm">
+                      <div className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm rounded-lg px-2 py-0.5 text-xs font-bold text-red-700 shadow-sm">
                         #{String(c.id).padStart(4, "0")}
                       </div>
                     </div>
@@ -267,7 +250,7 @@ const fetchPending = async () => {
                     <div className="p-4 flex flex-col flex-1 gap-3">
                       <div>
                         <h3 className="font-bold text-gray-900 text-base leading-tight truncate">{c.fullName || "—"}</h3>
-                        <p className="text-xs text-amber-600 font-medium mt-0.5 truncate">{c.speciality || "General Care"}</p>
+                        <p className="text-xs text-red-500 font-medium mt-0.5 truncate">{c.speciality || "General Care"}</p>
                       </div>
 
                       <div className="space-y-1.5 text-xs text-gray-500">
@@ -294,27 +277,20 @@ const fetchPending = async () => {
                       </div>
 
                       {/* Action row */}
-                      <div className="mt-auto pt-3 border-t border-amber-50 flex items-center justify-between gap-2">
+                      <div className="mt-auto pt-3 border-t border-red-50 flex items-center justify-between gap-2">
                         <button
                           onClick={() => setSelected(c)}
-                          className="text-xs text-amber-500 hover:text-amber-800 font-semibold underline underline-offset-2 transition-colors"
+                          className="text-xs text-amber-500 hover:text-red-800 font-semibold underline underline-offset-2 transition-colors"
                         >
                           View Details
                         </button>
                         <div className="flex gap-1.5">
                           <button
-                            onClick={() => reject(c.id)}
+                            onClick={() => unblock(c.id)}
                             disabled={busy}
-                            className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-500 text-red-500 hover:text-white border border-red-200 hover:border-red-500 transition-all disabled:opacity-40"
+                            className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white shadow-sm transition-all disabled:opacity-40"
                           >
-                            {actionLoading === c.id + "_reject" ? "..." : "✕"}
-                          </button>
-                          <button
-                            onClick={() => verify(c.id)}
-                            disabled={busy}
-                            className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm transition-all disabled:opacity-40"
-                          >
-                            {actionLoading === c.id ? "..." : "✓ Verify"}
+                            {actionLoading === c.id ? "..." : "↩ Unblock"}
                           </button>
                         </div>
                       </div>
@@ -336,16 +312,16 @@ const fetchPending = async () => {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
 
             {/* Modal header */}
-            <div className="sticky top-0 bg-white flex items-center justify-between px-6 pt-5 pb-4 border-b border-amber-100 z-10">
+            <div className="sticky top-0 bg-white flex items-center justify-between px-6 pt-5 pb-4 border-b border-red-100 z-10">
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold text-gray-800">Caregiver Profile</h3>
-                <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
-                  ⏳ Pending Review
+                <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-red-100 text-red-700 border border-red-200">
+                  🚫 Blocked
                 </span>
               </div>
               <button
                 onClick={() => setSelected(null)}
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-amber-50 text-gray-400 hover:text-gray-700 transition"
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-50 text-gray-400 hover:text-gray-700 transition"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -359,15 +335,15 @@ const fetchPending = async () => {
                 <img
                   src={`http://localhost:8080/uploads/${selected.profilePhoto?.replace(/\s+/g, "_")}`}
                   alt={selected.fullName}
-                  className="w-20 h-20 rounded-2xl object-cover border-2 border-amber-100 shadow-sm"
+                  className="w-20 h-20 rounded-2xl object-cover border-2 border-red-100 shadow-sm"
                   onError={(e) => {
                     e.target.onerror = null;
-                    e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selected.fullName || "C")}&background=fde68a&color=92400e&size=200&bold=true`;
+                    e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selected.fullName || "C")}&background=fee2e2&color=991b1b&size=200&bold=true`;
                   }}
                 />
                 <div>
                   <h4 className="text-xl font-bold text-gray-900">{selected.fullName}</h4>
-                  <p className="text-sm text-amber-600 font-medium mt-0.5">{selected.speciality || "General Care"}</p>
+                  <p className="text-sm text-red-500 font-medium mt-0.5">{selected.speciality || "General Care"}</p>
                   <p className="text-xs text-gray-400 mt-1">{selected.email}</p>
                 </div>
               </div>
@@ -380,8 +356,8 @@ const fetchPending = async () => {
                   { icon: "💼", label: "Experience", val: selected.experience ? `${selected.experience} Years` : null },
                   { icon: "💰", label: "Rate",       val: selected.chargeMin && selected.chargeMax ? `Rs ${selected.chargeMin}–${selected.chargeMax}/day` : null },
                 ].map(({ icon, label, val }) => (
-                  <div key={label} className="bg-amber-50 rounded-xl p-3 border border-amber-100">
-                    <p className="text-xs text-amber-500 uppercase tracking-wider">{icon} {label}</p>
+                  <div key={label} className="bg-red-50 rounded-xl p-3 border border-red-100">
+                    <p className="text-xs text-red-500 uppercase tracking-wider">{icon} {label}</p>
                     <p className="text-sm font-semibold text-gray-800 mt-1 truncate">{val || "—"}</p>
                   </div>
                 ))}
@@ -389,8 +365,8 @@ const fetchPending = async () => {
 
               {/* About */}
               {selected.details && (
-                <div className="bg-amber-50 rounded-xl p-4 border border-amber-100">
-                  <p className="text-xs text-amber-500 uppercase tracking-wider mb-2">About</p>
+                <div className="bg-red-50 rounded-xl p-4 border border-red-100">
+                  <p className="text-xs text-red-500 uppercase tracking-wider mb-2">About</p>
                   <p className="text-sm text-gray-700 leading-relaxed">{selected.details}</p>
                 </div>
               )}
@@ -398,31 +374,30 @@ const fetchPending = async () => {
               {/* Citizenship doc */}
               {selected.citizenshipPhoto && (
                 <div>
-                  <p className="text-xs text-amber-500 uppercase tracking-wider mb-2">📄 Citizenship Document</p>
+                  <p className="text-xs text-red-500 uppercase tracking-wider mb-2">📄 Citizenship Document</p>
                   <img
                     src={`http://localhost:8080/uploads/${selected.citizenshipPhoto?.replace(/\s+/g, "_")}`}
                     alt="Citizenship"
-                    className="w-full rounded-xl border border-amber-100 object-cover max-h-52"
+                    className="w-full rounded-xl border border-red-100 object-cover max-h-52"
                     onError={(e) => { e.target.style.display = "none"; }}
                   />
                 </div>
               )}
 
               {/* Modal actions */}
-              <div className="pt-3 border-t border-amber-100 flex gap-3">
+              <div className="pt-3 border-t border-red-100 flex gap-3">
                 <button
-                  onClick={() => reject(selected.id)}
+                  onClick={() => unblock(selected.id)}
                   disabled={!!actionLoading}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-red-50 hover:bg-red-500 text-red-500 hover:text-white border border-red-200 hover:border-red-500 transition-all disabled:opacity-40"
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-blue-500 hover:bg-blue-600 text-white shadow-sm transition-all disabled:opacity-40"
                 >
-                  {actionLoading === selected.id + "_reject" ? "Rejecting..." : "✕  Reject"}
+                  {actionLoading === selected.id ? "Unblocking..." : "↩  Unblock Caregiver"}
                 </button>
                 <button
-                  onClick={() => verify(selected.id)}
-                  disabled={!!actionLoading}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm transition-all disabled:opacity-40"
+                  onClick={() => setSelected(null)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-red-100 hover:bg-red-200 text-red-700 transition-all"
                 >
-                  {actionLoading === selected.id ? "Verifying..." : "✓  Verify Caregiver"}
+                  ✕  Keep Blocked
                 </button>
               </div>
             </div>

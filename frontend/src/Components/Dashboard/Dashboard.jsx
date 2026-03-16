@@ -25,7 +25,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     axios
-      .get("http://localhost:8080/api/caregivers/all")
+      .get("http://localhost:8080/api/caregivers/verified")
       .then((res) => setCaregivers(res.data))
       .catch((err) => console.error(err));
   }, []);
