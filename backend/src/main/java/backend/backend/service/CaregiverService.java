@@ -5,7 +5,7 @@ import backend.backend.repository.CaregiverRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-
+import backend.backend.model.CaregiverStatus;
 @Service
 public class CaregiverService {
     private final CaregiverRepository caregiverRepository;
@@ -17,7 +17,9 @@ public class CaregiverService {
         System.out.println("Saved to DB: " + saved.getId());
         return saved;
     }
-
+    public List<Caregiver> getCaregiversByStatus(CaregiverStatus status){
+        return caregiverRepository.findByStatus(status);
+    }
     public List <Caregiver> getAllCaregivers(){
         return caregiverRepository.findAll();
     }

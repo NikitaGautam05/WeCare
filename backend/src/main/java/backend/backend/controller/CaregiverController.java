@@ -1,15 +1,13 @@
 package backend.backend.controller;
-
 import backend.backend.model.Caregiver;
 import backend.backend.service.CaregiverService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
-
+import backend.backend.model.CaregiverStatus;
 @RestController
 @RequestMapping("/api/caregivers")
 @CrossOrigin(origins = "http://localhost:5173")
@@ -77,6 +75,53 @@ public class CaregiverController {
         System.out.println("Caregiver saved with ID: " + saved.getId());
 
         return saved;
+    }
+    @GetMapping("/verified")
+    public List<Caregiver> getVerifiedCaregivers(){
+        return caregiverService.getCaregiversByStatus(CaregiverStatus.VERIFIED);
+    }
+    @PostMapping("/admin/{id}/verify")
+    public Caregiver verifyCaregiver(@PathVariable String id){
+
+        Caregiver caregiver = caregiverService.getCaregiverById(id);
+
+        if(caregiver == null){
+            throw new RuntimeException("Caregiver not found");
+        }
+
+        caregiver.setStatus(CaregiverStatus.VERIFIED);
+
+        return caregiverService.saveCaregiver(caregiver);
+    }
+    @PostMapping("/admin/{id}/block")
+    public Caregiver blockCaregiver(@PathVariable String id){
+
+        Caregiver caregiver = caregiverService.getCaregiverById(id);
+
+        caregiver.setStatus(CaregiverStatus.BLOCKED);
+
+        return caregiverService.saveCaregiver(caregiver);
+    }
+    @PostMapping("/admin/{id}/unblock")
+    public Caregiver unblockCaregiver(@PathVariable String id){
+
+        Caregiver caregiver = caregiverService.getCaregiverById(id);
+
+        caregiver.setStatus(CaregiverStatus.VERIFIED);
+
+        return caregiverService.saveCaregiver(caregiver);
+    }
+    @GetMapping("/admin/pending")
+    public List<Caregiver> getPending(){
+        return caregiverService.getCaregiversByStatus(CaregiverStatus.PENDING);
+    }
+    @GetMapping("/admin/verified")
+    public List<Caregiver> getVerified(){
+        return caregiverService.getCaregiversByStatus(CaregiverStatus.VERIFIED);
+    }
+    @GetMapping("/admin/blocked")
+    public List<Caregiver> getBlocked(){
+        return caregiverService.getCaregiversByStatus(CaregiverStatus.BLOCKED);
     }
     @GetMapping("/all")
     public List<Caregiver> getAllCaregivers() {

@@ -5,7 +5,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.ArrayList;
 import java.util.List;
-
+import backend.backend.model.CaregiverStatus;
 @Document(collection = "caregivers")
 public class Caregiver {
 
@@ -24,16 +24,34 @@ public class Caregiver {
 
     private String profilePhoto;       // store filename or URL
     private String citizenshipPhoto;   // store filename or URL
+    private CaregiverStatus status = CaregiverStatus.PENDING;
+    private int reportsCount = 0;
+
+    private List<String> notifications = new ArrayList<>();
 
     public List<String> getNotifications() {
         return notifications;
     }
+    public CaregiverStatus getStatus() {
+        return status;
+    }
 
+    public void setStatus(CaregiverStatus status) {
+        this.status = status;
+    }
+
+    public int getReportsCount() {
+        return reportsCount;
+    }
+
+    public void setReportsCount(int reportsCount) {
+        this.reportsCount = reportsCount;
+    }
     public void setNotifications(List<String> notifications) {
         this.notifications = notifications;
     }
 
-    private List<String> notifications = new ArrayList<>();
+//    private List<String> notifications = new ArrayList<>();
 
     // Getters and Setters
     public String getId() { return id; }
