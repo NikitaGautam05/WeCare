@@ -1,272 +1,802 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "../../../assets/logo.jpg";
 
-
 const Splash = () => {
   const navigate = useNavigate();
+  const [scrollY, setScrollY] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setScrollY(window.scrollY);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const navScrolled = scrollY > 60;
 
   return (
-    <div className="w-screen min-h-screen text-gray-800 scroll-smooth">
+    <div className="w-screen min-h-screen text-gray-900 overflow-x-hidden" style={{ fontFamily: "'Georgia', serif" }}>
 
-      {/* NAVBAR */}
-      <nav className="fixed top-0 w-full z-50 bg-black/50 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center text-white">
-          
-           <div
-    className="flex items-center gap-3 cursor-pointer"
-    onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-  >
-    <img
-      src={logo}
-      alt="Elder Ease Logo"
-      className="h-10 w-auto"
-    />
-    <h1 className="text-2xl font-bold">
-      Elder Ease
-    </h1>
-  </div>
-          
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,800;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap');
 
-          <div className="flex gap-4">
-            <button
-              onClick={() => navigate("/optionLogin")}
-              className="px-4 py-2 rounded hover:bg-white/20"
-            >
-              Login
+        * { box-sizing: border-box; }
+
+        body { margin: 0; }
+
+        .font-display { font-family: 'Playfair Display', serif; }
+        .font-body { font-family: 'DM Sans', sans-serif; }
+
+        .hero-text-reveal {
+          opacity: 0;
+          transform: translateY(40px);
+          animation: revealUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .hero-text-reveal:nth-child(1) { animation-delay: 0.1s; }
+        .hero-text-reveal:nth-child(2) { animation-delay: 0.3s; }
+        .hero-text-reveal:nth-child(3) { animation-delay: 0.5s; }
+        .hero-text-reveal:nth-child(4) { animation-delay: 0.65s; }
+
+        @keyframes revealUp {
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card-hover {
+          transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+        }
+        .card-hover:hover {
+          transform: translateY(-8px);
+          box-shadow: 0 32px 64px rgba(0,0,0,0.12);
+        }
+
+        .btn-primary {
+          background: #1a1a2e;
+          color: #fff;
+          border: none;
+          padding: 14px 36px;
+          font-family: 'DM Sans', sans-serif;
+          font-weight: 500;
+          font-size: 15px;
+          letter-spacing: 0.5px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          position: relative;
+          overflow: hidden;
+        }
+        .btn-primary::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: #c8a96e;
+          transform: translateX(-100%);
+          transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .btn-primary:hover::before { transform: translateX(0); }
+        .btn-primary span { position: relative; z-index: 1; }
+
+        .btn-outline {
+          background: transparent;
+          color: #fff;
+          border: 1.5px solid rgba(255,255,255,0.6);
+          padding: 13px 36px;
+          font-family: 'DM Sans', sans-serif;
+          font-weight: 400;
+          font-size: 15px;
+          letter-spacing: 0.5px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        .btn-outline:hover {
+          background: rgba(255,255,255,0.15);
+          border-color: #fff;
+        }
+
+        .section-label {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 3px;
+          text-transform: uppercase;
+          color: #c8a96e;
+        }
+
+        .gold-line {
+          width: 48px;
+          height: 2px;
+          background: #c8a96e;
+          display: inline-block;
+        }
+
+        .step-number {
+          font-family: 'Playfair Display', serif;
+          font-size: 72px;
+          font-weight: 800;
+          color: #f0ebe1;
+          line-height: 1;
+          position: absolute;
+          top: -10px;
+          left: -10px;
+          z-index: 0;
+        }
+
+        .parallax-bg {
+          will-change: transform;
+        }
+
+        .nav-link {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 14px;
+          font-weight: 400;
+          letter-spacing: 0.5px;
+          color: rgba(255,255,255,0.85);
+          cursor: pointer;
+          padding: 6px 0;
+          position: relative;
+          transition: color 0.2s;
+          background: none;
+          border: none;
+        }
+        .nav-link::after {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          width: 0;
+          height: 1px;
+          background: #c8a96e;
+          transition: width 0.3s ease;
+        }
+        .nav-link:hover { color: #fff; }
+        .nav-link:hover::after { width: 100%; }
+
+        .nav-scrolled .nav-link { color: rgba(26,26,46,0.75); }
+        .nav-scrolled .nav-link:hover { color: #1a1a2e; }
+
+        .testimonial-card {
+          background: #fff;
+          border: 1px solid #f0ebe1;
+          padding: 40px 32px;
+          position: relative;
+        }
+        .testimonial-card::before {
+          content: '"';
+          font-family: 'Playfair Display', serif;
+          font-size: 80px;
+          color: #c8a96e;
+          opacity: 0.3;
+          position: absolute;
+          top: 10px;
+          left: 24px;
+          line-height: 1;
+        }
+
+        .service-img-wrap {
+          overflow: hidden;
+          height: 240px;
+        }
+        .service-img-wrap img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .card-hover:hover .service-img-wrap img {
+          transform: scale(1.06);
+        }
+
+        .divider-ornament {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          justify-content: center;
+          margin: 32px 0;
+        }
+        .divider-ornament span {
+          width: 60px;
+          height: 1px;
+          background: #d4c4a0;
+        }
+        .divider-ornament em {
+          color: #c8a96e;
+          font-size: 20px;
+          font-style: normal;
+        }
+
+        @media (max-width: 768px) {
+          .hero-headline { font-size: 40px !important; }
+          .hide-mobile { display: none !important; }
+        }
+      `}</style>
+
+      {/* ── NAVBAR ── */}
+      <nav
+        className={`fixed top-0 w-full z-50 transition-all duration-500 ${
+          navScrolled
+            ? "bg-white/95 backdrop-blur-sm shadow-sm nav-scrolled"
+            : "bg-transparent"
+        }`}
+        style={{ padding: navScrolled ? "14px 0" : "22px 0" }}
+      >
+        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 40px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+
+          {/* Logo */}
+          <div
+            className="flex items-center gap-3 cursor-pointer"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          >
+            <img src={logo} alt="Elder Ease" style={{ height: 38, width: "auto" }} />
+            <div>
+              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, fontWeight: 700, color: navScrolled ? "#1a1a2e" : "#fff", lineHeight: 1.1 }}>
+                Elder Ease
+              </div>
+              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, letterSpacing: 2, color: navScrolled ? "#c8a96e" : "rgba(200,169,110,0.9)", textTransform: "uppercase", fontWeight: 500 }}>
+                Care Platform
+              </div>
+            </div>
+          </div>
+
+          {/* Nav links */}
+          <div className="hide-mobile" style={{ display: "flex", alignItems: "center", gap: 36 }}>
+            <button className="nav-link" style={{ color: navScrolled ? "rgba(26,26,46,0.75)" : "rgba(255,255,255,0.85)" }}
+              onClick={() => document.getElementById("about")?.scrollIntoView({ behavior: "smooth" })}>
+              About
+            </button>
+            <button className="nav-link" style={{ color: navScrolled ? "rgba(26,26,46,0.75)" : "rgba(255,255,255,0.85)" }}
+              onClick={() => document.getElementById("services")?.scrollIntoView({ behavior: "smooth" })}>
+              Services
+            </button>
+            <button className="nav-link" style={{ color: navScrolled ? "rgba(26,26,46,0.75)" : "rgba(255,255,255,0.85)" }}
+              onClick={() => document.getElementById("how")?.scrollIntoView({ behavior: "smooth" })}>
+              How it Works
+            </button>
+            <div style={{ width: 1, height: 20, background: navScrolled ? "#e0d8cc" : "rgba(255,255,255,0.2)" }} />
+            <button className="nav-link" style={{ color: navScrolled ? "rgba(26,26,46,0.75)" : "rgba(255,255,255,0.85)" }}
+              onClick={() => navigate("/optionLogin")}>
+              Sign In
             </button>
             <button
-              onClick={() =>
-                navigate("/optionLogin", { state: { mode: "SIGNUP" } })
-              }
-              className="px-5 py-2 bg-green-500 rounded-full font-semibold hover:bg-green-600"
+              onClick={() => navigate("/optionLogin", { state: { mode: "SIGNUP" } })}
+              style={{
+                background: "#c8a96e",
+                color: "#fff",
+                border: "none",
+                padding: "10px 26px",
+                fontFamily: "'DM Sans', sans-serif",
+                fontWeight: 500,
+                fontSize: 14,
+                cursor: "pointer",
+                letterSpacing: 0.5,
+                transition: "background 0.3s"
+              }}
+              onMouseOver={e => e.currentTarget.style.background = "#1a1a2e"}
+              onMouseOut={e => e.currentTarget.style.background = "#c8a96e"}
             >
-              Sign Up
+              Get Started
             </button>
           </div>
+
+          {/* Mobile menu button */}
+          <button
+            className="hide-desktop"
+            style={{ display: "none", background: "none", border: "none", cursor: "pointer", color: navScrolled ? "#1a1a2e" : "#fff", fontSize: 22 }}
+            onClick={() => setMenuOpen(!menuOpen)}
+          >
+            ☰
+          </button>
         </div>
       </nav>
 
-      {/* HERO */}
-      <section className="relative h-screen w-full">
-        <img
-          src="https://www.momshomecare.com/images/LARGE__bigstock-Young-Caregiver-Giving-Water-T-453584489.jpg"
-          alt="Home Care"
-          className="absolute w-full h-full object-cover brightness-75"
-        />
-        <div className="absolute inset-0 bg-black/50" />
+      {/* ── HERO ── */}
+      <section style={{ position: "relative", height: "100vh", minHeight: 700, overflow: "hidden" }}>
 
-        <div className="relative z-10 h-full flex flex-col justify-center items-center text-center px-6 text-white">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6">
-            Compassionate Care, <br /> Right at Your Home
-          </h1>
+        {/* Background image with parallax-like darkening */}
+        <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
+          <img
+            src="https://images.unsplash.com/photo-1576765607924-3f7b8410a787?auto=format&fit=crop&w=1800&q=80"
+            alt=""
+            style={{ width: "100%", height: "110%", objectFit: "cover", objectPosition: "center 30%", transform: `translateY(${scrollY * 0.25}px)` }}
+          />
+          {/* Multi-layer overlay for depth */}
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(10,10,30,0.80) 0%, rgba(10,10,30,0.50) 60%, rgba(30,15,5,0.65) 100%)" }} />
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(10,10,30,0.7) 0%, transparent 50%)" }} />
+        </div>
 
-          <p className="text-lg md:text-xl max-w-2xl mb-10 text-gray-200">
-            Connecting families with trusted caregivers to ensure comfort,
-            dignity, and quality care for your loved ones.
-          </p>
+        {/* Decorative elements */}
+        <div style={{ position: "absolute", top: "15%", right: "8%", width: 300, height: 300, border: "1px solid rgba(200,169,110,0.15)", borderRadius: "50%", zIndex: 1 }} />
+        <div style={{ position: "absolute", top: "22%", right: "11%", width: 200, height: 200, border: "1px solid rgba(200,169,110,0.1)", borderRadius: "50%", zIndex: 1 }} />
 
-          <div className="flex gap-4 flex-wrap justify-center">
-            <button
-              onClick={() => navigate("/optionLogin")}
-              className="px-8 py-3 bg-green-500 rounded-full font-semibold hover:bg-green-600"
+        {/* Hero content */}
+        <div style={{ position: "relative", zIndex: 10, height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 40px", maxWidth: 1280, margin: "0 auto" }}>
+          <div style={{ maxWidth: 680 }}>
+
+            <div className="hero-text-reveal section-label" style={{ marginBottom: 20 }}>
+              Trusted Home Care in Nepal
+            </div>
+
+            <h1
+              className="hero-text-reveal hero-headline"
+              style={{
+                fontFamily: "'Playfair Display', serif",
+                fontSize: 68,
+                fontWeight: 800,
+                color: "#fff",
+                lineHeight: 1.1,
+                margin: "0 0 12px 0",
+                letterSpacing: "-0.5px"
+              }}
             >
-              Find a Caregiver
-            </button>
-            <button
-              onClick={() =>
-                document
-                  .getElementById("about")
-                  ?.scrollIntoView({ behavior: "smooth" })
-              }
-              className="px-8 py-3 border border-white rounded-full hover:bg-white hover:text-black"
+              Care That Feels
+              <br />
+              <em style={{ color: "#c8a96e", fontStyle: "italic" }}>Like Family</em>
+            </h1>
+
+            <p
+              className="hero-text-reveal font-body"
+              style={{ fontSize: 18, color: "rgba(255,255,255,0.75)", lineHeight: 1.7, margin: "24px 0 40px", maxWidth: 520, fontWeight: 300 }}
             >
-              Learn More
-            </button>
+              Connecting Nepal's elderly with verified, compassionate caregivers.
+              Because every family deserves peace of mind.
+            </p>
+
+            <div className="hero-text-reveal" style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+              <button className="btn-primary" onClick={() => navigate("/optionLogin")}>
+                <span>Find a Caregiver</span>
+              </button>
+              <button
+                className="btn-outline"
+                onClick={() => document.getElementById("about")?.scrollIntoView({ behavior: "smooth" })}
+              >
+                Learn More
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        {/* Bottom stats bar */}
+        <div style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: "rgba(255,255,255,0.06)",
+          backdropFilter: "blur(12px)",
+          borderTop: "1px solid rgba(255,255,255,0.1)",
+          zIndex: 10,
+          padding: "20px 40px",
+          display: "flex",
+          justifyContent: "center",
+          gap: 80
+        }}>
+          {[
+            { num: "500+", label: "Verified Caregivers" },
+            { num: "1,200+", label: "Families Helped" },
+            { num: "4.9★", label: "Average Rating" },
+            { num: "24/7", label: "Support Available" },
+          ].map((s, i) => (
+            <div key={i} style={{ textAlign: "center" }}>
+              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, fontWeight: 700, color: "#c8a96e" }}>{s.num}</div>
+              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "rgba(255,255,255,0.6)", letterSpacing: 0.5, marginTop: 4 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+      </section>
+
+      {/* ── ABOUT ── */}
+      <section id="about" style={{ padding: "120px 40px", background: "#faf8f4" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }}>
+
+            {/* Left text */}
+            <div>
+              <div className="section-label" style={{ marginBottom: 16 }}>About ElderEase</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 28 }}>
+                <span className="gold-line" />
+              </div>
+              <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 46, fontWeight: 700, lineHeight: 1.15, color: "#1a1a2e", margin: "0 0 24px" }}>
+                Bridging the Distance
+                <br />
+                <em style={{ fontStyle: "italic", color: "#c8a96e" }}>Between Families</em>
+              </h2>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 16, lineHeight: 1.85, color: "#5a5a6e", marginBottom: 20, fontWeight: 300 }}>
+                In Nepal, thousands of elderly parents are left alone as their children seek opportunities abroad.
+                ElderEase was built to bridge this gap — a dedicated platform where families can find and hire
+                verified caretakers with confidence and ease.
+              </p>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 16, lineHeight: 1.85, color: "#5a5a6e", fontWeight: 300 }}>
+                Every caregiver on our platform goes through a thorough admin verification process,
+                ensuring only trustworthy, qualified individuals are visible to families who need them most.
+              </p>
+
+              <div style={{ display: "flex", gap: 32, marginTop: 40 }}>
+                {[
+                  { icon: "✓", text: "Admin Verified Profiles" },
+                  { icon: "✓", text: "Real-time Notifications" },
+                  { icon: "✓", text: "Nepal Specific Platform" },
+                ].map((item, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ color: "#c8a96e", fontWeight: 700, fontSize: 16 }}>{item.icon}</span>
+                    <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#3a3a4e", fontWeight: 500 }}>{item.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right image grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, position: "relative" }}>
+              <div style={{ gridColumn: "1 / -1", height: 260, overflow: "hidden" }}>
+                <img
+                  src="https://images.unsplash.com/photo-1584515933487-779824d29309?auto=format&fit=crop&w=800&q=80"
+                  alt="Care"
+                  style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.6s ease" }}
+                  onMouseOver={e => e.currentTarget.style.transform = "scale(1.04)"}
+                  onMouseOut={e => e.currentTarget.style.transform = "scale(1)"}
+                />
+              </div>
+              <div style={{ height: 180, overflow: "hidden" }}>
+                <img
+                  src="https://images.unsplash.com/photo-1600959907703-125ba1374a12?auto=format&fit=crop&w=400&q=80"
+                  alt="Care"
+                  style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.6s ease" }}
+                  onMouseOver={e => e.currentTarget.style.transform = "scale(1.04)"}
+                  onMouseOut={e => e.currentTarget.style.transform = "scale(1)"}
+                />
+              </div>
+              <div style={{ height: 180, overflow: "hidden", marginTop: 0 }}>
+                <img
+                  src="https://images.unsplash.com/photo-1576765607924-3f7b8410a787?auto=format&fit=crop&w=400&q=80"
+                  alt="Care"
+                  style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.6s ease" }}
+                  onMouseOver={e => e.currentTarget.style.transform = "scale(1.04)"}
+                  onMouseOut={e => e.currentTarget.style.transform = "scale(1)"}
+                />
+              </div>
+              {/* Accent box */}
+              <div style={{
+                position: "absolute", bottom: -20, left: -20,
+                background: "#1a1a2e", color: "#c8a96e",
+                padding: "20px 28px",
+                fontFamily: "'Playfair Display', serif"
+              }}>
+                <div style={{ fontSize: 32, fontWeight: 800 }}>10+</div>
+                <div style={{ fontSize: 12, fontFamily: "'DM Sans', sans-serif", color: "rgba(200,169,110,0.7)", letterSpacing: 1 }}>YEARS OF CARE</div>
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
 
-      {/* ABOUT */}
-      <section id="about" className="py-24 bg-gray-50 px-6">
-        <div className="max-w-6xl mx-auto text-center">
-          <h2 className="text-4xl font-bold mb-6">About Us</h2>
-          <p className="text-lg text-gray-600 mb-12">
-            We connect families with compassionate, verified caregivers who
-            provide safe, reliable, and personalized home care.
-          </p>
+      {/* ── HOW IT WORKS ── */}
+      <section id="how" style={{ padding: "120px 40px", background: "#1a1a2e" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div style={{ textAlign: "center", marginBottom: 72 }}>
+            <div className="section-label" style={{ marginBottom: 16, color: "#c8a96e" }}>Simple Process</div>
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 46, fontWeight: 700, color: "#fff", margin: 0 }}>
+              How ElderEase Works
+            </h2>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 2 }}>
             {[
               {
-                title: "Trusted Caregivers",
-                img: "https://images.unsplash.com/photo-1584515933487-779824d29309?auto=format&fit=crop&w=600&q=80",
-                desc: "Background-checked and professionally trained caregivers.",
+                num: "01",
+                icon: "👤",
+                step: "Sign Up",
+                desc: "Create your account as a family or caregiver in minutes.",
+                color: "#f5f0e8"
               },
               {
-                title: "Personalized Care",
-                img: "https://images.unsplash.com/photo-1600959907703-125ba1374a12?auto=format&fit=crop&w=600&q=80",
-                desc: "Customized care plans tailored to individual needs.",
+                num: "02",
+                icon: "🔍",
+                step: "Browse Profiles",
+                desc: "View admin-verified caregiver profiles filtered by location and budget.",
+                color: "#eee8d8"
               },
               {
-                title: "Reliable Service",
-                img: "https://images.unsplash.com/photo-1576765607924-3f7b8410a787?auto=format&fit=crop&w=600&q=80",
-                desc: "Consistent, dependable, and high-quality care at home.",
+                num: "03",
+                icon: "🤝",
+                step: "Express Interest",
+                desc: "Click interested on a profile and the caregiver receives an instant notification.",
+                color: "#e8e0cc"
+              },
+              {
+                num: "04",
+                icon: "💚",
+                step: "Start Care",
+                desc: "Connect directly and arrange care that fits your family's needs.",
+                color: "#e0d8c0"
               },
             ].map((item, i) => (
               <div
                 key={i}
-                className="bg-white rounded-2xl shadow hover:shadow-xl overflow-hidden transition"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(200,169,110,0.15)",
+                  padding: "48px 36px",
+                  position: "relative",
+                  transition: "background 0.3s, border-color 0.3s",
+                  cursor: "default"
+                }}
+                onMouseOver={e => {
+                  e.currentTarget.style.background = "rgba(200,169,110,0.08)";
+                  e.currentTarget.style.borderColor = "rgba(200,169,110,0.4)";
+                }}
+                onMouseOut={e => {
+                  e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+                  e.currentTarget.style.borderColor = "rgba(200,169,110,0.15)";
+                }}
               >
-                <img
-                  src={item.img}
-                  alt={item.title}
-                  className="h-48 w-full object-cover"
-                />
-                <div className="p-6">
-                  <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
-                  <p className="text-gray-600">{item.desc}</p>
+                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 64, fontWeight: 800, color: "rgba(200,169,110,0.1)", position: "absolute", top: 20, right: 24, lineHeight: 1 }}>
+                  {item.num}
+                </div>
+                <div style={{ fontSize: 36, marginBottom: 20 }}>{item.icon}</div>
+                <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontWeight: 600, color: "#fff", margin: "0 0 14px" }}>
+                  {item.step}
+                </h3>
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.7, margin: 0, fontWeight: 300 }}>
+                  {item.desc}
+                </p>
+                <div style={{ width: 32, height: 2, background: "#c8a96e", marginTop: 24 }} />
+              </div>
+            ))}
+          </div>
+
+        </div>
+      </section>
+
+      {/* ── SERVICES ── */}
+      <section id="services" style={{ padding: "120px 40px", background: "#fff" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+
+          <div style={{ textAlign: "center", marginBottom: 72 }}>
+            <div className="section-label" style={{ marginBottom: 16 }}>What We Offer</div>
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 46, fontWeight: 700, color: "#1a1a2e", margin: 0 }}>
+              Our Care Services
+            </h2>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
+            {[
+              {
+                title: "Elderly Care",
+                subtitle: "Compassionate daily support",
+                img: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=600&q=80",
+                desc: "Full-time or part-time care for seniors who need help with daily activities, medication, and companionship."
+              },
+              {
+                title: "Disability Support",
+                subtitle: "Professional assistance",
+                img: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=600&q=80",
+                desc: "Dedicated support workers helping people with physical and cognitive disabilities live independently."
+              },
+              {
+                title: "Home Nursing",
+                subtitle: "Medical care at home",
+                img: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=600&q=80",
+                desc: "Qualified nurses providing wound care, injections, post-surgery recovery and health monitoring at home."
+              },
+            ].map((service, i) => (
+              <div key={i} className="card-hover" style={{ border: "1px solid #f0e8d8", overflow: "hidden" }}>
+                <div className="service-img-wrap">
+                  <img src={service.img} alt={service.title} />
+                </div>
+                <div style={{ padding: "32px 28px", background: "#fff" }}>
+                  <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, letterSpacing: 2, color: "#c8a96e", textTransform: "uppercase", fontWeight: 600, marginBottom: 10 }}>
+                    {service.subtitle}
+                  </div>
+                  <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, fontWeight: 700, color: "#1a1a2e", margin: "0 0 14px" }}>
+                    {service.title}
+                  </h3>
+                  <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: "#6a6a7e", lineHeight: 1.7, margin: "0 0 20px", fontWeight: 300 }}>
+                    {service.desc}
+                  </p>
+                  <button
+                    onClick={() => navigate("/optionLogin")}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#c8a96e",
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      letterSpacing: 0.5,
+                      padding: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      transition: "gap 0.2s"
+                    }}
+                    onMouseOver={e => e.currentTarget.style.gap = "14px"}
+                    onMouseOut={e => e.currentTarget.style.gap = "8px"}
+                  >
+                    Learn More →
+                  </button>
                 </div>
               </div>
             ))}
           </div>
+
         </div>
       </section>
 
-      {/* HOW IT WORKS */}
-      <section className="py-24 bg-white px-6">
-        <div className="max-w-6xl mx-auto text-center">
-          <h2 className="text-4xl font-bold mb-12">How It Works</h2>
+      {/* ── TESTIMONIALS ── */}
+      <section style={{ padding: "120px 40px", background: "#faf8f4" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
 
-          <div className="grid md:grid-cols-4 gap-8">
-            {[
-              {
-                step: "Sign Up",
-                img: "https://img.icons8.com/color/96/add-user-male.png",
-              },
-              {
-                step: "Choose Care",
-                img: "https://img.icons8.com/color/96/medical-doctor.png",
-              },
-              {
-                step: "Get Matched",
-                img: "https://img.icons8.com/color/96/handshake.png",
-              },
-              {
-                step: "Start Care",
-                img: "https://img.icons8.com/color/96/home-care.png",
-              },
-            ].map((item, i) => (
-              <div
-                key={i}
-                className="p-6 rounded-xl shadow hover:shadow-lg transition"
-              >
-                <img
-                  src={item.img}
-                  alt={item.step}
-                  className="mx-auto mb-4 h-20"
-                />
-                <h3 className="font-semibold text-xl">{item.step}</h3>
-              </div>
-            ))}
+          <div style={{ textAlign: "center", marginBottom: 72 }}>
+            <div className="section-label" style={{ marginBottom: 16 }}>Testimonials</div>
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 46, fontWeight: 700, color: "#1a1a2e", margin: 0 }}>
+              What Families Say
+            </h2>
           </div>
-        </div>
-      </section>
 
-      {/* SERVICES */}
-      <section className="py-24 bg-gray-50 px-6">
-        <div className="max-w-6xl mx-auto text-center">
-          <h2 className="text-4xl font-bold mb-12">Our Services</h2>
-
-        <div className="grid md:grid-cols-3 gap-8">
-          {[
-            {
-              title: "Elderly Care",
-              img: "data:image/webp;base64,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",
-            },
-            {
-              title: "Disability Support",
-              img: "https://th.bing.com/th/id/OIP.oPb7J6M_Frto7AfPFVxEjQHaE8?w=232&h=180&c=7&r=0&o=7&dpr=1.3&pid=1.7&rm=3",
-            },
-            {
-              title: "Home Nursing",
-              img: "https://www.bing.com/th/id/OIP.pGDt1C0OZndhmPGdlSyn7wHaE7?w=258&h=211&c=8&rs=1&qlt=90&o=6&dpr=1.3&pid=3.1&rm=2",
-            },
-          ].map((service, i) => (
-            <div
-              key={i}
-              className="bg-white rounded-2xl shadow hover:shadow-xl overflow-hidden transition"
-            >
-              <img
-                src={service.img}
-                alt={service.title}
-                className="h-48 w-full object-cover"
-              />
-              <div className="p-6">
-                <h3 className="text-xl font-semibold">{service.title}</h3>
-              </div>
-            </div>
-          ))}
-        </div>
-        </div>
-      </section>
-
-      {/* TESTIMONIALS */}
-      <section className="py-24 bg-white px-6">
-        <div className="max-w-5xl mx-auto text-center">
-          <h2 className="text-4xl font-bold mb-12">What Families Say</h2>
-
-          <div className="grid md:grid-cols-3 gap-8">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
             {[
               {
-                text: "Amazing service and caring staff.",
-                img: "https://randomuser.me/api/portraits/women/65.jpg",
-              },
-              {
-                text: "My father felt safe and respected.",
+                text: "ElderEase gave me peace of mind knowing my mother has a trusted caregiver while I'm working abroad. The verification process made all the difference.",
+                name: "Rajan Sharma",
+                role: "Son, working in Qatar",
                 img: "https://randomuser.me/api/portraits/men/32.jpg",
               },
               {
-                text: "Highly professional caregivers.",
+                text: "Finding a reliable caretaker used to take weeks. With ElderEase I found someone perfect within days. My father feels safe and respected.",
+                name: "Priya Thapa",
+                role: "Daughter, Kathmandu",
+                img: "https://randomuser.me/api/portraits/women/65.jpg",
+              },
+              {
+                text: "As a caregiver, this platform helped me find meaningful work and connect with families who truly value what I do. Highly recommend.",
+                name: "Sita Gurung",
+                role: "Certified Caregiver",
                 img: "https://randomuser.me/api/portraits/women/44.jpg",
               },
             ].map((t, i) => (
-              <div
-                key={i}
-                className="bg-gray-50 p-8 rounded-xl shadow"
-              >
-                <img
-                  src={t.img}
-                  alt="User"
-                  className="h-16 w-16 rounded-full mx-auto mb-4 object-cover"
-                />
-                <p className="text-gray-600 mb-4">“{t.text}”</p>
-                <div className="text-yellow-400">★★★★★</div>
+              <div key={i} className="testimonial-card card-hover">
+                <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 15, color: "#4a4a5e", lineHeight: 1.8, margin: "24px 0 28px", fontWeight: 300 }}>
+                  {t.text}
+                </p>
+                <div style={{ display: "flex", alignItems: "center", gap: 14, borderTop: "1px solid #f0e8d8", paddingTop: 20 }}>
+                  <img src={t.img} alt={t.name} style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover" }} />
+                  <div>
+                    <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, color: "#1a1a2e" }}>{t.name}</div>
+                    <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#c8a96e", marginTop: 2 }}>{t.role}</div>
+                  </div>
+                  <div style={{ marginLeft: "auto", color: "#c8a96e", fontSize: 14, letterSpacing: 2 }}>★★★★★</div>
+                </div>
               </div>
             ))}
+          </div>
+
+        </div>
+      </section>
+
+      {/* ── CTA ── */}
+      <section style={{ position: "relative", padding: "120px 40px", overflow: "hidden" }}>
+        {/* Background */}
+        <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
+          <img
+            src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=1800&q=80"
+            alt=""
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
+          <div style={{ position: "absolute", inset: 0, background: "rgba(10,10,30,0.82)" }} />
+        </div>
+
+        <div style={{ position: "relative", zIndex: 10, maxWidth: 700, margin: "0 auto", textAlign: "center" }}>
+          <div className="section-label" style={{ marginBottom: 20, color: "#c8a96e" }}>Take the First Step</div>
+          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 52, fontWeight: 800, color: "#fff", margin: "0 0 20px", lineHeight: 1.1 }}>
+            Your Loved Ones
+            <br />
+            <em style={{ color: "#c8a96e", fontStyle: "italic" }}>Deserve the Best Care</em>
+          </h2>
+          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 16, color: "rgba(255,255,255,0.65)", lineHeight: 1.7, margin: "0 0 48px", fontWeight: 300 }}>
+            Join thousands of Nepali families who trust ElderEase to find compassionate,
+            verified caregivers. It starts with one click.
+          </p>
+          <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
+            <button
+              onClick={() => navigate("/optionLogin")}
+              style={{
+                background: "#c8a96e",
+                color: "#fff",
+                border: "none",
+                padding: "16px 44px",
+                fontFamily: "'DM Sans', sans-serif",
+                fontWeight: 500,
+                fontSize: 15,
+                cursor: "pointer",
+                letterSpacing: 0.5,
+                transition: "all 0.3s"
+              }}
+              // onMouseOver={e => e.currentTarget.style.background = "#fff", e => e.currentTarget.style.color = "#1a1a2e"}
+              // onMouseOut={e => e.currentTarget.style.background = "#c8a96e", e => e.currentTarget.style.color = "#fff"}
+            >
+              Find a Caregiver
+            </button>
+            <button
+              onClick={() => navigate("/optionLogin", { state: { mode: "SIGNUP" } })}
+              style={{
+                background: "transparent",
+                color: "#fff",
+                border: "1.5px solid rgba(255,255,255,0.4)",
+                padding: "16px 44px",
+                fontFamily: "'DM Sans', sans-serif",
+                fontWeight: 400,
+                fontSize: 15,
+                cursor: "pointer",
+                letterSpacing: 0.5,
+                transition: "all 0.3s"
+              }}
+              // onMouseOver={e => e.currentTarget.style.borderColor = "#c8a96e", e => e.currentTarget.style.color = "#c8a96e"}
+              // onMouseOut={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.4)", e => e.currentTarget.style.color = "#fff"}
+            >
+              Register as Caregiver
+            </button>
           </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-24 bg-gray-500 text-white text-center px-6">
-        <h2 className="text-4xl font-bold mb-6">
-          Ready to Get Trusted Care?
-        </h2>
-        <p className="mb-8">
-          Join thousands of families using Elder Ease
-        </p>
-        <button
-          onClick={() => navigate("/optionLogin")}
-          className="px-10 py-4 bg-white text-white-600 rounded-full font-semibold hover:bg-gray-100"
-        >
-          Get Started
-        </button>
-      </section>
+      {/* ── FOOTER ── */}
+      <footer style={{ background: "#0d0d20", padding: "60px 40px 32px" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
 
-      {/* FOOTER */}
-      <footer className="py-6 bg-gray-900 text-gray-400 text-center text-sm">
-        © {new Date().getFullYear()} Elder Ease. All rights reserved.
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 60, marginBottom: 48 }}>
+
+            {/* Brand */}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+                <img src={logo} alt="Elder Ease" style={{ height: 36 }} />
+                <span style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, fontWeight: 700, color: "#fff" }}>Elder Ease</span>
+              </div>
+              <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "rgba(255,255,255,0.45)", lineHeight: 1.8, maxWidth: 280, fontWeight: 300 }}>
+                Nepal's first dedicated platform connecting elderly individuals with verified, compassionate caregivers.
+              </p>
+            </div>
+
+            {/* Links */}
+            {[
+              { title: "Platform", links: ["Find Caregiver", "Register", "How it Works", "Sign In"] },
+              { title: "Company", links: ["About Us", "Our Mission", "Careers", "Contact"] },
+              { title: "Support", links: ["Help Center", "Safety", "Privacy Policy", "Terms"] },
+            ].map((col, i) => (
+              <div key={i}>
+                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, letterSpacing: 2, color: "#c8a96e", textTransform: "uppercase", fontWeight: 600, marginBottom: 20 }}>
+                  {col.title}
+                </div>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+                  {col.links.map((link, j) => (
+                    <li key={j}>
+                      <span
+                        onClick={() => navigate("/optionLogin")}
+                        style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "rgba(255,255,255,0.45)", cursor: "pointer", transition: "color 0.2s", fontWeight: 300 }}
+                        onMouseOver={e => e.currentTarget.style.color = "#c8a96e"}
+                        onMouseOut={e => e.currentTarget.style.color = "rgba(255,255,255,0.45)"}
+                      >
+                        {link}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 28, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "rgba(255,255,255,0.3)" }}>
+              © {new Date().getFullYear()} Elder Ease. All rights reserved.
+            </div>
+            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "rgba(255,255,255,0.3)" }}>
+              Made with ❤️ for Nepal's elderly
+            </div>
+          </div>
+
+        </div>
       </footer>
 
     </div>
