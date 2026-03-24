@@ -1,311 +1,279 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { FaTimes, FaCheck, FaHeart, FaSearch, FaStar } from "react-icons/fa";
-import logo from "../../assets/logo.jpg";
 
-const Favourites = () => {
-  const [search, setSearch] = useState("");
-  const [favourites, setFavourites] = useState([]);
-  const [dialogue, setDialogue] = useState(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [hoveredId, setHoveredId] = useState(null);
+const BASE = "http://localhost:8080/api";
 
+export default function Favourites() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const userName = localStorage.getItem("userName") || "Nikita";
-  const role = localStorage.getItem("role") || "User";
+  const userId = localStorage.getItem("userId");
+  const userName = localStorage.getItem("userName") || "User";
+
+  const [favouriteIds, setFavouriteIds] = useState([]);
+  const [caregivers, setCaregivers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [removing, setRemoving] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (msg, type = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 2800);
+  };
 
   useEffect(() => {
-    axios
-      .get("http://localhost:8080/api/caregivers/all")
-      .then((res) => setFavourites(res.data))
-      .catch((err) => console.error(err));
-  }, []);
+    if (!userId) {
+      navigate("/login");
+      return;
+    }
+    fetchData();
+  }, [userId]);
 
-  const filteredFavourites = favourites.filter(
-    (c) =>
-      c.fullName.toLowerCase().includes(search.toLowerCase()) ||
-      c.speciality.toLowerCase().includes(search.toLowerCase()) ||
-      c.address.toLowerCase().includes(search.toLowerCase())
-  );
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [favRes, cgRes] = await Promise.all([
+        axios.get(`${BASE}/users/favorites/${userId}`),
+        axios.get(`${BASE}/caregivers/verified`),
+      ]);
+      const ids = Array.isArray(favRes.data) ? favRes.data : [];
+      const all = Array.isArray(cgRes.data) ? cgRes.data : [];
+      setFavouriteIds(ids);
+      setCaregivers(all.filter((c) => ids.includes(c.id)));
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to load favourites", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleInterested = (caregiver) => {
-    setDialogue({
-      caregiver,
-      message: `${caregiver.fullName} has been notified of your interest!`,
+const removeFavourite = async (caregiverId) => {
+  setRemoving(caregiverId);
+  try {
+    await axios.post(`${BASE}/users/remove-favorite`, null, {
+      params: { userId, caregiverId },
     });
-  };
-
-  const navItems = [
-    { name: "☰", isHamburger: true },
-    { name: "🏠 Home", link: "/dash", isGrey: true },
-    { name: "👩‍⚕️ Caregivers", link: "/my-caregivers" },
-    { name: "📜 History", link: "/history" },
-    { name: "⭐ Top Interest", link: "/top-interest" },
-    { name: "❤️ Favourites", link: "/favourites" },
-    { name: "👤 Profile", link: "/my-profile", isGrey: true },
-  ];
-  const isActive = (link) => location.pathname === link;
-
-  const renderStars = (rating) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <FaStar
-        key={i}
-        size={11}
-        className={i < Math.floor(rating) ? "text-yellow-400" : "text-gray-300"}
-      />
-    ));
-  };
-
-  return (
-    <div className="min-h-screen w-screen bg-pink-500 font-sans">
-      {/* SIDE MENU — UNCHANGED */}
-      <aside
-        className={`fixed top-0 left-0 h-full bg-white shadow-xl z-50 w-72 transform transition-transform duration-300 ${
-          menuOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="flex flex-col p-6 h-full">
-          <button
-            className="self-end text-gray-700 hover:text-gray-900 mb-6"
-            onClick={() => setMenuOpen(false)}
-          >
-            <FaTimes size={24} />
-          </button>
-          <ul className="flex flex-col gap-4 mt-4">
-            {navItems.map((item) => (
-              <li key={item.name}>
-                <div
-                  onClick={() => {
-                    navigate(item.link);
-                    setMenuOpen(false);
-                  }}
-                  className={`cursor-pointer px-4 py-3 rounded-xl shadow-sm transition duration-200 font-medium ${
-                    isActive(item.link)
-                      ? "bg-gray-200 text-gray-900 underline"
-                      : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                  }`}
-                >
-                  {item.name}
-                </div>
-              </li>
-            ))}
-            <li className="mt-6">
-              <button
-                onClick={() => navigate("/")}
-                className="w-full bg-red-500 text-white py-3 rounded-xl hover:bg-red-600 transition shadow-md"
-              >
-                Logout
-              </button>
-            </li>
-          </ul>
-        </div>
-      </aside>
-
-      {/* HEADER — UNCHANGED */}
-      <header className="bg-white shadow-md w-full fixed top-0 z-40">
-        <div className="flex items-center justify-between px-6 py-4 w-full max-w-full">
-          <div className="flex items-center gap-4">
-            <img
-              src={logo}
-              alt="Elder Ease Logo"
-              className="h-10 w-auto cursor-pointer"
-              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            />
-            <span
-              className="cursor-pointer text-gray-700 font-bold text-xl hover:text-black transition"
-              onClick={() => setMenuOpen(true)}
-            >
-              ☰ Menu
-            </span>
-          </div>
-
-          <div className="flex items-center gap-6">
-            {navItems
-              .filter((i) =>
-                ["🏠 Home", "👩‍⚕️ Caregivers", "❤️ Favourites"].includes(i.name)
-              )
-              .map((item) => {
-                const name = item.name.replace(/[^a-zA-Z ]/g, "");
-                return (
-                  <span
-                    key={item.name}
-                    onClick={() => navigate(item.link)}
-                    className="cursor-pointer text-gray-700 hover:text-black px-4 py-2 rounded-lg hover:bg-gray-300 transition font-medium"
-                  >
-                    {name}
-                  </span>
-                );
-              })}
-
-            <div
-              className="hidden md:flex items-center gap-4 ml-4 cursor-pointer"
-              onClick={() => navigate("/my-profile")}
-            >
-              <img
-                src="https://randomuser.me/api/portraits/women/65.jpg"
-                alt="Profile"
-                className="w-12 h-12 rounded-full border object-cover"
-              />
-              <div className="text-right">
-                <h3 className="font-semibold text-gray-900">{userName}</h3>
-                <p className="text-sm text-gray-500">{role}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* MAIN CONTENT — REDESIGNED */}
-      <main className="pt-24 min-h-screen bg-pink-50 px-6 pb-12">
-        <div className="max-w-6xl mx-auto">
-
-          {/* Page Title */}
-          <div className="flex items-center justify-between mb-2 pt-6">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">☆</span>
-              <h1 className="text-2xl font-bold text-gray-800 tracking-tight uppercase">
-                Favourites
-              </h1>
-            </div>
-            {/* Search icon button */}
-            <button className="text-gray-500 hover:text-pink-600 transition">
-              <FaSearch size={18} />
-            </button>
-          </div>
-
-          <p className="text-gray-500 text-sm mb-6">
-            Here you can find all your favorite caregivers, if you need their service contact them 😊
-          </p>
-
-          {/* Search bar */}
-          <div className="relative mb-8 max-w-md">
-            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-            <input
-              type="text"
-              placeholder="Search favourites..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-full border border-gray-200 bg-white shadow-sm focus:ring-2 focus:ring-pink-300 focus:outline-none text-sm text-gray-700"
-            />
-          </div>
-
-          {/* Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {filteredFavourites.map((c) => (
-              <div
-                key={c.id}
-                className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 relative group"
-                onMouseEnter={() => setHoveredId(c.id)}
-                onMouseLeave={() => setHoveredId(null)}
-                style={{ transform: hoveredId === c.id ? "translateY(-4px)" : "translateY(0)" }}
-              >
-                {/* Heart icon */}
-                <button className="absolute top-3 right-3 z-10 bg-white rounded-full p-1.5 shadow-sm">
-                  <FaHeart className="text-pink-500" size={14} />
-                </button>
-
-                {/* Tag */}
-                {(c.tag || c.speciality) && (
-                  <span className="absolute top-3 left-3 z-10 bg-pink-500 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
-                    {c.tag || c.speciality}
-                  </span>
-                )}
-
-                {/* Image */}
-                <div className="relative h-44 overflow-hidden bg-gray-100">
-                  <img
-                    src={
-                      c.profilePhoto
-                        ? `http://localhost:8080/uploads/${c.profilePhoto.replace(/\s+/g, "_").trim()}`
-                        : `https://randomuser.me/api/portraits/${c.id % 2 === 0 ? "women" : "men"}/${30 + (c.id % 20)}.jpg`
-                    }
-                    alt={c.fullName}
-                    className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
-                    onError={(e) => (e.target.src = "/default-avatar.png")}
-                  />
-                </div>
-
-                {/* Info */}
-                <div className="p-4">
-                  <p className="text-xs text-pink-500 font-semibold uppercase tracking-wide mb-0.5">
-                    {c.speciality}
-                  </p>
-                  <h3 className="text-base font-bold text-gray-800 truncate">{c.fullName}</h3>
-
-                  {/* Stars */}
-                  <div className="flex items-center gap-1 mt-1 mb-3">
-                    {renderStars(c.rating)}
-                    <span className="text-xs text-gray-500 ml-1">({c.rating})</span>
-                  </div>
-
-                  {/* Stats row */}
-                  <div className="flex justify-between text-xs text-gray-500 border-t border-gray-100 pt-3 mb-3">
-                    <div className="text-center">
-                      <p className="font-semibold text-gray-700">{c.experience}yr</p>
-                      <p>Exp.</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="font-semibold text-gray-700">Rs{c.charge}</p>
-                      <p>/day</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="font-semibold text-gray-700 truncate max-w-[60px]">{c.address.split(" ").slice(-1)}</p>
-                      <p>Area</p>
-                    </div>
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => navigate(`/profile/${c.id}`)}
-                      className="flex-1 bg-indigo-600 text-white text-xs py-2 rounded-lg hover:bg-indigo-500 transition font-semibold"
-                    >
-                      View Profile
-                    </button>
-                    <button
-                      onClick={() => handleInterested(c)}
-                      className="flex-1 bg-pink-100 text-pink-600 text-xs py-2 rounded-lg hover:bg-pink-200 transition font-semibold"
-                    >
-                      Interested
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {filteredFavourites.length === 0 && (
-            <div className="text-center py-20 text-gray-400">
-              <FaHeart size={40} className="mx-auto mb-4 text-pink-300" />
-              <p className="text-lg font-medium">No favourites found</p>
-              <p className="text-sm">Try a different search term</p>
-            </div>
-          )}
-        </div>
-      </main>
-
-      {/* Notification Modal */}
-      {dialogue && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-400 text-white rounded-2xl shadow-2xl max-w-md w-full p-8 flex flex-col items-center relative">
-            <button
-              className="absolute top-4 right-4 text-gray-200 hover:text-white"
-              onClick={() => setDialogue(null)}
-            >
-              <FaTimes size={20} />
-            </button>
-            <FaCheck className="text-green-500 text-6xl mb-6" />
-            <p className="text-center text-xl font-semibold">{dialogue.message}</p>
-            <p className="mt-4 text-center text-gray-200 text-sm">
-              The caregiver will be notified and can contact you if interested.
-            </p>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+    setCaregivers((prev) => prev.filter((c) => c.id !== caregiverId));
+    setFavouriteIds((prev) => prev.filter((id) => id !== caregiverId));
+    showToast("Removed from favourites ✨");
+  } catch (err) {
+    console.error(err);
+    showToast("Failed to remove from favourites", "error");
+  } finally {
+    setRemoving(null);
+  }
 };
 
-export default Favourites;
+
+  const filtered = caregivers.filter((c) =>
+    !search ||
+    c.fullName?.toLowerCase().includes(search.toLowerCase()) ||
+    c.speciality?.toLowerCase().includes(search.toLowerCase()) ||
+    c.address?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="w-screen max-w-screen overflow-x-hidden bg-[#f8fafc] font-sans text-slate-900 relative overflow-x-hidden">
+      
+      {/* FULLSCREEN BACKGROUND */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-br from-rose-100/30 to-indigo-100/30" />
+        <div className="absolute top-[-10%] right-[-5%] w-[40rem] h-[40rem] bg-rose-100/40 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] left-[-5%] w-[35rem] h-[35rem] bg-indigo-100/30 rounded-full blur-[120px]" />
+      </div>
+
+      {/* TOAST */}
+      {toast && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] px-8 py-4 bg-slate-900 text-white rounded-full shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-5 duration-300">
+          <span className="text-rose-400">✦</span>
+          <span className="font-medium text-sm">{toast.msg}</span>
+        </div>
+      )}
+
+      {/* NAVBAR */}
+    <nav className="sticky top-0 z-50 bg-white/60 backdrop-blur-xl border-b border-slate-200/50 w-full px-6 md:px-[5vw]">
+  <div className="h-20 flex items-center justify-between">
+    <div className="flex items-center gap-8">
+      {/* Simple Home Icon */}
+   <div
+  onClick={() => navigate("/dash")}
+  className="flex items-center gap-2 cursor-pointer text-slate-700 hover:text-rose-500 font-semibold"
+>
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className="h-5 w-5"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeWidth={2}
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M3 12l9-9 9 9v9a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-5H9v5a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-9z"
+    />
+  </svg>
+  <span className="text-sm md:text-base font-semibold">Home</span>
+</div>
+
+      <div className="h-6 w-px bg-slate-200 hidden md:block" />
+
+      <h1 className="heading-font text-xl font-bold tracking-tight hidden md:block italic">
+        Elder<span className="text-rose-500 font-black">Ease</span>
+      </h1>
+    </div>
+
+    <div className="flex items-center gap-4 bg-white/80 px-4 py-2 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-rose-400 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
+        {userName.charAt(0)}
+      </div>
+      <span className="text-sm font-bold text-slate-700">{userName}</span>
+    </div>
+  </div>
+</nav>
+
+      {/* MAIN */}
+      <main className="relative z-10 w-full px-6 md:px-[5vw] py-16">
+        
+        {/* HEADER */}
+        <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-10 mb-20">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-rose-50 text-rose-600 text-xs font-black uppercase tracking-widest mb-6">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+              </span>
+              Your Trusted Circle
+            </div>
+            <h2 className="heading-font text-6xl md:text-8xl font-bold text-slate-900 tracking-tighter mb-6 leading-[0.9]">
+              My <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-500 to-pink-600">Favourites</span>
+            </h2>
+            <p className="text-slate-500 text-xl font-medium leading-relaxed">
+              Feel homely with your saved favourites caregivers. You have saved 
+              <span className="text-slate-900 font-bold"> {caregivers.length} profiles</span>.
+            </p>
+          </div>
+
+          {/* SEARCH */}
+          <div className="relative w-full xl:max-w-xl group">
+            <input
+              type="text"
+              placeholder="Search by name, expertise, or location..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full bg-white border-2 border-slate-100 rounded-[2.5rem] py-6 pl-16 pr-8 text-slate-700 shadow-xl shadow-slate-200/50 focus:outline-none focus:border-rose-400 transition-all text-lg"
+            />
+            <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-rose-500 transition-colors">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.3-4.3"/>
+              </svg>
+            </span>
+          </div>
+        </div>
+
+        {/* LOADING */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-40">
+            <div className="relative w-24 h-24 mb-8">
+              <div className="absolute inset-0 border-4 border-rose-100 rounded-full"></div>
+              <div className="absolute inset-0 border-4 border-rose-500 rounded-full border-t-transparent animate-spin"></div>
+            </div>
+            <p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-xs">Loading Excellence</p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="py-40 text-center bg-white/40 rounded-[4rem] border-2 border-dashed border-slate-200">
+            <div className="text-8xl mb-8 animate-float inline-block">💖</div>
+            <h3 className="heading-font text-4xl font-bold text-slate-900 mb-4">
+              {search ? "No matches found" : "Your list is empty"}
+            </h3>
+            <p className="text-slate-500 text-lg mb-12 max-w-md mx-auto">
+              {search ? "Maybe try a broader search term?" : "Browse our verified experts and save the ones that resonate with you."}
+            </p>
+            {!search && (
+              <button
+                onClick={() => navigate("/dash")}
+                className="px-12 py-5 bg-slate-900 text-white rounded-full font-bold hover:bg-rose-600 transition-all shadow-xl shadow-slate-200"
+              >
+                Find Caregivers
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-10">
+            {filtered.map((c) => {
+              const photo = c.profilePhoto?.replace(/\s+/g, "_").trim();
+              return (
+                <div key={c.id} className="care-card group bg-white rounded-[3rem] p-4 border border-slate-100">
+                  <div className="relative h-80 w-full overflow-hidden rounded-[2.5rem] mb-6">
+                    <img
+                      src={`http://localhost:8080/uploads/${photo}`}
+                      alt={c.fullName}
+                      className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                      onError={(e) => (e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(c.fullName || "C")}&background=fff1f2&color=e11d48&size=512`)}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    
+                    <button
+                      onClick={() => removeFavourite(c.id)}
+                      disabled={removing === c.id}
+                      className="absolute top-4 right-4 w-12 h-12 bg-white/90 backdrop-blur-md rounded-2xl flex items-center justify-center text-rose-500 shadow-xl hover:bg-rose-500 hover:text-white transition-all active:scale-95"
+                    >
+                      {removing === c.id ? "..." : "♥"}
+                    </button>
+                  </div>
+
+                  <div className="px-4 pb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-rose-500 bg-rose-50 px-3 py-1 rounded-full">
+                        {c.speciality || "Specialist"}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-400">VERIFIED</span>
+                    </div>
+                    
+                    <h3 className="heading-font text-2xl font-bold text-slate-900 group-hover:text-rose-600 transition-colors mb-4 truncate">
+                      {c.fullName}
+                    </h3>
+
+                    <div className="space-y-4 mb-8">
+                      <div className="flex items-center gap-3 text-slate-500 text-sm font-medium">
+                        <span className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center">📍</span>
+                        <span className="truncate">{c.address || "Location Private"}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                           <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5">Exp.</p>
+                           <p className="text-sm font-bold text-slate-700">{c.experience || 0} Years</p>
+                        </div>
+                        <div className="flex-1 bg-rose-50/50 p-3 rounded-2xl border border-rose-100">
+                           <p className="text-[10px] text-rose-400 font-bold uppercase mb-0.5">Daily</p>
+                           <p className="text-sm font-bold text-rose-700">Rs.{c.chargeMin}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => navigate(`/profile/${c.id}`)}
+                        className="py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:shadow-lg transition-all"
+                      >
+                        Profile
+                      </button>
+                      <button
+                        onClick={() => navigate(`/CareGiverDash/${c.id}`)}
+                        className="py-4 bg-white border-2 border-slate-100 text-slate-600 rounded-2xl font-bold text-sm hover:border-rose-200 hover:text-rose-500 transition-all"
+                      >
+                        Contact
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
