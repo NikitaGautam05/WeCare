@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import backend.backend.model.HistoryItems;
+import backend.backend.repository.UserRepo;
 import backend.backend.service.EmailService;
 import backend.backend.service.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +27,8 @@ public class UserController {
     private JwtService jwtService;
     @Autowired
     EmailService emailService;
+    @Autowired
+    UserRepo userRepository;
 
     @GetMapping("/users")
     public List<Users> getAllUser() {
@@ -112,6 +116,8 @@ public class UserController {
         String token = jwtService.generateToken(user);
         response.put("token", token);
         response.put("role", user.getRole()); // CAREGIVER or USER
+        response.put("userId",user.getId());
+        response.put("userName",user.getUserName());
         return response;
     }
 
@@ -129,5 +135,51 @@ public class UserController {
         user.setEmail(email);
         userService.updateUser(user); // saves updated email
         return "Email updated successfully for " + username;
+    }
+    @PostMapping("/add-favorite")
+    public Users addFavorite(@RequestParam String userId,
+                             @RequestParam String caregiverId) {
+
+        Users user = userRepository.findById(userId).orElseThrow();
+
+        // Trim and avoid duplicates
+        String trimmedId = caregiverId.trim();
+        if (!user.getFavourites().contains(trimmedId)) {
+            user.getFavourites().add(trimmedId);
+        }
+
+        return userRepository.save(user);
+    }
+    @PostMapping("/add-history")
+    public Users addHistory(@RequestParam String userId,
+                            @RequestParam String caregiverId,
+                            @RequestParam String action) {
+
+        Users user = userRepository.findById(userId).orElseThrow();
+
+        HistoryItems item = new HistoryItems();
+        item.setCaregiverId(caregiverId);
+        item.setAction(action);
+        item.setTimestamp(java.time.LocalDateTime.now().toString());
+
+        user.getHistory().add(item);
+
+        return userRepository.save(user);
+    }
+    @GetMapping("/favorites/{userId}")
+    public List<String> getFavorites(@PathVariable String userId) {
+        Users user = userRepository.findById(userId).orElseThrow();
+        return user.getFavourites();
+    }
+    @PostMapping("/remove-favorite")
+    public Users removeFavorite(@RequestParam String userId,
+                                @RequestParam String caregiverId) {
+
+        Users user = userRepository.findById(userId).orElseThrow();
+
+        // Trim before removing
+        user.getFavourites().removeIf(favId -> favId.equals(caregiverId.trim()));
+
+        return userRepository.save(user);
     }
 }

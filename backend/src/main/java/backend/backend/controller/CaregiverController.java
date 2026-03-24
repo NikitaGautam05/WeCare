@@ -132,6 +132,12 @@ public class CaregiverController {
         long count = caregiverService.getAllCaregivers().size();
         return "Caregiver collection has " + count + " documents";
     }
+    @GetMapping("/{id}")
+    public Caregiver getCaregiverByIdEndpoint(@PathVariable String id) {
+        Caregiver caregiver = caregiverService.getCaregiverById(id);
+        if (caregiver == null) throw new RuntimeException("Caregiver not found");
+        return caregiver;
+    }
     @PostMapping("/{id}/notify")
     public Caregiver notifyCaregiver(
             @PathVariable String id,

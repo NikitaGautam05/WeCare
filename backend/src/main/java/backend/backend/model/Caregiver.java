@@ -27,6 +27,7 @@ public class Caregiver {
     private CaregiverStatus status = CaregiverStatus.PENDING;
     private int reportsCount = 0;
 
+
     private List<String> notifications = new ArrayList<>();
 
     public List<String> getNotifications() {

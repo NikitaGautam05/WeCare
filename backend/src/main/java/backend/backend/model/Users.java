@@ -4,12 +4,34 @@ package backend.backend.model;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Document(collection="login")
 public class Users {
     @Id
     private String id;
     private String userName;
     private String password;
+
+    public List<String> getFavourites() {
+        return favourites;
+    }
+
+    public void setFavourites(List<String> favourites) {
+        this.favourites = favourites;
+    }
+
+    public List<HistoryItems> getHistory() {
+        return history;
+    }
+
+    public void setHistory(List<HistoryItems> history) {
+        this.history = history;
+    }
+
+    private List<String > favourites =new ArrayList<>();
+    private List<HistoryItems> history = new ArrayList<>();
 
     public String getRole() {
         return role;
