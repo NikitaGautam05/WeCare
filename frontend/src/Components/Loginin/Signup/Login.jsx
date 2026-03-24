@@ -11,31 +11,35 @@ const Login = () => {
   const [message, setMessage] = useState("");
    const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+const handleLogin = async (e) => {
+  e.preventDefault();
 
-    try {
-      const response = await axios.post("http://localhost:8080/api/users/login", {
-        userName: userName.trim(),
-        password: password.trim()
-      });
+  try {
+    const response = await axios.post("http://localhost:8080/api/users/login", {
+      userName: userName.trim(),
+      password: password.trim()
+    });
 
-      if (response.data.token) {
-        localStorage.setItem("jwtToken", response.data.token);
-        const role = response.data.role || "USER";
-        const normalizedRole = role.toLowerCase().replace(/\s/g,'');
+    if (response.data.token) {
+      // Save everything needed
+      localStorage.setItem("jwtToken", response.data.token);
+      localStorage.setItem("userId", response.data.userId);      
+      localStorage.setItem("userName", response.data.userName);   
+      localStorage.setItem("role", response.data.role);           
 
-        if (normalizedRole.includes("caregiver")) navigate("/welcome");
-        else navigate("/dash");
-      } else if(response.data.error){
-        setMessage(response.data.error);
-      }
+      const normalizedRole = (response.data.role || "USER").toLowerCase().replace(/\s/g,'');
+      if (normalizedRole.includes("caregiver")) navigate("/welcome");
+      else navigate("/dash");
 
-    } catch (error) {
-      console.error(error);
-      setMessage(error.response?.data || "Login failed");
+    } else if (response.data.error) {
+      setMessage(response.data.error);
     }
-  };
+
+  } catch (error) {
+    console.error(error);
+    setMessage(error.response?.data || "Login failed");
+  }
+};
 
   const handleGoogleLogin = async (credentialResponse) => {
   try {
@@ -54,16 +58,16 @@ const Login = () => {
       payload
     );
 
-    if (res.data.token) {
-      localStorage.setItem("jwtToken", res.data.token);
+   if (res.data.token) {
+  localStorage.setItem("jwtToken", res.data.token);
+  localStorage.setItem("userId", res.data.userId);       
+  localStorage.setItem("userName", res.data.userName);    
+  localStorage.setItem("role", res.data.role);
 
-      const role = res.data.role.toLowerCase();
-
-      // Navigate based on role
-      if (role.includes("caregiver")) navigate("/welcome");
-      else navigate("/dash");
-
-    } else {
+  const role = res.data.role.toLowerCase();
+  if (role.includes("caregiver")) navigate("/welcome");
+  else navigate("/dash");
+} else {
       alert(res.data.error || res.data);
     }
   } catch (err) {

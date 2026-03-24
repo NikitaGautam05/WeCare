@@ -8,27 +8,42 @@ const Dashboard = () => {
   const [search, setSearch] = useState("");
   const [caregivers, setCaregivers] = useState([]);
   const [dialogue, setDialogue] = useState(null);
+  const [favouriteCaregivers, setFavouriteCaregivers] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const navigate = useNavigate();
   const userName = localStorage.getItem("userName") || "Nikita";
   const role = localStorage.getItem("role") || "User";
+  const userId = localStorage.getItem("userId");
   const location = useLocation();
   const isActive = (link) => location.pathname === link;
 
-  const favourites = [
-    { id: 101, fullName: "Anita Sharma", speciality: "Senior Care", profilePhoto: "anita_sharma.jpg" },
-    { id: 102, fullName: "Ramesh Thapa", speciality: "Medical Assistance", profilePhoto: "ramesh_thapa.jpg" },
-    { id: 103, fullName: "Sita Gurung", speciality: "Physical Therapy", profilePhoto: "sita_gurung.jpg" },
-    { id: 104, fullName: "Kiran Rai", speciality: "Child Care", profilePhoto: "kiran_rai.jpg" },
-  ];
-
   useEffect(() => {
+    // Fetch all verified caregivers
     axios
       .get("http://localhost:8080/api/caregivers/verified")
       .then((res) => setCaregivers(res.data))
       .catch((err) => console.error(err));
-  }, []);
+
+    // Fetch user's favourite caregivers
+    if (userId) {
+      axios
+        .get(`http://localhost:8080/api/users/favorites/${userId}`)
+        .then((res) => {
+          const favIds = res.data;
+          if (Array.isArray(favIds) && favIds.length > 0) {
+            axios
+              .get("http://localhost:8080/api/caregivers/verified")
+              .then((res) => {
+                const allCaregivers = res.data;
+                const favCaregivers = allCaregivers.filter((c) => favIds.includes(c.id));
+                setFavouriteCaregivers(favCaregivers);
+              });
+          }
+        })
+        .catch((err) => console.error("Failed to fetch favourites", err));
+    }
+  }, [userId]);
 
   const filteredCaregivers = caregivers
     .filter(
@@ -72,7 +87,6 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen w-screen bg-gray-100 font-sans">
-
       {/* SIDE MENU — UNCHANGED */}
       <aside
         className={`fixed top-0 left-0 h-full bg-white shadow-xl z-50 w-72 transform transition-transform duration-300 ${
@@ -136,7 +150,6 @@ const Dashboard = () => {
 
       {/* MAIN — starts right below header, 100% width */}
       <main className="pt-[72px] w-full min-h-screen flex flex-col bg-gray-100">
-
         {/* ── HERO BANNER — edge to edge ── */}
         <div className="w-full bg-gray-900 px-8 py-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div>
@@ -150,7 +163,7 @@ const Dashboard = () => {
               <p className="text-xs text-gray-400 mt-1 uppercase tracking-widest">Caregivers</p>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-2xl px-7 py-4 text-center">
-              <p className="text-3xl font-bold text-white">{favourites.length}</p>
+              <p className="text-3xl font-bold text-white">{favouriteCaregivers.length}</p>
               <p className="text-xs text-gray-400 mt-1 uppercase tracking-widest">Favourites</p>
             </div>
           </div>
@@ -174,7 +187,6 @@ const Dashboard = () => {
 
         {/* ── PAGE CONTENT — padded ── */}
         <div className="w-full px-8 pb-16 flex-1">
-
           {/* Search */}
           <div className="relative mt-8 mb-6 max-w-xl">
             <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={13} />
@@ -255,56 +267,61 @@ const Dashboard = () => {
             </div>
           </section>
 
-          {/* ── FAVOURITES ── */}
-          {Array.isArray(favourites) && favourites.length > 0 && (
-            <section className="bg-pink-100 rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-5">
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900 uppercase tracking-widest">Your Favourites</h2>
-                  <p className="text-xs text-gray-500 mt-0.5">Caregivers you love</p>
-                </div>
-                <button
-                  onClick={() => navigate("/favourites")}
-                  className="flex items-center gap-2 text-sm font-semibold border border-pink-300 text-gray-300 px-4 py-2 rounded-xl hover:bg-gray-900 hover:text-white hover:border-gray-900 transition"
-                >
-                  View all <FaArrowRight size={10} />
+          {/* ── FAVOURITES — now dynamic from backend ── */}
+          {/* ── FAVOURITES — now dynamic from backend ── */}
+<section className="bg-pink-100 rounded-2xl p-6">
+  <div className="flex items-center justify-between mb-5">
+    <div>
+      <h2 className="text-lg font-bold text-gray-900 uppercase tracking-widest">Your Favourites</h2>
+      <p className="text-xs text-gray-500 mt-0.5">Caregivers you love</p>
+    </div>
+    <button
+      onClick={() => navigate("/favourites")}
+      className="flex items-center gap-2 text-sm font-semibold border border-pink-300 text-gray-300 px-4 py-2 rounded-xl hover:bg-gray-900 hover:text-white hover:border-gray-900 transition"
+    >
+      View all <FaArrowRight size={10} />
+    </button>
+  </div>
+
+  {favouriteCaregivers.length > 0 ? (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      {favouriteCaregivers.map((c, idx) => {
+        const cleanPhoto = c.profilePhoto?.replace(/\s+/g, "_").trim();
+        return (
+          <div key={c.id} className="bg-white rounded-2xl border border-pink-200 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col">
+            <div className="relative h-36 bg-pink-50 overflow-hidden">
+              <img
+                src={`http://localhost:8080/uploads/${cleanPhoto}`}
+                alt={c.fullName}
+                className="w-full h-full object-cover object-top"
+                onError={(e) => (e.target.src = `https://randomuser.me/api/portraits/women/${50 + idx}.jpg`)}
+              />
+              <div className="absolute top-2 right-2 bg-white rounded-full p-1.5 shadow">
+                <FaHeart className="text-pink-400" size={11} />
+              </div>
+            </div>
+            <div className="p-4 flex flex-col flex-1">
+              <h3 className="font-bold text-gray-900 text-sm truncate">{c.fullName}</h3>
+              <p className="text-xs text-gray-500 mt-0.5">{c.speciality}</p>
+              <div className="flex gap-2 mt-auto pt-3">
+                <button onClick={() => navigate(`/profile/${c.id}`)} className="flex-1 bg-gray-900 text-white text-xs py-2 rounded-xl hover:bg-gray-700 transition font-semibold">
+                  View
+                </button>
+                <button onClick={() => handleInterested(c)} className="flex-1 bg-pink-100 text-white text-xs py-2 rounded-xl hover:bg-pink-200 transition font-semibold">
+                  Interested
                 </button>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                {favourites.map((c, idx) => {
-                  const cleanPhoto = c.profilePhoto?.replace(/\s+/g, "_").trim();
-                  return (
-                    <div key={c.id} className="bg-white rounded-2xl border border-pink-200 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col">
-                      <div className="relative h-36 bg-pink-50 overflow-hidden">
-                        <img
-                          src={`http://localhost:8080/uploads/${cleanPhoto}`}
-                          alt={c.fullName}
-                          className="w-full h-full object-cover object-top"
-                          onError={(e) => (e.target.src = `https://randomuser.me/api/portraits/women/${50 + idx}.jpg`)}
-                        />
-                        <div className="absolute top-2 right-2 bg-white rounded-full p-1.5 shadow">
-                          <FaHeart className="text-pink-400" size={11} />
-                        </div>
-                      </div>
-                      <div className="p-4 flex flex-col flex-1">
-                        <h3 className="font-bold text-gray-900 text-sm truncate">{c.fullName}</h3>
-                        <p className="text-xs text-gray-500 mt-0.5">{c.speciality}</p>
-                        <div className="flex gap-2 mt-auto pt-3">
-                          <button onClick={() => navigate(`/profile/${c.id}`)} className="flex-1 bg-gray-900 text-white text-xs py-2 rounded-xl hover:bg-gray-700 transition font-semibold">
-                            View
-                          </button>
-                          <button onClick={() => handleInterested(c)} className="flex-1 bg-pink-100 text-white text-xs py-2 rounded-xl hover:bg-pink-200 transition font-semibold">
-                            Interested
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  ) : (
+    <div className="text-center py-12 text-gray-500 text-sm">
+      You haven’t saved any favourites yet. Browse caregivers to add some ❤️
+    </div>
+  )}
+</section>
         </div>
       </main>
 
