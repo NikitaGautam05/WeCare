@@ -5,30 +5,38 @@ import axios from "axios";
 const BASE = "http://localhost:8080/api";
 
 const ACTION_META = {
-  VIEWED:    { label: "Viewed",    color: "#60a5fa", bg: "rgba(96,165,250,0.1)",  icon: "👁" },
-  INTERESTED:{ label: "Interested",color: "#d4a843", bg: "rgba(212,168,67,0.1)",  icon: "⭐" },
-  CONTACTED: { label: "Contacted", color: "#34d399", bg: "rgba(52,211,153,0.1)",  icon: "📞" },
-  HIRED:     { label: "Hired",     color: "#a78bfa", bg: "rgba(167,139,250,0.1)", icon: "✅" },
-  DEFAULT:   { label: "Activity",  color: "#d4a843", bg: "rgba(212,168,67,0.1)",  icon: "◎" },
+  VIEWED: { label: "Viewed", icon: "👁️", color: "text-blue-600" },
+  INTERESTED: { label: "Interested", icon: "⭐", color: "text-amber-600" },
+  CONTACTED: { label: "Contacted", icon: "📞", color: "text-emerald-600" },
+  SAVED: { label: "Saved", icon: "❤️", color: "text-red-600" },
+  UNSAVED: { label: "Removed", icon: "💔", color: "text-red-500" },
+  DEFAULT: { label: "Activity", icon: "◎", color: "text-gray-500" },
 };
 
-const getActionMeta = (action) => ACTION_META[action?.toUpperCase()] || ACTION_META.DEFAULT;
+const getMeta = (action) =>
+  ACTION_META[action?.toUpperCase()] || ACTION_META.DEFAULT;
 
-const formatTime = (timestamp) => {
-  if (!timestamp) return "—";
-  try {
-    const d = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now - d;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  } catch { return "—"; }
+const formatTime = (ts) => {
+  if (!ts) return "";
+  const d = new Date(ts);
+  const diff = Date.now() - d.getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "Just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(diff / 3600000);
+  if (h < 24) return `${h}h ago`;
+  const days = Math.floor(diff / 86400000);
+  if (days < 7) return `${days}d ago`;
+  return d.toLocaleDateString();
+};
+
+const getGroup = (ts) => {
+  const days = Math.floor((Date.now() - new Date(ts)) / 86400000);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 7) return "This Week";
+  if (days < 30) return "This Month";
+  return "Earlier";
 };
 
 export default function History() {
@@ -40,370 +48,224 @@ export default function History() {
   const [caregivers, setCaregivers] = useState({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [filterAction, setFilterAction] = useState("ALL");
-  const [toast, setToast] = useState(null);
-
-  const showToast = (msg, type = "info") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
-  };
+  const [filter, setFilter] = useState("ALL");
 
   useEffect(() => {
-    if (!userId) { navigate("/login"); return; }
-    fetchData();
-  }, [userId]);
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      // Fetch user data to get history
-      const userRes = await axios.get(`${BASE}/users/user/${userName}`);
-      const historyItems = userRes.data?.history || [];
-      setHistory(historyItems.slice().reverse()); // newest first
-
-      // Fetch all verified caregivers once
-      const cgRes = await axios.get(`${BASE}/caregivers/verified`);
-      const cgMap = {};
-      (cgRes.data || []).forEach(c => { cgMap[c.id] = c; });
-      setCaregivers(cgMap);
-    } catch (err) {
-      console.error(err);
-      showToast("Failed to load history", "error");
-    } finally {
-      setLoading(false);
+    if (!userId) {
+      navigate("/login");
+      return;
     }
-  };
 
-  const uniqueActions = ["ALL", ...new Set(history.map(h => h.action?.toUpperCase()).filter(Boolean))];
+    const fetchData = async () => {
+      try {
+        const [uRes, cRes] = await Promise.all([
+          axios.get(`${BASE}/users/user/${userName}`),
+          axios.get(`${BASE}/caregivers/verified`),
+        ]);
 
-  const filtered = history.filter(item => {
-    const cg = caregivers[item.caregiverId];
-    const matchSearch = !search ||
+        setHistory((uRes.data?.history || []).slice().reverse());
+
+        const map = {};
+        (cRes.data || []).forEach((c) => (map[c.id] = c));
+        setCaregivers(map);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [userId, userName, navigate]);
+
+  const actions = ["ALL", ...new Set(history.map((h) => h.action?.toUpperCase()).filter(Boolean))];
+
+  const filtered = history.filter((h) => {
+    const cg = caregivers[h.caregiverId];
+    const matchesSearch =
+      !search ||
       cg?.fullName?.toLowerCase().includes(search.toLowerCase()) ||
       cg?.speciality?.toLowerCase().includes(search.toLowerCase()) ||
-      cg?.address?.toLowerCase().includes(search.toLowerCase()) ||
-      item.action?.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = filterAction === "ALL" || item.action?.toUpperCase() === filterAction;
-    return matchSearch && matchFilter;
+      h.action?.toLowerCase().includes(search.toLowerCase());
+
+    return matchesSearch && (filter === "ALL" || h.action?.toUpperCase() === filter);
   });
 
-  // Group by date
-  const grouped = filtered.reduce((acc, item) => {
-    let label = "Unknown";
-    try {
-      const d = new Date(item.timestamp);
-      const now = new Date();
-      const diffDays = Math.floor((now - d) / 86400000);
-      if (diffDays === 0) label = "Today";
-      else if (diffDays === 1) label = "Yesterday";
-      else if (diffDays < 7) label = "This Week";
-      else if (diffDays < 30) label = "This Month";
-      else label = d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-    } catch {}
-    if (!acc[label]) acc[label] = [];
-    acc[label].push(item);
+  const groups = filtered.reduce((acc, item) => {
+    const g = getGroup(item.timestamp);
+    (acc[g] = acc[g] || []).push(item);
     return acc;
   }, {});
 
-  const groupOrder = ["Today", "Yesterday", "This Week", "This Month"];
+  const ORDER = ["Today", "Yesterday", "This Week", "This Month"];
   const sortedGroups = [
-    ...groupOrder.filter(g => grouped[g]),
-    ...Object.keys(grouped).filter(g => !groupOrder.includes(g)),
+    ...ORDER.filter((g) => groups[g]),
+    ...Object.keys(groups).filter((g) => !ORDER.includes(g)),
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "#080810", fontFamily: "'DM Sans', sans-serif", color: "#fff" }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap');
-        * { box-sizing: border-box; }
-        :root { --gold: #d4a843; --dark: #080810; --card: #0d0d1c; }
-
-        @keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes shimmer { 0%{background-position:-200% center} 100%{background-position:200% center} }
-        @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-        @keyframes slideIn { from{opacity:0;transform:translateX(-20px)} to{opacity:1;transform:translateX(0)} }
-
-        .page-load { animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; }
-        .item-in { opacity:0; animation: fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) both; }
-
-        .shimmer-gold {
-          background: linear-gradient(90deg, var(--gold) 0%, #f0c96a 40%, var(--gold) 60%);
-          background-size: 200% auto;
-          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-          background-clip: text; animation: shimmer 3s linear infinite;
-        }
-
-        .history-item {
-          display: flex;
-          align-items: center;
-          gap: 20px;
-          padding: 20px 24px;
-          background: var(--card);
-          border: 1px solid rgba(212,168,67,0.06);
-          cursor: pointer;
-          transition: all 0.35s cubic-bezier(0.16,1,0.3,1);
-          position: relative;
-          overflow: hidden;
-        }
-        .history-item::before {
-          content: '';
-          position: absolute;
-          left: 0; top: 0; bottom: 0;
-          width: 2px;
-          background: var(--gold);
-          transform: scaleY(0);
-          transform-origin: bottom;
-          transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
-        }
-        .history-item:hover {
-          border-color: rgba(212,168,67,0.2);
-          background: rgba(212,168,67,0.03);
-          transform: translateX(4px);
-        }
-        .history-item:hover::before { transform: scaleY(1); }
-
-        .filter-pill {
-          border: 1px solid rgba(212,168,67,0.15);
-          background: transparent;
-          color: rgba(255,255,255,0.45);
-          padding: 8px 18px;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 11px;
-          letter-spacing: 2px;
-          text-transform: uppercase;
-          cursor: pointer;
-          transition: all 0.3s;
-        }
-        .filter-pill:hover { border-color: rgba(212,168,67,0.4); color: var(--gold); }
-        .filter-pill.active { background: rgba(212,168,67,0.12); border-color: var(--gold); color: var(--gold); }
-
-        .search-input {
-          background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(212,168,67,0.12);
-          color: #fff;
-          padding: 12px 20px 12px 44px;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 14px;
-          outline: none;
-          transition: border-color 0.3s;
-          width: 300px;
-        }
-        .search-input::placeholder { color: rgba(255,255,255,0.25); }
-        .search-input:focus { border-color: rgba(212,168,67,0.45); }
-
-        .back-btn {
-          background: transparent;
-          border: 1px solid rgba(212,168,67,0.18);
-          color: rgba(255,255,255,0.55);
-          padding: 10px 20px;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 13px;
-          cursor: pointer;
-          transition: all 0.3s;
-          display: flex; align-items: center; gap: 8px;
-        }
-        .back-btn:hover { border-color: var(--gold); color: var(--gold); }
-
-        .stat-pill {
-          background: rgba(212,168,67,0.06);
-          border: 1px solid rgba(212,168,67,0.12);
-          padding: 16px 24px;
-          text-align: center;
-          transition: all 0.3s;
-        }
-        .stat-pill:hover { background: rgba(212,168,67,0.1); border-color: rgba(212,168,67,0.3); }
-
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: var(--gold); }
-      `}</style>
-
-      {/* Toast */}
-      {toast && (
-        <div style={{ position: "fixed", top: 24, right: 24, zIndex: 999, padding: "14px 24px", background: toast.type === "error" ? "#ef4444" : toast.type === "success" ? "#22c55e" : "#d4a843", color: toast.type === "info" ? "#080810" : "#fff", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500, animation: "fadeUp 0.4s both" }}>
-          {toast.msg}
-        </div>
-      )}
-
-      {/* Header */}
-      <div style={{ borderBottom: "1px solid rgba(212,168,67,0.1)", padding: "0 48px", height: 68, display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(8,8,16,0.95)", backdropFilter: "blur(12px)", position: "sticky", top: 0, zIndex: 50 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <button className="back-btn" onClick={() => navigate("/dash")}>← Dashboard</button>
-          <div style={{ width: 1, height: 24, background: "rgba(212,168,67,0.12)" }} />
-          <div>
-            <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 600, color: "#fff", lineHeight: 1 }}>
-              Activity <span style={{ color: "var(--gold)", fontStyle: "italic" }}>History</span>
+    <div className="min-h-screen w-screen bg-orange-50">
+      
+      {/* NAVBAR */}
+      <nav className="sticky top-0 z-50 bg-grey backdrop-blur-xl border-b border-slate-200/50 w-full px-6 md:px-[5vw]">
+        <div className="h-20 flex items-center justify-between">
+          <div className="flex items-center gap-8">
+            {/* Home Button */}
+            <div
+              onClick={() => navigate("/dash")}
+              className="flex items-center gap-2 cursor-pointer text-slate-700 hover:text-grey-500 font-semibold transition-colors"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3 12l9-9 9 9v9a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-5H9v5a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-9z"
+                />
+              </svg>
+              <span className="text-sm md:text-base font-semibold">Home</span>
             </div>
-            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: "rgba(212,168,67,0.5)", letterSpacing: 2, textTransform: "uppercase", marginTop: 2 }}>
-              Your Timeline
+
+            <div className="h-6 w-px bg-slate-200 hidden md:block" />
+
+            {/* ElderEase Logo */}
+            <h1 className="heading-font text-xl font-bold tracking-tight hidden text-black md:block italic">
+              Elder<span className="text-black font-black">Ease</span>
+            </h1>
+          </div>
+
+          {/* User Profile */}
+          <div className="flex items-center gap-4 bg-white/80 px-4 py-2 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-slate-800 to-black flex items-center justify-center text-white text-xs font-bold">
+              {userName.charAt(0)}
             </div>
+            <span className="text-sm font-bold text-slate-700">{userName}</span>
           </div>
         </div>
-        <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "rgba(255,255,255,0.35)" }}>
-          Hello, <span style={{ color: "var(--gold)" }}>{userName}</span>
-        </div>
-      </div>
+      </nav>
 
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "56px 48px" }}>
-
-        {/* Hero */}
-        <div className="page-load" style={{ marginBottom: 48 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
-            <div style={{ width: 1, height: 48, background: "rgba(212,168,67,0.4)" }} />
-            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, letterSpacing: 4, color: "var(--gold)", textTransform: "uppercase" }}>Your Journey</span>
-          </div>
-          <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "clamp(40px, 5vw, 64px)", fontWeight: 400, color: "#fff", margin: "0 0 12px", lineHeight: 1 }}>
-            Activity <span className="shimmer-gold" style={{ fontStyle: "italic", fontWeight: 600 }}>Timeline</span>
+      {/* MAIN CONTENT - Kept exactly as you liked */}
+      <div className="max-w-7xl mx-auto px-6 py-10">
+        {/* Header */}
+        <div className="mb-10">
+          <h1 className="text-4xl font-bold text-gray-900 tracking-tight">
+            Your Timeline
           </h1>
-          <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: "rgba(255,255,255,0.38)", fontWeight: 300 }}>
-            Every caregiver you viewed, starred, or contacted — all in one place.
+          <p className="text-gray-500 mt-2 text-[17px]">
+            Track every caregiver you viewed, saved, or contacted.
           </p>
         </div>
 
-        {/* Stats row */}
+        {/* Stats */}
         {!loading && history.length > 0 && (
-          <div className="page-load" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 40 }}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12 ">
             {[
-              { label: "Total Activities", val: history.length },
-              { label: "Caregivers Seen", val: new Set(history.map(h => h.caregiverId)).size },
-              { label: "This Week", val: history.filter(h => { try { return (new Date() - new Date(h.timestamp)) < 604800000; } catch { return false; } }).length },
-              { label: "Unique Actions", val: new Set(history.map(h => h.action?.toUpperCase())).size },
+              { n: history.length, label: "Total Activities" },
+              { n: new Set(history.map((h) => h.caregiverId)).size, label: "Unique Caregivers" },
+              {
+                n: history.filter((h) => Date.now() - new Date(h.timestamp) < 604800000).length,
+                label: "This Week",
+              },
+              { n: new Set(history.map((h) => h.action)).size, label: "Action Types" },
             ].map((s, i) => (
-              <div key={i} className="stat-pill">
-                <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 40, fontWeight: 600, color: "var(--gold)", lineHeight: 1, marginBottom: 8 }}>{s.val}</div>
-                <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: "rgba(255,255,255,0.35)", letterSpacing: 1.5, textTransform: "uppercase" }}>{s.label}</div>
+              <div
+                key={i}
+                className="bg-yellow-100 rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200"
+              >
+                <p className="text-4xl font-semibold text-gray-900">{s.n}</p>
+                <p className="text-sm text-gray-500 mt-3 font-medium tracking-wide">{s.label}</p>
               </div>
             ))}
           </div>
         )}
 
-        {/* Controls */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 36 }}>
-          {/* Filters */}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {uniqueActions.map(action => (
-              <button
-                key={action}
-                className={`filter-pill ${filterAction === action ? "active" : ""}`}
-                onClick={() => setFilterAction(action)}
-              >
-                {action === "ALL" ? "All" : getActionMeta(action).label}
-              </button>
-            ))}
+        {/* Filters + Search */}
+        <div className="flex flex-col lg:flex-row gap-4 mb-8">
+          <div className="flex flex-wrap gap-2">
+            {actions.map((a) => {
+              const meta = a === "ALL" ? { label: "All", icon: "" } : getMeta(a);
+              return (
+                <button
+                  key={a}
+                  onClick={() => setFilter(a)}
+                  className={`px-5 py-2.5 rounded-2xl text-sm font-medium border transition-all ${
+                    filter === a
+                      ? "bg-gray-900 text-white border-gray-900"
+                      : "bg-white text-gray-300 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  {meta.icon} {meta.label}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Search */}
-          <div style={{ position: "relative" }}>
-            <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "rgba(212,168,67,0.4)", fontSize: 14 }}>🔍</span>
-            <input
-              className="search-input"
-              placeholder="Search history..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by caregiver name, speciality or action..."
+            className="flex-1 px-5 py-3 bg-white border border-gray-200 rounded-2xl text-sm focus:outline-none focus:border-gray-400 placeholder:text-gray-400"
+          />
         </div>
 
-        {/* Loading */}
+        {/* Timeline Content */}
         {loading ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "100px 0" }}>
-            <div style={{ width: 48, height: 48, border: "2px solid rgba(212,168,67,0.15)", borderTopColor: "var(--gold)", borderRadius: "50%", animation: "spin 0.9s linear infinite", marginBottom: 20 }} />
-            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "rgba(255,255,255,0.35)", letterSpacing: 2 }}>Loading history...</span>
-          </div>
+          <div className="text-center py-24 text-gray-400">Loading your activity history...</div>
         ) : filtered.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "100px 20px" }}>
-            <div style={{ fontSize: 56, marginBottom: 16 }}>📜</div>
-            <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 36, fontWeight: 400, color: "#fff", margin: "0 0 12px" }}>
-              {search || filterAction !== "ALL" ? "No results found" : "No history yet"}
-            </h2>
-            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: "rgba(255,255,255,0.3)", fontWeight: 300, marginBottom: 28 }}>
-              {search || filterAction !== "ALL" ? "Try adjusting your filters." : "Start browsing caregivers to build your history."}
-            </p>
-            {(!search && filterAction === "ALL") && (
-              <button
-                onClick={() => navigate("/dash")}
-                style={{ background: "var(--gold)", color: "#080810", border: "none", padding: "12px 32px", fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: 12, letterSpacing: 2, textTransform: "uppercase", cursor: "pointer" }}
-              >
-                Browse Caregivers
-              </button>
-            )}
+          <div className="bg-green rounded-3xl py-20 text-center border border-gray-100">
+            <p className="text-gray-500 text-lg">No activities found</p>
           </div>
         ) : (
-          /* Timeline */
-          <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
-            {sortedGroups.map((group, gi) => (
+          <div className="space-y-10">
+            {sortedGroups.map((group) => (
               <div key={group}>
-                {/* Group label */}
-                <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
-                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, letterSpacing: 3, color: "var(--gold)", textTransform: "uppercase", whiteSpace: "nowrap" }}>{group}</span>
-                  <div style={{ flex: 1, height: 1, background: "rgba(212,168,67,0.08)" }} />
-                  <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: "rgba(255,255,255,0.25)", whiteSpace: "nowrap" }}>{grouped[group].length} item{grouped[group].length !== 1 ? "s" : ""}</span>
+                <div className="flex items-center gap-4 mb-4">
+                  <p className="uppercase text-xs font-semibold tracking-widest text-gray-400">
+                    {group}
+                  </p>
+                  <div className="flex-1 h-px bg-gray-200" />
                 </div>
 
-                {/* Items */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  {grouped[group].map((item, idx) => {
+                <div className="bg-yellow-100 rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
+                  {groups[group].map((item, i) => {
                     const cg = caregivers[item.caregiverId];
-                    const meta = getActionMeta(item.action);
-                    const photo = cg?.profilePhoto?.replace(/\s+/g, "_").trim();
+                    const meta = getMeta(item.action);
+                    const photo = cg?.profilePhoto?.replace(/\s+/g, "_");
 
                     return (
                       <div
-                        key={`${item.caregiverId}-${idx}`}
-                        className="history-item item-in"
-                        style={{ animationDelay: `${(gi * 100) + idx * 40}ms` }}
+                        key={i}
                         onClick={() => cg && navigate(`/profile/${item.caregiverId}`)}
+                        className="group flex items-center gap-5 px-6 py-5 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-none cursor-pointer"
                       >
-                        {/* Action icon */}
-                        <div style={{ width: 44, height: 44, borderRadius: "50%", background: meta.bg, border: `1px solid ${meta.color}30`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
-                          {meta.icon}
+                        <div className="w-14 h-14 rounded-2xl overflow-hidden border border-gray-100 flex-shrink-0">
+                          <img
+                            src={`http://localhost:8080/uploads/${photo}`}
+                            className="w-full h-full object-cover"
+                            alt={cg?.fullName}
+                          />
                         </div>
 
-                        {/* Caregiver photo */}
-                        {cg ? (
-                          <div style={{ width: 48, height: 48, flexShrink: 0, overflow: "hidden" }}>
-                            <img
-                              src={`http://localhost:8080/uploads/${photo}`}
-                              alt={cg.fullName}
-                              style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }}
-                              onError={e => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(cg.fullName || "C")}&background=1a1a2e&color=d4a843&size=100&bold=true`; }}
-                            />
-                          </div>
-                        ) : (
-                          <div style={{ width: 48, height: 48, background: "rgba(212,168,67,0.08)", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(212,168,67,0.3)", fontSize: 18, flexShrink: 0 }}>?</div>
-                        )}
-
-                        {/* Info */}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                            <h3 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, fontWeight: 600, color: "#fff", margin: 0, lineHeight: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              {cg?.fullName || `Caregiver #${item.caregiverId?.slice(-6) || "—"}`}
-                            </h3>
-                            {cg?.speciality && (
-                              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, color: "rgba(255,255,255,0.35)", letterSpacing: 1 }}>
-                                · {cg.speciality}
-                              </span>
-                            )}
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                            <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 600, color: meta.color, letterSpacing: 1, textTransform: "uppercase", background: meta.bg, padding: "3px 10px", border: `1px solid ${meta.color}25` }}>
-                              {meta.label}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-900 text-[17px] group-hover:text-indigo-700 transition-colors">
+                            {cg?.fullName || "Unknown Caregiver"}
+                          </p>
+                          <div className="flex items-center gap-3 mt-1 text-sm text-gray-600">
+                            <span className={`flex items-center gap-1 font-medium ${meta.color}`}>
+                              {meta.icon} {meta.label}
                             </span>
-                            {cg?.address && (
-                              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "rgba(255,255,255,0.3)" }}>
-                                📍 {cg.address}
-                              </span>
-                            )}
+                            {cg?.speciality && <span>• {cg.speciality}</span>}
                           </div>
                         </div>
 
-                        {/* Time + arrow */}
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
-                          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "rgba(255,255,255,0.3)", whiteSpace: "nowrap" }}>
-                            {formatTime(item.timestamp)}
-                          </span>
-                          {cg && (
-                            <span style={{ color: "rgba(212,168,67,0.4)", fontSize: 14, transition: "color 0.2s" }}>→</span>
-                          )}
+                        <div className="text-xs text-gray-400 font-medium whitespace-nowrap">
+                          {formatTime(item.timestamp)}
                         </div>
                       </div>
                     );
@@ -413,14 +275,6 @@ export default function History() {
             ))}
           </div>
         )}
-
-        {/* Result count */}
-        {!loading && filtered.length > 0 && (
-          <div style={{ textAlign: "center", marginTop: 48, fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "rgba(255,255,255,0.2)", letterSpacing: 1 }}>
-            Showing {filtered.length} of {history.length} activities
-          </div>
-        )}
-
       </div>
     </div>
   );
