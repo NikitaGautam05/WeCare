@@ -525,21 +525,30 @@ const Profile = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
- useEffect(() => {
-  const fetchFavourites = async () => {
+useEffect(() => {
+  const fetchProfile = async () => {
     try {
-      if (!userId) return;
-      const favRes = await axios.get(`${BASE}/users/favorites/${userId}`);
-      const favIds = Array.isArray(favRes.data) ? favRes.data : [];
-      // Compare IDs as strings
-      setIsFavourited(favIds.some(favId => String(favId) === String(id)));
+      const res = await axios.get(`${BASE}/caregivers/${id}`);
+      setProfile(res.data);
+
+      // ✅ TRACK VIEW
+      if (userId) {
+        await axios.post(`${BASE}/users/add-history`, null, {
+          params: {
+            userId,
+            caregiverId: id,
+            action: "VIEWED"
+          }
+        });
+      }
+
     } catch (err) {
-      console.error(err);
+      console.error("Failed to fetch caregiver:", err);
     }
   };
 
-  fetchFavourites();
-}, [id, userId]);
+  fetchProfile();
+}, [id]);
 
 const handleFavourite = async () => {
   if (!profile) return;
@@ -547,14 +556,35 @@ const handleFavourite = async () => {
   try {
     if (isFavourited) {
       await axios.post(`${BASE}/users/remove-favorite`, null, {
-        params: { userId, caregiverId: profile.id } // keep as string
+        params: { userId, caregiverId: profile.id }
       });
+
+      // ✅ TRACK UNSAVE
+      await axios.post(`${BASE}/users/add-history`, null, {
+        params: {
+          userId,
+          caregiverId: profile.id,
+          action: "UNSAVED"
+        }
+      });
+
       showToast("Removed from favourites");
       setIsFavourited(false);
+
     } else {
       await axios.post(`${BASE}/users/add-favorite`, null, {
-        params: { userId, caregiverId: profile.id } // keep as string
+        params: { userId, caregiverId: profile.id }
       });
+
+      // ✅ TRACK SAVE
+      await axios.post(`${BASE}/users/add-history`, null, {
+        params: {
+          userId,
+          caregiverId: profile.id,
+          action: "SAVED"
+        }
+      });
+
       showToast("Added to favourites ❤️");
       setIsFavourited(true);
     }
@@ -565,18 +595,29 @@ const handleFavourite = async () => {
 };
 
   const handleInterested = async () => {
-    if (!userId || interested) return;
-    try {
-      await axios.post(`${BASE}/caregivers/${id}/notify`, null, {
-        params: { message: `${userName} is interested in you!` }
-      });
-      setInterested(true);
-      showToast(`Interest sent to ${profile.fullName}`);
-    } catch (err) {
-      console.error(err);
-      showToast("Failed to send interest");
-    }
-  };
+  if (!userId || interested) return;
+
+  try {
+    await axios.post(`${BASE}/caregivers/${id}/notify`, null, {
+      params: { message: `${userName} is interested in you!` }
+    });
+
+    // ✅ TRACK INTEREST
+    await axios.post(`${BASE}/users/add-history`, null, {
+      params: {
+        userId,
+        caregiverId: id,
+        action: "INTERESTED"
+      }
+    });
+
+    setInterested(true);
+    showToast(`Interest sent to ${profile.fullName}`);
+  } catch (err) {
+    console.error(err);
+    showToast("Failed to send interest");
+  }
+};
 
   if (!profile) return <p className="text-center mt-20">Loading profile...</p>;
 
