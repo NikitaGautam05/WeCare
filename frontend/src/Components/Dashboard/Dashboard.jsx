@@ -66,7 +66,7 @@ const Dashboard = () => {
     { name: "🏠 Home", link: "/dash", isGrey: true },
     { name: "👩‍⚕️ Caregivers", link: "/my-caregivers" },
     { name: "📜 History", link: "/history" },
-    { name: "⭐ Top Interest", link: "/top-interest" },
+    // { name: "⭐ Top Interest", link: "/top-interest" },
     { name: "❤️ Favourites", link: "/favourites" },
     { name: "👤 Profile", link: "/my-profile", isGrey: true },
   ];
@@ -75,7 +75,7 @@ const Dashboard = () => {
     { icon: "👩‍⚕️", label: "Caregivers", link: "/my-caregivers" },
     { icon: "❤️", label: "Favourites", link: "/favourites" },
     { icon: "📜", label: "History", link: "/history" },
-    { icon: "⭐", label: "Top Interest", link: "/top-interest" },
+    // { icon: "⭐", label: "Top Interest", link: "/top-interest" },
   ];
 
   const renderStars = (rating) => {
@@ -267,7 +267,7 @@ const Dashboard = () => {
             </div>
           </section>
 
-          {/* ── FAVOURITES — now dynamic from backend ── */}
+          
           {/* ── FAVOURITES — now dynamic from backend ── */}
 <section className="bg-pink-100 rounded-2xl p-6">
   <div className="flex items-center justify-between mb-5">

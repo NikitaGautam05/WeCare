@@ -1,224 +1,165 @@
 import React, { useEffect, useState } from "react";
 import ProfileForm from "./ProfileForm";
-import { FaUserCircle, FaBell } from "react-icons/fa";
-import { useNavigate,useParams } from "react-router-dom";
+import { FaUserCircle, FaBell, FaSignOutAlt, FaFileAlt, FaQuestionCircle, FaCheckDouble, FaStar, FaWallet } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 import axios from 'axios';
-const demoProfiles = [
-  { id: 1, name: "Ramesh Thapa", photo: "https://randomuser.me/api/portraits/men/32.jpg", specialty: "Elderly Care", location: "Kathmandu", rating: 4.5 },
-  { id: 2, name: "Sita Gurung", photo: "https://randomuser.me/api/portraits/women/44.jpg", specialty: "Alzheimer's Care", location: "Pokhara", rating: 4.7 },
-  { id: 3, name: "Hari Bahadur", photo: "https://randomuser.me/api/portraits/men/45.jpg", specialty: "Post-Surgery Care", location: "Biratnagar", rating: 4.8 },
-];
 
 const CareGiverDash = () => {
-  const { id } = useParams(); 
   const [activeTab, setActiveTab] = useState("profile");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const navigate = useNavigate();
-  const currentProfile = {
-    name: "Nikita Sharma",
-    photo: "https://randomuser.me/api/portraits/women/65.jpg",
-    completedSteps: 3,
-  };
   const [notifications, setNotifications] = useState([]);
   const [profile, setProfile] = useState(null);
+  const navigate = useNavigate();
+
+  const userId = localStorage.getItem("userId");
 
   useEffect(() => {
-    if (!id) return; // safeguard
-    axios
-      .get(`http://localhost:8080/api/caregivers/${id}`)
-      .then((res) => setProfile(res.data))
-      .catch((err) => console.error(err));
-  }, [id]);
+    if (!userId) {
+      navigate("/login");
+      return;
+    }
+    axios.get(`http://localhost:8080/api/caregivers/user/${userId}`)
+      .then((res) => {
+        setProfile(res.data);
+        setNotifications(res.data.notifications || []);
+      })
+      .catch((err) => console.log("Profile check:", err.message));
+  }, [userId, navigate]);
 
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate("/");
+  };
+
+  const displayName = profile?.fullName || localStorage.getItem("userName") || "Caregiver";
+  const initials = displayName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
 
   return (
-    <div className="min-h-screen w-screen bg-gray-100">
-
-      {/* TOP TAB BAR */}
-      <div className="bg-gray-200 border-b border-gray-300">
-        <div className="grid grid-cols-2 text-center">
-
-          {/* PROFILE TAB */}
-          <div
-            onClick={() => setActiveTab("profile")}
-            className={`py-4 cursor-pointer flex justify-center items-center border-b-4 transition
-              ${activeTab === "profile"
-                ? "border-gray-700 text-gray-900 bg-gray-100 shadow-md font-semibold"
-                : "border-transparent text-gray-600 hover:bg-gray-300"}`}
-          >
-            <FaUserCircle size={22} />
+    <div className="min-h-screen w-screen bg-[#F4F4F5] text-[#18181B] font-sans selection:bg-black selection:text-white">
+      {/* Navbar */}
+      <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-8 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center text-white font-black text-sm shadow-lg shadow-black/10">CS</div>
+            <h1 className="text-xl font-bold tracking-tighter">Caregiver<span className="text-gray-400"> Portal</span></h1>
           </div>
-
-          {/* NOTIFICATION TAB */}
-          <div
-            onClick={() => setActiveTab("notifications")}
-            className={`relative py-4 cursor-pointer flex justify-center items-center border-b-4 transition
-              ${activeTab === "notifications"
-                ? "border-gray-700 text-gray-900 bg-gray-100 shadow-md font-semibold"
-                : "border-transparent text-gray-600 hover:bg-gray-300"}`}
-          >
-            <FaBell size={20} />
-            <span className="absolute top-2 right-[40%] bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
-              2
-            </span>
+          
+          <div className="flex items-center gap-8">
+            <button 
+              onClick={() => setActiveTab("notifications")}
+              className="relative p-2 text-gray-400 hover:text-black transition-colors"
+            >
+              <FaBell size={20} />
+              {notifications.length > 0 && (
+                <span className="absolute top-0 right-0 bg-black text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full border-2 border-white font-bold">
+                  {notifications.length}
+                </span>
+              )}
+            </button>
+            <button onClick={handleLogout} className="text-xs font-black uppercase tracking-widest text-gray-400 hover:text-red-500 transition-colors">
+              Sign Out
+            </button>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* MOBILE HAMBURGER BUTTON */}
-      <div className="md:hidden flex justify-end p-4 bg-gray-200 border-b border-gray-300">
-        <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-md bg-gray-300 hover:bg-gray-400">
-          <svg
-            className="w-6 h-6 text-gray-900"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-      </div>
-
-      {/* MAIN GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_320px] gap-6 p-6">
-
-        {/* LEFT SIDEBAR */}
-        {(sidebarOpen || window.innerWidth >= 1024) && (
-          <aside className="bg-white border rounded-xl p-6 h-full shadow-lg">
-
-            {/* PROFILE INFO */}
-            <div className="flex items-center gap-3 mb-6">
-              <img
-                src={currentProfile.photo}
-                alt={currentProfile.name}
-                className="w-14 h-14 rounded-full object-cover border"
-              />
-              <h3 className="font-semibold text-gray-900">{currentProfile.name}</h3>
+      <main className="max-w-7xl mx-auto px-8 py-10">
+        {/* Top Stats Bar - This fills the "empty" feeling */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+          <div className="bg-white p-6 rounded-[24px] border border-gray-200 shadow-sm flex items-center gap-5">
+            <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center text-gray-900"><FaCheckDouble /></div>
+            <div>
+              <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Profile Status</p>
+              <p className="font-bold text-sm">{profile?.status || "Incomplete"}</p>
             </div>
-
-            {/* PROFILE BUTTON */}
-            <button
-              onClick={() => setActiveTab("profile")}
-              className={`w-full text-left px-4 py-3 rounded-lg font-medium mb-3 transition
-                ${activeTab === "profile"
-                  ? "bg-gray-300 text-gray-300 shadow"
-                  : "hover:bg-gray-200 text-gray-700"}`}
-            >
-              Profile
-            </button>
-
-            {/* PROFILE STEPS */}
-            {activeTab === "profile" && (
-              <div className="ml-2 mt-3 space-y-3 text-sm">
-                <p className="text-gray-500 uppercase text-xs mb-1">Profile Steps</p>
-                <ul className="space-y-2">
-                  {["Documents", "Personal", "Professional", "Charges"].map((label, i) => (
-                    <li key={i} className="flex items-center gap-3">
-                      <span className={`w-6 h-6 flex items-center justify-center rounded-full text-sm
-                        ${i < currentProfile.completedSteps
-                          ? "bg-gray-700 text-white"
-                          : "bg-gray-300 text-gray-700"}`}>
-                        {i + 1}
-                      </span>
-                      <span className="text-gray-900">{label}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* NOTIFICATIONS BUTTON */}
-            <button
-              onClick={() => setActiveTab("notifications")}
-              className={`w-full text-left px-4 py-3 rounded-lg font-medium mt-6 transition
-                ${activeTab === "notifications"
-                  ? "bg-gray-300 text-gray-300 shadow"
-                  : "hover:bg-gray-200 text-gray-300"}`}
-            >
-              Notifications
-            </button>
-
-            {/* HELP BUTTON */}
-            <button
-              onClick={() => console.log("Help clicked")}
-              className="w-full text-left px-4 py-3 rounded-lg font-medium mt-2 hover:bg-gray-200 text-gray-300 transition"
-            >
-              Help?
-            </button>
-            <button
-  onClick={() => navigate('/terms')}
-  className="w-full text-left px-4 py-3 rounded-lg font-medium mt-2 hover:bg-gray-200 text-gray-300 transition"
->
-  Terms and services
-</button>
-              {/* LOGOUT BUTTON */}
-            <button
-             onClick={() => navigate("/")}
-              className="w-full text-left px-4 py-3 rounded-lg font-medium mt-2 bg-red-500 hover:bg-red-600 text-white transition"
-            >
-              Logout
-            </button>
-
-          </aside>
-        )}
-
-        {/* CENTER CONTENT */}
-        <main className="w-full">
-          {activeTab === "profile" && (
-            <div className="bg-white border rounded-xl p-8 shadow-lg min-h-[600px]">
-              <ProfileForm />
-            </div>
-          )}
-
-          {activeTab === "notifications" && (
-            <div className="bg-white border rounded-xl p-8 shadow-lg min-h-[600px]">
-              <h2 className="text-xl font-semibold mb-4 text-gray-900">Notifications</h2>
-              <ul className="space-y-3">
-  {notifications.length === 0 ? (
-    <p className="text-gray-500">No notifications yet</p>
-  ) : (
-    notifications.map((msg, index) => (
-      <li
-        key={index}
-        className="border-l-4 border-gray-700 bg-gray-50 p-4 rounded text-gray-700"
-      >
-        {msg}
-      </li>
-    ))
-  )}
-</ul>
-            </div>
-          )}
-        </main>
-
-        {/* RIGHT PANEL */}
-        <aside className="bg-grey-800 border rounded-xl p-6 shadow-lg h-full">
-          <h3 className="font-semibold mb-4 text-gray-900">Suggested Ideal Profile</h3>
-          <div className="space-y-4">
-            {demoProfiles.map((p) => (
-              <div
-                key={p.id}
-                className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center gap-3 shadow-sm"
-              >
-                <img
-                  src={p.photo}
-                  alt={p.name}
-                  className="w-14 h-14 rounded-full object-cover border"
-                />
-                <div>
-                  <p className="font-semibold text-gray-900">{p.name}</p>
-                  <p className="text-sm text-gray-600">{p.specialty}</p>
-                  <p className="text-xs text-gray-500">
-                    {p.location} • {p.rating} ⭐
-                  </p>
-                </div>
-              </div>
-            ))}
           </div>
-        </aside>
+          <div className="bg-white p-6 rounded-[24px] border border-gray-200 shadow-sm flex items-center gap-5">
+            <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center text-gray-900"><FaWallet /></div>
+            <div>
+              <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Pricing</p>
+              <p className="font-bold text-sm">{profile?.chargeMin ? `Rs. ${profile.chargeMin}/day` : "Not Set"}</p>
+            </div>
+          </div>
+          <div className="bg-white p-6 rounded-[24px] border border-gray-200 shadow-sm flex items-center gap-5">
+            <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center text-gray-900"><FaStar /></div>
+            <div>
+              <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Experience</p>
+              <p className="font-bold text-sm">{profile?.experience ? `${profile.experience} Years` : "New Joiner"}</p>
+            </div>
+          </div>
+        </div>
 
-      </div>
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-12">
+          {/* Sidebar */}
+          <aside className="space-y-10">
+            <div className="px-2">
+              <div className="w-20 h-20 rounded-[28px] bg-black text-white flex items-center justify-center text-2xl font-bold mb-6 shadow-2xl shadow-black/20 italic">
+                {initials}
+              </div>
+              <h3 className="font-black text-2xl tracking-tight leading-none mb-2">{displayName}</h3>
+              <p className="text-gray-400 font-medium text-sm">{profile?.speciality || "Care Professional"}</p>
+            </div>
+
+            <nav className="space-y-2">
+              <button
+                onClick={() => setActiveTab("profile")}
+                className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-sm font-bold transition-all ${
+                  activeTab === "profile" ? "bg-black text-white shadow-xl shadow-black/10 scale-[1.02]" : "text-gray-400 hover:bg-white hover:text-black"
+                }`}
+              >
+                <FaUserCircle size={18} /> Profile
+              </button>
+              <button
+                onClick={() => setActiveTab("notifications")}
+                className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-sm font-bold transition-all ${
+                  activeTab === "notifications" ? "bg-black text-white shadow-xl shadow-black/10 scale-[1.02]" : "text-gray-400 hover:bg-white hover:text-black"
+                }`}
+              >
+                <FaBell size={18} /> Alerts
+              </button>
+            </nav>
+
+            <div className="pt-8 border-t border-gray-200">
+              <button onClick={() => navigate('/terms')} className="group w-full flex items-center gap-4 px-6 py-3 text-sm font-bold text-gray-400 hover:text-black transition-colors">
+                <FaFileAlt className="group-hover:text-black" /> Terms & Service
+              </button><br/>
+              <button className="group w-full flex items-center gap-4 px-6 py-3 text-sm font-bold text-gray-400 hover:text-black transition-colors">
+                <FaQuestionCircle className="group-hover:text-black" /> Support
+              </button>
+            </div>
+          </aside>
+
+          {/* Content Area */}
+          <section>
+            <div className="bg-white border border-gray-200 rounded-[40px] p-12 shadow-sm min-h-[600px] relative overflow-hidden">
+               {/* Subtle background decoration */}
+               <div className="absolute top-0 right-0 w-64 h-64 bg-gray-50 rounded-full -mr-32 -mt-32 blur-3xl opacity-50" />
+               
+               <div className="relative z-10">
+                {activeTab === "profile" ? (
+                  <ProfileForm userId={userId} />
+                ) : (
+                  <div>
+                    <h2 className="text-3xl font-black mb-8">Notifications</h2>
+                    {notifications.length === 0 ? (
+                      <div className="py-20 text-center">
+                        <p className="text-gray-300 font-bold uppercase tracking-widest text-xs">Inbox Empty</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {notifications.map((msg, i) => (
+                          <div key={i} className="p-6 bg-gray-50 rounded-3xl border border-gray-100 text-gray-600 font-medium">
+                            {msg}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+               </div>
+            </div>
+          </section>
+        </div>
+      </main>
     </div>
   );
 };
