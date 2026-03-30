@@ -9,5 +9,6 @@ import java.util.List;
 @Repository
 public interface CaregiverRepository extends MongoRepository<Caregiver,String> {
     List<Caregiver> findByStatus(CaregiverStatus status);
+    Caregiver findByUserId(String userId);
 
 }

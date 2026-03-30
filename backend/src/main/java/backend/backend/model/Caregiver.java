@@ -12,6 +12,15 @@ public class Caregiver {
     @Id
     private String id;
 
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    private String userId;
     private String fullName;
     private String address;
     private String phoneNumber;
@@ -26,7 +35,16 @@ public class Caregiver {
     private String citizenshipPhoto;   // store filename or URL
     private CaregiverStatus status = CaregiverStatus.PENDING;
     private int reportsCount = 0;
+    // Inside Caregiver class
+    private List<String> comments = new ArrayList<>();
 
+    public List<String> getComments() {
+        return comments;
+    }
+
+    public void setComments(List<String> comments) {
+        this.comments = comments;
+    }
 
     private List<String> notifications = new ArrayList<>();
 

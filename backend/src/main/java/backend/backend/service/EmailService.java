@@ -38,4 +38,17 @@ public class EmailService {
                 "Best regards,\nElderEase Team");
         mailSender.send(message);
     }
+    public void sendInterestEmail(String to, String userName, String userEmail){
+        if(to==null || to.isEmpty()){
+            throw new IllegalArgumentException("Email is empty");
+        }
+        SimpleMailMessage message =new SimpleMailMessage();
+        message.setTo(to);
+        message.setSubject("New interest in your profile");
+        message.setText( "Hello,\n\n" +
+                userName + " has shown interest in your profile.\n\n" +
+                "You can contact them at: " + userEmail + "\n\n" +
+                "Best regards,\nElderEase Team");
+        mailSender.send(message);
+    }
 }

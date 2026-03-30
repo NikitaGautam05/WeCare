@@ -7,22 +7,22 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
-public class WebConfig {
+public class WebConfig implements WebMvcConfigurer {
 
-    @Bean
-    public WebMvcConfigurer corsConfigurer() {
-        return new WebMvcConfigurer() {
-            @Override
-            public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/**") // allow all endpoints
-                        .allowedOrigins("http://localhost:5173") // React dev server
-                        .allowedMethods("GET","POST","PUT","DELETE")
-                        .allowCredentials(true);
-            }
-            public void addResourceHandlers(ResourceHandlerRegistry registry){
-                registry.addResourceHandler("/uploads/**")
-                        .addResourceLocations("file:D:/fyp demo/backend/uploads/");
-            }
-        };
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/**")
+                .allowedOrigins("http://localhost:5173")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowCredentials(true);
+    }
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // Ensure the path ends with a slash /
+        registry.addResourceHandler("/uploads/**")
+                .addResourceLocations("file:///D:/fyp demo/backend/uploads/");
     }
 }
+
+

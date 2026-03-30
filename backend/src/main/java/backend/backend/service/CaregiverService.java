@@ -27,5 +27,7 @@ public class CaregiverService {
     public Caregiver getCaregiverById(String id){
         return caregiverRepository.findById(id).orElse(null);
     }
-
+    public Caregiver getByUserId(String userId){
+        return caregiverRepository.findByUserId(userId);
+    }
 }
