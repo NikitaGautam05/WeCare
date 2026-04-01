@@ -10,5 +10,5 @@ import java.util.List;
 public interface CaregiverRepository extends MongoRepository<Caregiver,String> {
     List<Caregiver> findByStatus(CaregiverStatus status);
     Caregiver findByUserId(String userId);
-
+    List<Caregiver> findByReportsCountGreaterThan(int count);
 }

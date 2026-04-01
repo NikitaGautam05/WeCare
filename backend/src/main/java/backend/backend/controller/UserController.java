@@ -1,20 +1,32 @@
 package backend.backend.controller;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
 import backend.backend.model.HistoryItems;
+import backend.backend.model.Users;
 import backend.backend.repository.UserRepo;
 import backend.backend.service.EmailService;
 import backend.backend.service.JwtService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import backend.backend.model.Users;
 import backend.backend.service.MyUserDetailService;
-
 @RestController
 @RequestMapping("/api/users")
 @CrossOrigin(origins="http://localhost:5173")
@@ -62,10 +74,52 @@ public class UserController {
                 .orElse(null);
     }
 
+    //    @PostMapping("/change-photo")
+//    public ResponseEntity<Map<String, String>> changePhoto(
+//            @RequestParam String userId,
+//            @RequestParam("file") MultipartFile file) {
+//
+//        Map<String, String> resp = new HashMap<>();
+//
+//        try {
+//            Users user = userRepository.findById(userId).orElse(null);
+//            if (user == null) {
+//                resp.put("error", "User not found");
+//                return ResponseEntity.badRequest().body(resp);
+//            }
+//
+//            // Save file locally (you can change path as needed)
+//            String folder = "./uploads/";
+//            Path folderPath = Paths.get(folder);
+//            if (!Files.exists(folderPath)) {
+//                Files.createDirectories(folderPath);
+//            }
+//
+//            String filename = userId + "_" + file.getOriginalFilename();
+//            Path filePath = folderPath.resolve(filename);
+//            Files.write(filePath, file.getBytes());
+//
+//            // Save the file path/URL in user document
+////            user.setPhoto("/uploads/" + filename); // or your public URL if hosted
+////            userRepository.save(user);
+//
+////            resp.put("message", "Photo updated successfully");
+////            resp.put("photoUrl", user.getPhoto());
+////            return ResponseEntity.ok(resp);
+//
+//        } catch (Exception e) {
+//            resp.put("error", "Failed to upload photo: " + e.getMessage());
+//            return ResponseEntity.status(500).body(resp);
+//        }
+//    }
     @PostMapping("/register")
     public ResponseEntity<Map<String, String>> register(@RequestBody Users user) {
         Map<String, String> resp = new HashMap<>();
-
+        if(user.getPassword() == null || user.getPassword().length() < 8
+                || !user.getPassword().matches(".*[!@#$%^&*].*")) {
+            resp.put("error", "Password must be at least 8 characters and include special characters");
+            return ResponseEntity.badRequest().body(resp);
+        }
         if(user.getEmail() == null || user.getEmail().isEmpty()){
             resp.put("error", "Email is required");
             return ResponseEntity.badRequest().body(resp);
@@ -76,6 +130,11 @@ public class UserController {
                 .anyMatch(u -> u.getUserName().equals(user.getUserName()));
         if (exists) {
             resp.put("error", "Username already exists");
+            return ResponseEntity.badRequest().body(resp);
+        }
+        boolean emailExists=userService.getAllUsers().stream().anyMatch(u->u.getEmail().equalsIgnoreCase(user.getEmail()));
+        if (emailExists){
+            resp.put("error","email already regsitered");
             return ResponseEntity.badRequest().body(resp);
         }
 
@@ -91,6 +150,90 @@ public class UserController {
         resp.put("message", "Registration complete");
         return ResponseEntity.ok(resp);
     }
+
+//    @PostMapping("/register-with-photo")
+//    public ResponseEntity<Map<String, String>> registerWithPhoto(
+//            @RequestParam String email,
+//            @RequestParam String userName,
+//            @RequestParam String password,
+//            @RequestParam String role,
+//            @RequestParam("photo") MultipartFile photo) {
+//
+//        Map<String, String> resp = new HashMap<>();
+//
+//        // Validate password
+//        if (password == null || password.length() < 8 || !password.matches(".*[!@#$%^&*].*")) {
+//            resp.put("error", "Password must be at least 8 characters and include special characters");
+//            return ResponseEntity.badRequest().body(resp);
+//        }
+//
+//        // Validate email
+//        if (email == null || email.isEmpty()) {
+//            resp.put("error", "Email is required");
+//            return ResponseEntity.badRequest().body(resp);
+//        }
+//
+//        // Check if username exists
+//        boolean exists = userService.getAllUsers()
+//                .stream()
+//                .anyMatch(u -> u.getUserName().equals(userName));
+//        if (exists) {
+//            resp.put("error", "Username already exists");
+//            return ResponseEntity.badRequest().body(resp);
+//        }
+//
+//        // Check if email exists
+//        boolean emailExists = userService.getAllUsers()
+//                .stream()
+//                .anyMatch(u -> u.getEmail().equalsIgnoreCase(email));
+//        if (emailExists) {
+//            resp.put("error", "Email already registered");
+//            return ResponseEntity.badRequest().body(resp);
+//        }
+//
+//        // Create user
+//        Users user = new Users();
+//        user.setEmail(email);
+//        user.setUserName(userName);
+//        user.setPassword(password);
+//        user.setRole(role == null ? "USER" : role.toUpperCase().replaceAll("\\s", ""));
+//
+//        // Save user first to get ID
+//        Users savedUser = userService.saveUser(user);
+//
+//        // Handle photo upload
+//        try {
+//            String folder = "./uploads/";
+//            Path folderPath = Paths.get(folder);
+//            if (!Files.exists(folderPath)) {
+//                Files.createDirectories(folderPath);
+//            }
+//
+//            String filename = savedUser.getId() + "_" + photo.getOriginalFilename();
+//            Path filePath = folderPath.resolve(filename);
+//            Files.write(filePath, photo.getBytes());
+//
+//            // Set photo path
+//            savedUser.setPhoto("/uploads/" + filename);
+//            userRepository.save(savedUser);
+//
+//        } catch (Exception e) {
+//            // If photo upload fails, delete the user?
+//            userService.deleteUsers(savedUser);
+//            resp.put("error", "Failed to upload photo: " + e.getMessage());
+//            return ResponseEntity.status(500).body(resp);
+//        }
+//
+//        // Send email
+//        try {
+//            emailService.signupNotification(user.getEmail(), user.getUserName());
+//        } catch (Exception e) {
+//            System.err.println("Failed to send welcome email: " + e.getMessage());
+//        }
+//
+//        resp.put("message", "Registration complete");
+//        return ResponseEntity.ok(resp);
+//    }
 
 
     @PostMapping("/login")
@@ -120,7 +263,39 @@ public class UserController {
         response.put("userName",user.getUserName());
         return response;
     }
+    @PutMapping("/change-password")
+    public ResponseEntity<Map<String, String>> changePassword(
+            @RequestParam String username,
+            @RequestParam String currentPassword,
+            @RequestParam String newPassword) {
 
+        Map<String, String> resp = new HashMap<>();
+
+        // Find the user
+        Users user = userService.getAllUsers()
+                .stream()
+                .filter(u -> u.getUserName().equals(username))
+                .findFirst()
+                .orElse(null);
+
+        if (user == null) {
+            resp.put("error", "User not found");
+            return ResponseEntity.badRequest().body(resp);
+        }
+
+        // Check current password
+        if (!user.getPassword().equals(currentPassword)) {
+            resp.put("error", "Current password is incorrect");
+            return ResponseEntity.badRequest().body(resp);
+        }
+
+        // Update password
+        user.setPassword(newPassword);
+        userService.updateUser(user);
+
+        resp.put("message", "Password updated successfully");
+        return ResponseEntity.ok(resp);
+    }
     // Update email for a specific username
     @PutMapping("/api/update-email")
     public String updateEmail(@RequestParam String username, @RequestParam String email) {

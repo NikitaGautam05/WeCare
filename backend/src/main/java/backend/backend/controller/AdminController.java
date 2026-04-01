@@ -1,7 +1,10 @@
 package backend.backend.controller;
 
 import backend.backend.model.Admin;
+import backend.backend.model.Caregiver;
+import backend.backend.model.CaregiverStatus;
 import backend.backend.repository.AdminRepo;
+import backend.backend.service.CaregiverService;
 import backend.backend.service.EmailService;
 import backend.backend.service.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -19,6 +23,8 @@ public class AdminController {
     @Autowired private AdminRepo adminRepo;
     @Autowired private EmailService emailService;  // ← reuse, no duplication
     @Autowired private JwtService jwtService;      // ← reuse, no duplication
+    @Autowired
+    private CaregiverService caregiverService;
 
     // Temporary in-memory OTP store (same pattern as ForgetPasswordController)
     private final Map<String, String> otpStorage = new HashMap<>();
@@ -116,5 +122,48 @@ public class AdminController {
         public void setEmail(String e)        { this.email = e; }
         public String getNewPassword()        { return newPassword; }
         public void setNewPassword(String p)  { this.newPassword = p; }
+    }
+    @PostMapping("/admin/{id}/verify")
+    public Caregiver verifyCaregiver(@PathVariable String id){
+
+        Caregiver caregiver = caregiverService.getCaregiverById(id);
+
+        if(caregiver == null){
+            throw new RuntimeException("Caregiver not found");
+        }
+
+        caregiver.setStatus(CaregiverStatus.VERIFIED);
+
+        return caregiverService.saveCaregiver(caregiver);
+    }
+    @PostMapping("/admin/{id}/block")
+    public Caregiver blockCaregiver(@PathVariable String id){
+
+        Caregiver caregiver = caregiverService.getCaregiverById(id);
+
+        caregiver.setStatus(CaregiverStatus.BLOCKED);
+
+        return caregiverService.saveCaregiver(caregiver);
+    }
+    @PostMapping("/admin/{id}/unblock")
+    public Caregiver unblockCaregiver(@PathVariable String id){
+
+        Caregiver caregiver = caregiverService.getCaregiverById(id);
+
+        caregiver.setStatus(CaregiverStatus.VERIFIED);
+
+        return caregiverService.saveCaregiver(caregiver);
+    }
+    @GetMapping("/admin/pending")
+    public List<Caregiver> getPending(){
+        return caregiverService.getCaregiversByStatus(CaregiverStatus.PENDING);
+    }
+    @GetMapping("/admin/verified")
+    public List<Caregiver> getVerified(){
+        return caregiverService.getCaregiversByStatus(CaregiverStatus.VERIFIED);
+    }
+    @GetMapping("/admin/blocked")
+    public List<Caregiver> getBlocked(){
+        return caregiverService.getCaregiversByStatus(CaregiverStatus.BLOCKED);
     }
 }

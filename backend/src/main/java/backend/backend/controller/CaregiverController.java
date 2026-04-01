@@ -5,6 +5,7 @@ import backend.backend.repository.UserRepo;
 import backend.backend.service.CaregiverService;
 import backend.backend.service.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
+//import org.springframework.security.core.userdetails.User;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
@@ -20,6 +21,7 @@ public class CaregiverController {
     private final String uploadDir = "D:/fyp demo/backend/uploads/";
 @Autowired
 private EmailService emailService;
+
 @Autowired
 private UserRepo userRepo;
     @PostMapping("/add")
@@ -30,7 +32,8 @@ private UserRepo userRepo;
             @RequestParam String fullName,
             @RequestParam String address,
             @RequestParam String phoneNumber,
-            @RequestParam String email,
+
+//            @RequestParam String email,
             @RequestParam String details,
             @RequestParam String experience,
             @RequestParam String speciality,
@@ -71,7 +74,9 @@ private UserRepo userRepo;
         caregiver.setFullName(fullName);
         caregiver.setAddress(address);
         caregiver.setPhoneNumber(phoneNumber);
-        caregiver.setEmail(email);
+        Users user = userRepo.findById(userId).orElseThrow();
+        caregiver.setEmail(user.getEmail());
+//        caregiver.setEmail(email);
         caregiver.setDetails(details);
         caregiver.setExperience(experience);
         caregiver.setSpeciality(speciality);
@@ -90,49 +95,49 @@ private UserRepo userRepo;
     public List<Caregiver> getVerifiedCaregivers(){
         return caregiverService.getCaregiversByStatus(CaregiverStatus.VERIFIED);
     }
-    @PostMapping("/admin/{id}/verify")
-    public Caregiver verifyCaregiver(@PathVariable String id){
-
-        Caregiver caregiver = caregiverService.getCaregiverById(id);
-
-        if(caregiver == null){
-            throw new RuntimeException("Caregiver not found");
-        }
-
-        caregiver.setStatus(CaregiverStatus.VERIFIED);
-
-        return caregiverService.saveCaregiver(caregiver);
-    }
-    @PostMapping("/admin/{id}/block")
-    public Caregiver blockCaregiver(@PathVariable String id){
-
-        Caregiver caregiver = caregiverService.getCaregiverById(id);
-
-        caregiver.setStatus(CaregiverStatus.BLOCKED);
-
-        return caregiverService.saveCaregiver(caregiver);
-    }
-    @PostMapping("/admin/{id}/unblock")
-    public Caregiver unblockCaregiver(@PathVariable String id){
-
-        Caregiver caregiver = caregiverService.getCaregiverById(id);
-
-        caregiver.setStatus(CaregiverStatus.VERIFIED);
-
-        return caregiverService.saveCaregiver(caregiver);
-    }
-    @GetMapping("/admin/pending")
-    public List<Caregiver> getPending(){
-        return caregiverService.getCaregiversByStatus(CaregiverStatus.PENDING);
-    }
-    @GetMapping("/admin/verified")
-    public List<Caregiver> getVerified(){
-        return caregiverService.getCaregiversByStatus(CaregiverStatus.VERIFIED);
-    }
-    @GetMapping("/admin/blocked")
-    public List<Caregiver> getBlocked(){
-        return caregiverService.getCaregiversByStatus(CaregiverStatus.BLOCKED);
-    }
+//    @PostMapping("/admin/{id}/verify")
+//    public Caregiver verifyCaregiver(@PathVariable String id){
+//
+//        Caregiver caregiver = caregiverService.getCaregiverById(id);
+//
+//        if(caregiver == null){
+//            throw new RuntimeException("Caregiver not found");
+//        }
+//
+//        caregiver.setStatus(CaregiverStatus.VERIFIED);
+//
+//        return caregiverService.saveCaregiver(caregiver);
+//    }
+//    @PostMapping("/admin/{id}/block")
+//    public Caregiver blockCaregiver(@PathVariable String id){
+//
+//        Caregiver caregiver = caregiverService.getCaregiverById(id);
+//
+//        caregiver.setStatus(CaregiverStatus.BLOCKED);
+//
+//        return caregiverService.saveCaregiver(caregiver);
+//    }
+//    @PostMapping("/admin/{id}/unblock")
+//    public Caregiver unblockCaregiver(@PathVariable String id){
+//
+//        Caregiver caregiver = caregiverService.getCaregiverById(id);
+//
+//        caregiver.setStatus(CaregiverStatus.VERIFIED);
+//
+//        return caregiverService.saveCaregiver(caregiver);
+//    }
+//    @GetMapping("/admin/pending")
+//    public List<Caregiver> getPending(){
+//        return caregiverService.getCaregiversByStatus(CaregiverStatus.PENDING);
+//    }
+//    @GetMapping("/admin/verified")
+//    public List<Caregiver> getVerified(){
+//        return caregiverService.getCaregiversByStatus(CaregiverStatus.VERIFIED);
+//    }
+//    @GetMapping("/admin/blocked")
+//    public List<Caregiver> getBlocked(){
+//        return caregiverService.getCaregiversByStatus(CaregiverStatus.BLOCKED);
+//    }
     @GetMapping("/all")
     public List<Caregiver> getAllCaregivers() {
         return caregiverService.getAllCaregivers();
@@ -191,7 +196,7 @@ private UserRepo userRepo;
             @RequestParam String fullName,
             @RequestParam String address,
             @RequestParam String phoneNumber,
-            @RequestParam String email,
+
             @RequestParam String details,
             @RequestParam String experience,
             @RequestParam String speciality,
@@ -207,7 +212,9 @@ private UserRepo userRepo;
         caregiver.setFullName(fullName);
         caregiver.setAddress(address);
         caregiver.setPhoneNumber(phoneNumber);
-        caregiver.setEmail(email);
+        Users user = userRepo.findById(userId).orElseThrow();
+        caregiver.setEmail(user.getEmail());
+
         caregiver.setDetails(details);
         caregiver.setExperience(experience);
         caregiver.setSpeciality(speciality);
@@ -244,5 +251,23 @@ private UserRepo userRepo;
 
         // Save and return the updated document
         return caregiverService.saveCaregiver(caregiver);
+    }
+    @PostMapping("/{id}/report")
+    public Caregiver reportCaregiver(@PathVariable String id) {
+
+        Caregiver caregiver = caregiverService.getCaregiverById(id);
+
+        if (caregiver == null) {
+            throw new RuntimeException("Caregiver not found");
+        }
+
+        // increment report count
+        caregiver.setReportsCount(caregiver.getReportsCount() + 1);
+
+        return caregiverService.saveCaregiver(caregiver);
+    }
+    @GetMapping("/admin/reported")
+    public List<Caregiver> getReportedCaregivers() {
+        return caregiverService.getReportedCaregivers();
     }
 }

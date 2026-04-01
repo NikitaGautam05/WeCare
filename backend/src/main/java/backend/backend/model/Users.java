@@ -14,6 +14,28 @@ public class Users {
     private String userName;
     private String password;
 
+    public String getConfirmPassword() {
+        return confirmPassword;
+    }
+
+    public void setConfirmPassword(String confirmPassword) {
+        this.confirmPassword = confirmPassword;
+    }
+
+//    public String getPhoto() {
+//        return photo;
+//    }
+
+//    public void setPhoto(String photo) {
+//        this.photo = photo;
+//    }
+
+    private String confirmPassword;
+//    private String photo;
+    private String email;
+    private String role;
+
+
     public List<String> getFavourites() {
         return favourites;
     }
@@ -41,7 +63,7 @@ public class Users {
         this.role = role;
     }
 
-    private String role;
+
     public String getEmail() {
         return email;
     }
@@ -50,7 +72,6 @@ public class Users {
         this.email = email;
     }
 
-    private String email;
 
     public String getId() {
         return id;

@@ -2,12 +2,15 @@ package backend.backend.service;
 
 import backend.backend.model.Caregiver;
 import backend.backend.repository.CaregiverRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import backend.backend.model.CaregiverStatus;
 @Service
 public class CaregiverService {
+    @Autowired
+    CaregiverRepository  caregiverRepo;
     private final CaregiverRepository caregiverRepository;
     public CaregiverService(CaregiverRepository caregiverRepository){
         this.caregiverRepository=caregiverRepository;
@@ -29,5 +32,8 @@ public class CaregiverService {
     }
     public Caregiver getByUserId(String userId){
         return caregiverRepository.findByUserId(userId);
+    }
+    public List<Caregiver> getReportedCaregivers() {
+        return caregiverRepo.findByReportsCountGreaterThan(0);
     }
 }
