@@ -152,62 +152,134 @@ public class GoogleSignupController {
 
     private static final String GOOGLE_CLIENT_ID = "666312206626-bp4glho27euf5tr9041vq247fr707fi5.apps.googleusercontent.com";
 
-    @PostMapping("/google-signup")
-    public Map<String, String> googleSignup(@RequestBody Map<String, String> payload) {
+//    @PostMapping("/google-signup")
+//    public Map<String, String> googleSignup(@RequestBody Map<String, String> payload) {
+//
+//        Map<String, String> response = new HashMap<>();
+//        String token = payload.get("token");
+//        String roleFromFrontend = payload.getOrDefault("role", "USER");
+//
+//        try {
+//            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
+//                    GoogleNetHttpTransport.newTrustedTransport(),
+//                    JacksonFactory.getDefaultInstance()
+//            ).setAudience(Collections.singletonList(GOOGLE_CLIENT_ID)).build();
+//
+//            GoogleIdToken idToken = verifier.verify(token);
+//            if (idToken == null) {
+//                response.put("error", "Invalid Google token");
+//                return response;
+//            }
+//
+//            Payload payloadData = idToken.getPayload();
+//            String email = payloadData.getEmail();
+//            String name = (String) payloadData.get("name");
+//
+//            Users user = userService.getAllUsers()
+//                    .stream()
+//                    .filter(u -> email.equals(u.getEmail()))
+//                    .findFirst()
+//                    .orElse(null);
+//
+//            boolean needsSetup = false;
+//
+//            if (user == null) { // New signup
+//                user = new Users();
+//                user.setEmail(email);
+//                user.setUserName(""); // Will be set in quick setup
+//                user.setPassword(""); // Will be set in quick setup
+//                user.setRole(roleFromFrontend.toUpperCase().replaceAll("\\s","")); // CAREGIVER or USER
+//                userService.saveUser(user);
+//                needsSetup = true; // Show modal
+//            } else if (user.getPassword() == null || user.getPassword().isEmpty()) {
+//                needsSetup = true; // Existing Google user but hasn't completed profile
+//            }
+//
+//            String jwt = jwtService.generateToken(user);
+//            response.put("token", jwt);
+//            response.put("role", user.getRole());
+//            response.put("needsSetup", String.valueOf(needsSetup));
+//            response.put("userName", user.getUserName());
+//            response.put("userId", user.getId());
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            response.put("error", "Google authentication failed");
+//        }
+//
+//        return response;
+//    }
+@PostMapping("/google-signup")
+public Map<String, String> googleSignup(@RequestBody Map<String, String> payload) {
+    Map<String, String> response = new HashMap<>();
+    String token = payload.get("token");
+    String roleFromFrontend = payload.getOrDefault("role", "USER").toUpperCase().replaceAll("\\s","");
+    String mode = payload.getOrDefault("mode", "SIGNUP"); // Get the mode from React
 
-        Map<String, String> response = new HashMap<>();
-        String token = payload.get("token");
-        String roleFromFrontend = payload.getOrDefault("role", "USER");
+    try {
+        GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
+                GoogleNetHttpTransport.newTrustedTransport(),
+                JacksonFactory.getDefaultInstance()
+        ).setAudience(Collections.singletonList(GOOGLE_CLIENT_ID)).build();
 
-        try {
-            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
-                    GoogleNetHttpTransport.newTrustedTransport(),
-                    JacksonFactory.getDefaultInstance()
-            ).setAudience(Collections.singletonList(GOOGLE_CLIENT_ID)).build();
-
-            GoogleIdToken idToken = verifier.verify(token);
-            if (idToken == null) {
-                response.put("error", "Invalid Google token");
-                return response;
-            }
-
-            Payload payloadData = idToken.getPayload();
-            String email = payloadData.getEmail();
-            String name = (String) payloadData.get("name");
-
-            Users user = userService.getAllUsers()
-                    .stream()
-                    .filter(u -> email.equals(u.getEmail()))
-                    .findFirst()
-                    .orElse(null);
-
-            boolean needsSetup = false;
-
-            if (user == null) { // New signup
-                user = new Users();
-                user.setEmail(email);
-                user.setUserName(""); // Will be set in quick setup
-                user.setPassword(""); // Will be set in quick setup
-                user.setRole(roleFromFrontend.toUpperCase().replaceAll("\\s","")); // CAREGIVER or USER
-                userService.saveUser(user);
-                needsSetup = true; // Show modal
-            } else if (user.getPassword() == null || user.getPassword().isEmpty()) {
-                needsSetup = true; // Existing Google user but hasn't completed profile
-            }
-
-            String jwt = jwtService.generateToken(user);
-            response.put("token", jwt);
-            response.put("role", user.getRole());
-            response.put("needsSetup", String.valueOf(needsSetup));
-            response.put("userName", user.getUserName());
-            response.put("userId", user.getId());
-        } catch (Exception e) {
-            e.printStackTrace();
-            response.put("error", "Google authentication failed");
+        GoogleIdToken idToken = verifier.verify(token);
+        if (idToken == null) {
+            response.put("error", "Invalid Google token");
+            return response;
         }
 
-        return response;
+        Payload payloadData = idToken.getPayload();
+        String email = payloadData.getEmail();
+
+        // 1. Find the existing user
+        Users user = userService.getAllUsers()
+                .stream()
+                .filter(u -> email.equals(u.getEmail()))
+                .findFirst()
+                .orElse(null);
+
+        // 2. ROLE LOCK: If user exists, check if their stored role matches what they picked now
+        if (user != null) {
+            if (!user.getRole().equalsIgnoreCase(roleFromFrontend)) {
+                response.put("error", "This email is already registered as a " + user.getRole() +
+                        ". You cannot use it for a " + roleFromFrontend + " account.");
+                return response;
+            }
+        }
+
+        // 3. LOGIN PROTECTION: If user doesn't exist and they are on the LOGIN page, don't create them
+        if (user == null && "LOGIN".equals(mode)) {
+            response.put("error", "No account found for this email. Please Sign Up first.");
+            return response;
+        }
+
+        // 4. SIGNUP: Create new user if they don't exist
+        boolean needsSetup = false;
+        if (user == null) {
+            user = new Users();
+            user.setEmail(email);
+            user.setUserName("");
+            user.setPassword("");
+            user.setRole(roleFromFrontend);
+            userService.saveUser(user);
+            needsSetup = true;
+        } else if (user.getPassword() == null || user.getPassword().isEmpty()) {
+            needsSetup = true;
+        }
+
+        String jwt = jwtService.generateToken(user);
+        response.put("token", jwt);
+        response.put("role", user.getRole());
+        response.put("needsSetup", String.valueOf(needsSetup));
+        response.put("userName", user.getUserName());
+        response.put("userId", user.getId());
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        response.put("error", "Google authentication failed");
     }
+
+    return response;
+}
 
     // Complete profile after Google signup
     @PostMapping("/users/complete-google-profile")

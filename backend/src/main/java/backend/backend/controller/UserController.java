@@ -297,7 +297,7 @@ public class UserController {
         return ResponseEntity.ok(resp);
     }
     // Update email for a specific username
-    @PutMapping("/api/update-email")
+    @PutMapping("/update-email")
     public String updateEmail(@RequestParam String username, @RequestParam String email) {
         Users user = userService.getAllUsers()
                 .stream()
@@ -356,5 +356,11 @@ public class UserController {
         user.getFavourites().removeIf(favId -> favId.equals(caregiverId.trim()));
 
         return userRepository.save(user);
+    }
+    @GetMapping("/{id}")
+    public ResponseEntity<Users> getUserById(@PathVariable String id) {
+        return userRepository.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 }

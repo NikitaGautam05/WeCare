@@ -123,7 +123,7 @@ public class AdminController {
         public String getNewPassword()        { return newPassword; }
         public void setNewPassword(String p)  { this.newPassword = p; }
     }
-    @PostMapping("/admin/{id}/verify")
+    @PutMapping("/caregivers/{id}/verify")
     public Caregiver verifyCaregiver(@PathVariable String id){
 
         Caregiver caregiver = caregiverService.getCaregiverById(id);
@@ -136,7 +136,7 @@ public class AdminController {
 
         return caregiverService.saveCaregiver(caregiver);
     }
-    @PostMapping("/admin/{id}/block")
+    @PutMapping("/caregivers/{id}/block")
     public Caregiver blockCaregiver(@PathVariable String id){
 
         Caregiver caregiver = caregiverService.getCaregiverById(id);
@@ -145,7 +145,7 @@ public class AdminController {
 
         return caregiverService.saveCaregiver(caregiver);
     }
-    @PostMapping("/admin/{id}/unblock")
+    @PutMapping("/caregivers/{id}/unblock")
     public Caregiver unblockCaregiver(@PathVariable String id){
 
         Caregiver caregiver = caregiverService.getCaregiverById(id);
@@ -154,15 +154,15 @@ public class AdminController {
 
         return caregiverService.saveCaregiver(caregiver);
     }
-    @GetMapping("/admin/pending")
+    @GetMapping("/pending")
     public List<Caregiver> getPending(){
         return caregiverService.getCaregiversByStatus(CaregiverStatus.PENDING);
     }
-    @GetMapping("/admin/verified")
+    @GetMapping("/verified")
     public List<Caregiver> getVerified(){
         return caregiverService.getCaregiversByStatus(CaregiverStatus.VERIFIED);
     }
-    @GetMapping("/admin/blocked")
+    @GetMapping("/blocked")
     public List<Caregiver> getBlocked(){
         return caregiverService.getCaregiversByStatus(CaregiverStatus.BLOCKED);
     }

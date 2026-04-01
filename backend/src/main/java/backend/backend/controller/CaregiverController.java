@@ -6,6 +6,7 @@ import backend.backend.service.CaregiverService;
 import backend.backend.service.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
 //import org.springframework.security.core.userdetails.User;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
@@ -181,14 +182,16 @@ private UserRepo userRepo;
         return caregiverService.saveCaregiver(caregiver);
     }
     @GetMapping("/user/{userId}")
-    public Caregiver getByUserId(@PathVariable String userId) {
+    public ResponseEntity<Caregiver> getByUserId(@PathVariable String userId) {
         Caregiver caregiver = caregiverService.getByUserId(userId);
 
+        // If no profile exists, return 200 with null or 404
+        // This allows React to handle the "Empty Profile" state
         if (caregiver == null) {
-            throw new RuntimeException("Profile not found");
+            return ResponseEntity.ok(null);
         }
 
-        return caregiver;
+        return ResponseEntity.ok(caregiver);
     }
     @PutMapping("/update/{userId}")
     public Caregiver updateCaregiver(
@@ -270,4 +273,6 @@ private UserRepo userRepo;
     public List<Caregiver> getReportedCaregivers() {
         return caregiverService.getReportedCaregivers();
     }
+
 }
+
