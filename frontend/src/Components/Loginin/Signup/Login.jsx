@@ -44,34 +44,33 @@ const handleLogin = async (e) => {
   const handleGoogleLogin = async (credentialResponse) => {
   try {
     const token = credentialResponse.credential;
-
-    // Get the role user selected
     const selectedRole = localStorage.getItem("selectedRole") || "USER";
 
-    const payload = {
+    const res = await axios.post("http://localhost:8080/api/google-signup", {
       token: token,
-      role: selectedRole.toUpperCase(), // CAREGIVER or USER
-    };
+      role: selectedRole.toUpperCase(),
+    });
 
-    const res = await axios.post(
-      "http://localhost:8080/api/google-signup",
-      payload
-    );
+    if (res.data.token) {
+      // CRITICAL: Ensure these keys match exactly what handleLogin uses
+      localStorage.setItem("jwtToken", res.data.token);
+      localStorage.setItem("userId", res.data.userId || ""); 
+      localStorage.setItem("userName", res.data.userName || "Google User"); 
+      localStorage.setItem("role", res.data.role || "USER");
 
-   if (res.data.token) {
-  localStorage.setItem("jwtToken", res.data.token);
-  localStorage.setItem("userId", res.data.userId);       
-  localStorage.setItem("userName", res.data.userName);    
-  localStorage.setItem("role", res.data.role);
-
-  const role = res.data.role.toLowerCase();
-  if (role.includes("caregiver")) navigate("/welcome");
-  else navigate("/dash");
-} else {
-      alert(res.data.error || res.data);
+      // Normalize role for navigation logic
+      const role = (res.data.role || "USER").toLowerCase();
+      
+      if (role.includes("caregiver")) {
+        navigate("/welcome");
+      } else {
+        navigate("/dash");
+      }
+    } else {
+      alert(res.data.error || "Google login failed");
     }
   } catch (err) {
-    console.error(err);
+    console.error("Google Login Error:", err);
     alert("Google login failed");
   }
 };
