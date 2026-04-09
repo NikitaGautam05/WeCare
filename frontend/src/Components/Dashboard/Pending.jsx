@@ -17,22 +17,28 @@ export default function Pending() {
 
   // ── Fetch all caregivers, filter for PENDING ──────────────────────────────
 const fetchPending = async () => {
-    setLoading(true);
-    try {
-      const res = await axios.get(`${BASE_URL}/caregivers/admin/pending`);
-      const data = Array.isArray(res.data) ? res.data
-        : Array.isArray(res.data?.content) ? res.data.content
-        : Array.isArray(res.data?.data) ? res.data.data
-        : [];
-      setAll(data); // ✅ moved here from catch block
-    } catch (err) {
-      console.error("Failed to fetch:", err);
-      setAll([]); // ✅ empty array on error
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // 1. Get the token from local storage
+  const adminToken = localStorage.getItem("adminToken");
+  
+  setLoading(true);
+  try {
+    // 2. Pass the Authorization header in the GET request
+    const res = await axios.get(`${BASE_URL}/admin/pending`, {
+      headers: { Authorization: `Bearer ${adminToken}` }
+    });
+    
+    const data = Array.isArray(res.data) ? res.data
+      : Array.isArray(res.data?.content) ? res.data.content
+      : Array.isArray(res.data?.data) ? res.data.data
+      : [];
+    setAll(data);
+  } catch (err) {
+    console.error("Failed to fetch:", err);
+    setAll([]);
+  } finally {
+    setLoading(false);
+  }
+};
   useEffect(() => { fetchPending(); }, []);
 
   // ── Show toast ────────────────────────────────────────────────────────────

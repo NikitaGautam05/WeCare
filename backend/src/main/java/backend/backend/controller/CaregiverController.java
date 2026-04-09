@@ -269,10 +269,10 @@ private UserRepo userRepo;
 
         return caregiverService.saveCaregiver(caregiver);
     }
-    @GetMapping("/admin/reported")
-    public List<Caregiver> getReportedCaregivers() {
-        return caregiverService.getReportedCaregivers();
-    }
+//    @GetMapping("/admin/reported")
+//    public List<Caregiver> getReportedCaregivers() {
+//        return caregiverService.getReportedCaregivers();
+//    }
 
 }
 

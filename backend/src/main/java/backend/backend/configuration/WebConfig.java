@@ -21,6 +21,7 @@ public class WebConfig implements WebMvcConfigurer {
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // Ensure the path ends with a slash /
         registry.addResourceHandler("/uploads/**")
+                .addResourceLocations("file:uploads/")
                 .addResourceLocations("file:///D:/fyp demo/backend/uploads/");
     }
 }

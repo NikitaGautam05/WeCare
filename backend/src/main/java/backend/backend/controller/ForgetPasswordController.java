@@ -1,13 +1,19 @@
 package backend.backend.controller;
 
-import backend.backend.repository.UserRepo;
-import backend.backend.model.Users;
-import backend.backend.service.EmailService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.HashMap;
 import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import backend.backend.model.Users;
+import backend.backend.repository.UserRepo;
+import backend.backend.service.EmailService;
 
 @RestController
 @RequestMapping("/api")
@@ -19,6 +25,9 @@ public class ForgetPasswordController {
 
     @Autowired
     private UserRepo userRepo;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     // Temporary in-memory OTP storage (use DB/Redis in production)
     private Map<String, String> otpStorage = new HashMap<>();
@@ -73,7 +82,7 @@ public class ForgetPasswordController {
         if (user == null) return "User no longer exists!";
 
         // 3. Update ONLY the password
-        user.setPassword(request.getNewPassword()); // Use passwordEncoder.encode() here!
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
 
         // 4. Save to DB
         userRepo.save(user);

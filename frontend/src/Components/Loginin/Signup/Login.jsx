@@ -25,7 +25,8 @@ const handleLogin = async (e) => {
       localStorage.setItem("jwtToken", response.data.token);
       localStorage.setItem("userId", response.data.userId);      
       localStorage.setItem("userName", response.data.userName);   
-      localStorage.setItem("role", response.data.role);           
+      localStorage.setItem("role", response.data.role);       
+      localStorage.setItem("email", response.data.email);    
 
       const normalizedRole = (response.data.role || "USER").toLowerCase().replace(/\s/g,'');
       if (normalizedRole.includes("caregiver")) navigate("/welcome");
@@ -40,38 +41,56 @@ const handleLogin = async (e) => {
     setMessage(error.response?.data || "Login failed");
   }
 };
+const handleGoogleSuccess = async (response) => {
+  const res = await axios.post(`${BASE_URL}/google-login`, { token: response.credential });
+  
+  // Store the token
+  localStorage.setItem("token", res.data.token);
 
-  const handleGoogleLogin = async (credentialResponse) => {
+  // Redirect based on the role returned by the backend
+  if (res.data.role === "CAREGIVER") {
+    navigate(`/CareGiverDash/${res.data.id}`);
+  } else {
+    navigate("/dash");
+  }
+};
+
+const handleGoogleLogin = async (credentialResponse) => {
   try {
     const token = credentialResponse.credential;
-    const selectedRole = localStorage.getItem("selectedRole") || "USER";
-
+    
+    // We tell the backend we are trying to login
     const res = await axios.post("http://localhost:8080/api/google-signup", {
       token: token,
-      role: selectedRole.toUpperCase(),
+      mode: "LOGIN" 
     });
 
-    if (res.data.token) {
-      // CRITICAL: Ensure these keys match exactly what handleLogin uses
-      localStorage.setItem("jwtToken", res.data.token);
-      localStorage.setItem("userId", res.data.userId || ""); 
-      localStorage.setItem("userName", res.data.userName || "Google User"); 
-      localStorage.setItem("role", res.data.role || "USER");
+    if (res.data.error) {
+      setMessage(res.data.error);
+      return;
+    }
 
-      // Normalize role for navigation logic
-      const role = (res.data.role || "USER").toLowerCase();
-      
-      if (role.includes("caregiver")) {
-        navigate("/welcome");
+    if (res.data.token) {
+      // 1. ALWAYS trust the role coming back from the database (res.data.role)
+      const actualRole = (res.data.role || "USER").toUpperCase();
+
+      // 2. Save all details to localStorage
+      localStorage.setItem("jwtToken", res.data.token);
+      localStorage.setItem("userId", res.data.userId); 
+      localStorage.setItem("userName", res.data.userName); 
+      localStorage.setItem("role", actualRole);
+      localStorage.setItem("email", res.data.email);
+
+      // 3. Redirect based on the REAL role
+      if (actualRole.includes("CAREGIVER")) {
+        navigate("/welcome"); 
       } else {
         navigate("/dash");
       }
-    } else {
-      alert(res.data.error || "Google login failed");
     }
   } catch (err) {
     console.error("Google Login Error:", err);
-    alert("Google login failed");
+    setMessage(err.response?.data?.error || "Google login failed");
   }
 };
     
@@ -83,8 +102,8 @@ const handleLogin = async (e) => {
         alt="Background"
       />
 
-      <div className="absolute top-5 right-10 flex gap-4 z-10">
-        <button onClick={() => navigate('/')} className="px-4 py-2 text-white bg-gray-700 bg-opacity-50 rounded-lg hover:bg-opacity-70 transition">Home</button>
+      <div className="absolute top-5 left-6 flex gap-4 z-10">
+        <button onClick={() => navigate('/')} className="absolute top-6 left-7 bg-gray-200 px-4 py-2 rounded font-semibold z-10">Home</button>
         {/* <button onClick={() => navigate('/signup')} className="px-4 py-2 text-white bg-gray-700 bg-opacity-50 rounded-lg hover:bg-opacity-70 transition">Register</button> */}
       </div>
 

@@ -122,9 +122,9 @@ const CareGiverDash = () => {
               <button onClick={() => navigate('/terms')} className="group w-full flex items-center gap-4 px-6 py-3 text-sm font-bold text-gray-400 hover:text-black transition-colors">
                 <FaFileAlt className="group-hover:text-black" /> Terms & Service
               </button><br/>
-              <button className="group w-full flex items-center gap-4 px-6 py-3 text-sm font-bold text-gray-400 hover:text-black transition-colors">
+              {/* <button className="group w-full flex items-center gap-4 px-6 py-3 text-sm font-bold text-gray-400 hover:text-black transition-colors">
                 <FaQuestionCircle className="group-hover:text-black" /> Support
-              </button>
+              </button> */}
             </div>
           </aside>
 

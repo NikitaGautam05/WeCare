@@ -1,5 +1,21 @@
 package backend.backend.controller;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import backend.backend.model.Admin;
 import backend.backend.model.Caregiver;
 import backend.backend.model.CaregiverStatus;
@@ -7,13 +23,6 @@ import backend.backend.repository.AdminRepo;
 import backend.backend.service.CaregiverService;
 import backend.backend.service.EmailService;
 import backend.backend.service.JwtService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -23,6 +32,8 @@ public class AdminController {
     @Autowired private AdminRepo adminRepo;
     @Autowired private EmailService emailService;  // ← reuse, no duplication
     @Autowired private JwtService jwtService;      // ← reuse, no duplication
+    @Autowired
+    private PasswordEncoder passwordEncoder;
     @Autowired
     private CaregiverService caregiverService;
 
@@ -39,7 +50,13 @@ public class AdminController {
             resp.put("error", "Admin not found");
             return ResponseEntity.status(401).body(resp);
         }
-        if (!admin.getPassword().equals(req.getPassword())) {
+        boolean passwordMatches = passwordEncoder.matches(req.getPassword(), admin.getPassword());
+        if (!passwordMatches && req.getPassword().equals(admin.getPassword())) {
+            admin.setPassword(passwordEncoder.encode(req.getPassword()));
+            adminRepo.save(admin);
+            passwordMatches = true;
+        }
+        if (!passwordMatches) {
             resp.put("error", "Wrong password");
             return ResponseEntity.status(401).body(resp);
         }
@@ -88,7 +105,7 @@ public class AdminController {
         Admin admin = adminRepo.findByEmail(req.getEmail());
         if (admin == null) return ResponseEntity.status(404).body("Admin not found");
 
-        admin.setPassword(req.getNewPassword());
+        admin.setPassword(passwordEncoder.encode(req.getNewPassword()));
         adminRepo.save(admin);
         return ResponseEntity.ok("Password reset successful!");
     }
@@ -154,6 +171,11 @@ public class AdminController {
 
         return caregiverService.saveCaregiver(caregiver);
     }
+    @GetMapping("/reported")
+    public List<Caregiver> getReportedCaregivers() {
+        return caregiverService.getReportedCaregivers();
+    }
+
     @GetMapping("/pending")
     public List<Caregiver> getPending(){
         return caregiverService.getCaregiversByStatus(CaregiverStatus.PENDING);

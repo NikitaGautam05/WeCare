@@ -16,11 +16,15 @@ export default function AdminDashboard() {
   const [selected, setSelected]           = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
 
-  // ── Fetch caregivers ────────────────────────────────
+  const adminToken = localStorage.getItem("adminToken");
+  const axiosConfig = adminToken
+    ? { headers: { Authorization: `Bearer ${adminToken}` } }
+    : {};
+
   const fetchCaregivers = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${BASE_URL}/caregivers/all`);
+      const res = await axios.get(`${BASE_URL}/caregivers/all`, axiosConfig);
       const data = Array.isArray(res.data)
         ? res.data
         : Array.isArray(res.data?.content)
@@ -37,12 +41,9 @@ export default function AdminDashboard() {
     }
   };
 
-  // ── Fetch reported caregivers ────────────────────────
   const fetchReported = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/admin/reports`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
-      });
+      const res = await axios.get(`${BASE_URL}/admin/reported`, axiosConfig);
       const data = Array.isArray(res.data)
         ? res.data
         : Array.isArray(res.data?.content)
@@ -58,17 +59,18 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
+    if (!adminToken) {
+      navigate("/admin");
+      return;
+    }
     fetchCaregivers();
     fetchReported();
-  }, []);
+  }, [adminToken, navigate]);
 
-  // ── Actions ─────────────────────────────────────
   const doAction = async (id, action, newStatus) => {
     setActionLoading(id);
     try {
-      await axios.put(`${BASE_URL}/admin/caregivers/${id}/${action}`, {}, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
-      });
+      await axios.put(`${BASE_URL}/admin/caregivers/${id}/${action}`, {}, axiosConfig);
       setCaregivers((prev) => prev.map((c) => c.id === id ? { ...c, status: newStatus } : c));
       if (selected?.id === id) setSelected((p) => ({ ...p, status: newStatus }));
     } catch (err) {
@@ -82,7 +84,6 @@ export default function AdminDashboard() {
   const block   = (id) => doAction(id, "block",   "BLOCKED");
   const unblock = (id) => doAction(id, "unblock", "PENDING");
 
-  // ── Derived data ─────────────────────────────
   const counts = {
     all:      caregivers.length,
     pending:  caregivers.filter((c) => (c.status || "PENDING") === "PENDING").length,
@@ -90,14 +91,6 @@ export default function AdminDashboard() {
     blocked:  caregivers.filter((c) => c.status === "BLOCKED").length,
     reports:  reported.length,
   };
-
-  const NAV_TABS = [
-    { key: "all",      label: "All",      icon: "👥", path: null,              activeBg: "bg-white text-gray-900",          inactiveBg: "bg-white/10 text-white hover:bg-white/20" },
-    { key: "pending",  label: "Pending",  icon: "⏳", path: "/admin/pending",  activeBg: "bg-amber-400 text-white",          inactiveBg: "bg-white/10 text-white hover:bg-amber-400/40" },
-    { key: "verified", label: "Verified", icon: "✅", path: "/admin/verified", activeBg: "bg-emerald-500 text-white",        inactiveBg: "bg-white/10 text-white hover:bg-emerald-500/40" },
-    { key: "blocked",  label: "Blocked",  icon: "🚫", path: "/admin/blocked",  activeBg: "bg-red-500 text-white",            inactiveBg: "bg-white/10 text-white hover:bg-red-500/40" },
-    { key: "reports",  label: "Reports",  icon: "⚠️", path: "/admin/reports",  activeBg: "bg-orange-400 text-white",         inactiveBg: "bg-white/10 text-white hover:bg-orange-400/40" },
-  ];
 
   const filtered = activeTab === "reports"
     ? reported.filter((r) => !search || r.fullName?.toLowerCase().includes(search.toLowerCase()) || r.reason?.toLowerCase().includes(search.toLowerCase()))
@@ -121,70 +114,209 @@ export default function AdminDashboard() {
     navigate("/admin");
   };
 
-  const handleTabClick = (tab) => {
-    if (tab.path) {
-      navigate(tab.path);
-    } else {
-      setActiveTab(tab.key);
-    }
+  // Status config
+  const STATUS_CFG = {
+    PENDING:  { badge: "bg-amber-100 text-amber-700 border-amber-200",       dot: "bg-amber-400",   label: "Pending",  icon: "⏳" },
+    VERIFIED: { badge: "bg-emerald-100 text-emerald-700 border-emerald-200", dot: "bg-emerald-400", label: "Verified", icon: "✅" },
+    BLOCKED:  { badge: "bg-red-100 text-red-600 border-red-200",             dot: "bg-red-400",     label: "Blocked",  icon: "🚫" },
   };
 
-  // ── Sub-components ─────────────────────────────
   const StatusBadge = ({ status = "PENDING" }) => {
-    const cfg = {
-      PENDING:  { cls: "bg-amber-50 text-amber-700 border-amber-200",       label: "Pending" },
-      VERIFIED: { cls: "bg-emerald-50 text-emerald-700 border-emerald-200", label: "Verified" },
-      BLOCKED:  { cls: "bg-red-50 text-red-600 border-red-200",             label: "Blocked" },
-    };
-    const { cls, label } = cfg[status] ?? { cls: "bg-gray-100 text-gray-500 border-gray-200", label: status };
+    const cfg = STATUS_CFG[status] ?? { badge: "bg-gray-100 text-gray-500 border-gray-200", dot: "bg-gray-400", label: status, icon: "" };
     return (
-      <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border ${cls}`}>
-        {status === "PENDING" && "⏳"}
-        {status === "VERIFIED" && "✅"}
-        {status === "BLOCKED" && "🚫"}
-        {label}
+      <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border backdrop-blur-sm ${cfg.badge}`}>
+        <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+        {cfg.label}
       </span>
     );
   };
 
   const ActionButtons = ({ c, size = "sm" }) => {
-    const busy = actionLoading === c.id;
+    const busy   = actionLoading === c.id;
     const status = c.status || "PENDING";
-    const base = size === "sm"
-      ? "text-xs font-semibold px-3 py-1.5 rounded-lg transition-all disabled:opacity-40 flex items-center gap-1"
-      : "text-sm font-semibold px-4 py-2.5 rounded-xl transition-all disabled:opacity-40 flex items-center gap-1.5";
+    const base   = size === "sm"
+      ? "text-xs font-bold px-3 py-1.5 rounded-lg transition-all disabled:opacity-40 flex items-center gap-1"
+      : "text-sm font-bold px-4 py-2.5 rounded-xl transition-all disabled:opacity-40 flex items-center gap-1.5";
 
     return (
       <div className="flex gap-2 flex-wrap">
         {status !== "VERIFIED" && status !== "BLOCKED" && (
           <button onClick={() => verify(c.id)} disabled={busy}
-            className={`${base} bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm`}>
-            {busy ? <span className="animate-spin">⏳</span> : "✓"} Verify
+            className={`${base} bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white shadow-sm shadow-emerald-200`}>
+            {busy ? <span className="animate-spin inline-block">⏳</span> : <span>✓</span>} Verify
           </button>
         )}
         {status === "VERIFIED" && (
           <button onClick={() => block(c.id)} disabled={busy}
-            className={`${base} bg-red-500 hover:bg-red-600 text-white shadow-sm`}>
-            {busy ? <span className="animate-spin">⏳</span> : "✕"} Block
+            className={`${base} bg-red-500 hover:bg-red-600 active:scale-95 text-white shadow-sm shadow-red-200`}>
+            {busy ? <span className="animate-spin inline-block">⏳</span> : <span>✕</span>} Block
           </button>
         )}
         {status === "PENDING" && (
           <button onClick={() => block(c.id)} disabled={busy}
-            className={`${base} bg-gray-400 hover:bg-gray-500 text-white shadow-sm`}>
-            {busy ? <span className="animate-spin">⏳</span> : "✕"} Block
+            className={`${base} bg-gray-400 hover:bg-gray-500 active:scale-95 text-white shadow-sm`}>
+            {busy ? <span className="animate-spin inline-block">⏳</span> : <span>✕</span>} Block
           </button>
         )}
         {status === "BLOCKED" && (
           <button onClick={() => unblock(c.id)} disabled={busy}
-            className={`${base} bg-blue-500 hover:bg-blue-600 text-white shadow-sm`}>
-            {busy ? <span className="animate-spin">⏳</span> : "↩"} Unblock
+            className={`${base} bg-blue-500 hover:bg-blue-600 active:scale-95 text-white shadow-sm shadow-blue-200`}>
+            {busy ? <span className="animate-spin inline-block">⏳</span> : <span>↩</span>} Unblock
           </button>
         )}
       </div>
     );
   };
 
-  // ── Render ─────────────────────────────────────────────
+  // Gradient backgrounds per status for the card header area
+  const cardGradient = {
+    PENDING:  "from-amber-100 to-orange-50",
+    VERIFIED: "from-emerald-100 to-teal-50",
+    BLOCKED:  "from-red-100 to-rose-50",
+  };
+
+  const CaregiverCard = ({ c }) => {
+    const status  = c.status || "PENDING";
+    const photo   = c.profilePhoto?.replace(/\s+/g, "_").trim();
+    const initials = (c.fullName || "C").split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+    const gradient = cardGradient[status] ?? "from-gray-100 to-gray-50";
+
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden flex flex-col hover:shadow-xl hover:-translate-y-1 transition-all duration-250 group shadow-sm">
+
+        {/* ── Photo header ── */}
+        <div className={`relative bg-gradient-to-br ${gradient} pt-6 pb-4 px-4 flex flex-col items-center`}>
+
+          {/* Subtle pattern overlay */}
+          <div
+            className="absolute inset-0 opacity-[0.04]"
+            style={{
+              backgroundImage: "radial-gradient(circle, #000 1px, transparent 1px)",
+              backgroundSize: "16px 16px",
+            }}
+          />
+
+          {/* Status badge — top right */}
+          <div className="absolute top-3 right-3 z-10">
+            <StatusBadge status={status} />
+          </div>
+
+          {/* Avatar ring */}
+          <div className="relative">
+            <div className={`absolute inset-0 rounded-full blur-md opacity-30 scale-110 ${
+              status === "VERIFIED" ? "bg-emerald-400" :
+              status === "BLOCKED"  ? "bg-red-400"     :
+                                      "bg-amber-300"
+            }`} />
+            <div className="relative w-24 h-24 rounded-full ring-4 ring-white shadow-lg overflow-hidden bg-gray-200">
+              <img
+                src={`http://localhost:8080/uploads/${photo}`}
+                alt={c.fullName}
+                className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-400"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(c.fullName || "C")}&background=e5e7eb&color=374151&size=200&bold=true&font-size=0.4`;
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Name + speciality under avatar */}
+          <div className="relative mt-3 text-center">
+            <h3 className="font-bold text-gray-900 text-base leading-tight">{c.fullName || "—"}</h3>
+            <p className="text-xs text-gray-500 mt-0.5 font-medium">{c.speciality || "General Care"}</p>
+          </div>
+        </div>
+
+        {/* ── Info body ── */}
+        <div className="p-4 flex flex-col flex-1 gap-3">
+          <div className="space-y-1.5 text-xs text-gray-500">
+            <div className="flex items-center gap-2 truncate">
+              <span className="w-5 text-center text-gray-400">✉</span>
+              <span className="truncate">{c.email || "—"}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-5 text-center text-gray-400">📞</span>
+              <span>{c.phoneNumber || "—"}</span>
+            </div>
+            <div className="flex items-center gap-2 truncate">
+              <span className="w-5 text-center text-gray-400">📍</span>
+              <span className="truncate">{c.address || "—"}</span>
+            </div>
+            {(c.experience || c.chargeMin) && (
+              <div className="flex items-center gap-2">
+                <span className="w-5 text-center text-gray-400">💼</span>
+                <span>
+                  {c.experience && `${c.experience} yrs`}
+                  {c.chargeMin && c.chargeMax && ` · Rs ${c.chargeMin}–${c.chargeMax}`}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Actions row */}
+          <div className="mt-auto pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
+            <button
+              onClick={() => setSelected(c)}
+              className="text-xs text-gray-400 hover:text-gray-700 font-semibold underline underline-offset-2 transition-colors"
+            >
+              View Details
+            </button>
+            <ActionButtons c={c} size="sm" />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const ReportCard = ({ c }) => (
+    <div className="bg-white rounded-2xl border border-orange-100 overflow-hidden flex flex-col hover:shadow-xl hover:-translate-y-1 transition-all duration-250 group shadow-sm">
+      {/* Reported header — no photo */}
+      <div className="relative bg-gradient-to-br from-orange-50 to-red-50 pt-5 pb-4 px-4 flex flex-col items-center">
+        <div className="absolute inset-0 opacity-[0.04]"
+          style={{ backgroundImage: "radial-gradient(circle, #000 1px, transparent 1px)", backgroundSize: "16px 16px" }} />
+        <div className="absolute top-3 right-3">
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border bg-orange-100 text-orange-700 border-orange-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-400" /> Reported
+          </span>
+        </div>
+        <div className="relative w-16 h-16 rounded-full ring-4 ring-white shadow-lg overflow-hidden bg-orange-100 flex items-center justify-center">
+          <span className="text-2xl">⚠️</span>
+        </div>
+        <div className="relative mt-2 text-center">
+          <h3 className="font-bold text-gray-900 text-base">{c.fullName || "—"}</h3>
+          <p className="text-xs text-gray-500 mt-0.5 font-medium">{c.speciality || "General Care"}</p>
+        </div>
+      </div>
+
+      <div className="p-4 flex flex-col flex-1 gap-3">
+        <div className="space-y-1.5 text-xs text-gray-500">
+          <div className="flex items-center gap-2 truncate">
+            <span className="w-5 text-center text-gray-400">✉</span>
+            <span className="truncate">{c.email || "—"}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-5 text-center text-gray-400">📞</span>
+            {c.phoneNumber || "—"}
+          </div>
+          <div className="flex items-center gap-2 truncate">
+            <span className="w-5 text-center text-gray-400">📍</span>
+            <span className="truncate">{c.address || "—"}</span>
+          </div>
+          <div className="flex items-center gap-2 text-red-600 font-medium">
+            <span className="w-5 text-center">⚠️</span>
+            <span>{c.reason || "Reported"}</span>
+          </div>
+        </div>
+        <div className="mt-auto pt-3 border-t border-gray-100">
+          <button onClick={() => setSelected(c)} className="text-xs text-gray-400 hover:text-gray-700 font-semibold underline underline-offset-2 transition-colors">
+            View Details
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen w-screen bg-gray-50">
 
@@ -195,48 +327,37 @@ export default function AdminDashboard() {
             <img src={logo} alt="logo" className="h-9" />
             <h1 className="font-bold text-gray-800">ElderEase Admin</h1>
           </div>
-          <button onClick={handleLogout} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm">
+          <button onClick={handleLogout} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
             Logout
           </button>
         </div>
       </header>
 
-      {/* MAIN */}
       <main className="pt-[57px]">
 
-        {/* ── HERO ── */}
+        {/* HERO */}
         <div className="bg-gradient-to-r from-gray-900 to-gray-700 px-6 pt-8 pb-0">
           <div className="max-w-7xl mx-auto">
-
-            {/* Title */}
             <p className="text-gray-400 text-xs font-semibold uppercase tracking-widest mb-1">Caregiver Management</p>
             <h2 className="text-2xl font-bold text-white mb-6">Admin Dashboard</h2>
 
             {/* Stat boxes */}
             <div className="flex gap-4 flex-wrap mb-6">
-              <div className="bg-white/10 border border-white/20 rounded-xl px-6 py-4 text-center min-w-[110px]">
-                <p className="text-2xl font-bold text-white">{counts.all}</p>
-                <p className="text-xs text-gray-400 mt-0.5 uppercase tracking-widest">Total</p>
-              </div>
-              <div className="bg-amber-400/20 border border-amber-400/30 rounded-xl px-6 py-4 text-center min-w-[110px]">
-                <p className="text-2xl font-bold text-amber-300">{counts.pending}</p>
-                <p className="text-xs text-amber-400 mt-0.5 uppercase tracking-widest">Pending</p>
-              </div>
-              <div className="bg-emerald-400/20 border border-emerald-400/30 rounded-xl px-6 py-4 text-center min-w-[110px]">
-                <p className="text-2xl font-bold text-emerald-300">{counts.verified}</p>
-                <p className="text-xs text-emerald-400 mt-0.5 uppercase tracking-widest">Verified</p>
-              </div>
-              <div className="bg-red-400/20 border border-red-400/30 rounded-xl px-6 py-4 text-center min-w-[110px]">
-                <p className="text-2xl font-bold text-red-300">{counts.blocked}</p>
-                <p className="text-xs text-red-400 mt-0.5 uppercase tracking-widest">Blocked</p>
-              </div>
-              <div className="bg-orange-400/20 border border-orange-400/30 rounded-xl px-6 py-4 text-center min-w-[110px]">
-                <p className="text-2xl font-bold text-orange-300">{counts.reports}</p>
-                <p className="text-xs text-orange-400 mt-0.5 uppercase tracking-widest">Reports</p>
-              </div>
+              {[
+                { label: "Total",    val: counts.all,      cls: "text-white",         sub: "text-gray-400",    bg: "bg-white/10 border-white/20" },
+                { label: "Pending",  val: counts.pending,  cls: "text-amber-300",     sub: "text-amber-400",   bg: "bg-amber-400/20 border-amber-400/30" },
+                { label: "Verified", val: counts.verified, cls: "text-emerald-300",   sub: "text-emerald-400", bg: "bg-emerald-400/20 border-emerald-400/30" },
+                { label: "Blocked",  val: counts.blocked,  cls: "text-red-300",       sub: "text-red-400",     bg: "bg-red-400/20 border-red-400/30" },
+                { label: "Reports",  val: counts.reports,  cls: "text-orange-300",    sub: "text-orange-400",  bg: "bg-orange-400/20 border-orange-400/30" },
+              ].map(({ label, val, cls, sub, bg }) => (
+                <div key={label} className={`${bg} border rounded-xl px-6 py-4 text-center min-w-[110px]`}>
+                  <p className={`text-2xl font-bold ${cls}`}>{val}</p>
+                  <p className={`text-xs mt-0.5 uppercase tracking-widest ${sub}`}>{label}</p>
+                </div>
+              ))}
             </div>
 
-            {/* Inline nav — below the boxes, flush to hero bottom */}
+            {/* Nav tabs */}
             <div className="flex flex-wrap border-t border-white/10">
               {[
                 { key: "all",      label: "All",      icon: "👥", path: null              },
@@ -251,17 +372,14 @@ export default function AdminDashboard() {
                   className="cursor-pointer flex items-center gap-1.5 px-5 py-3 text-sm font-semibold text-white/60 hover:text-white hover:bg-white/10 transition-all"
                 >
                   {t.icon} {t.label}
-                  <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full ml-0.5">
-                    {counts[t.key]}
-                  </span>
+                  <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full ml-0.5">{counts[t.key]}</span>
                 </span>
               ))}
             </div>
-
           </div>
         </div>
 
-        {/* ── CONTENT area (tabs filter inline, nav tabs route away) ── */}
+        {/* CONTENT */}
         <div className="max-w-7xl mx-auto px-6 py-6">
 
           {/* Search + Refresh */}
@@ -289,7 +407,7 @@ export default function AdminDashboard() {
             </button>
           </div>
 
-          {/* Loading / Empty / Cards */}
+          {/* Cards grid */}
           {loading ? (
             <div className="flex flex-col items-center justify-center py-32 text-gray-400">
               <svg className="animate-spin h-10 w-10 mb-4 text-gray-300" fill="none" viewBox="0 0 24 24">
@@ -306,122 +424,64 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {filtered.map((c) => {
-                if (activeTab === "reports") {
-                  return (
-                    <div key={c.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 group">
-                      <div className="p-4 flex flex-col flex-1 gap-3">
-                        <div>
-                          <h3 className="font-bold text-gray-900 text-base leading-tight truncate">{c.fullName || "—"}</h3>
-                          <p className="text-xs text-gray-400 mt-0.5 truncate">{c.speciality || "General Care"}</p>
-                        </div>
-                        <div className="space-y-1.5 text-xs text-gray-500">
-                          <div className="flex items-center gap-1.5 truncate">
-                            <span className="text-gray-400">✉</span> <span className="truncate">{c.email || "—"}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-gray-400">📞</span> {c.phoneNumber || "—"}
-                          </div>
-                          <div className="flex items-center gap-1.5 truncate">
-                            <span className="text-gray-400">📍</span> <span className="truncate">{c.address || "—"}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-red-600">
-                            <span className="text-gray-400">⚠️</span> <span>{c.reason || "Reported"}</span>
-                          </div>
-                        </div>
-                        <div className="mt-auto pt-3 border-t border-gray-100">
-                          <button onClick={() => setSelected(c)} className="text-xs text-gray-400 hover:text-gray-700 font-semibold underline underline-offset-2 transition-colors">
-                            View Details
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
-                const status = c.status || "PENDING";
-                const photo  = c.profilePhoto?.replace(/\s+/g, "_").trim();
-                return (
-                  <div key={c.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden flex flex-col hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 group">
-                    <div className="relative h-44 bg-gray-100 overflow-hidden">
-                      <img
-                        src={`http://localhost:8080/uploads/${photo}`}
-                        alt={c.fullName}
-                        className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
-                        onError={(e) => { e.target.onerror = null; e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(c.fullName || "C")}&background=e5e7eb&color=374151&size=200`; }}
-                      />
-                      <div className="absolute top-3 left-3">
-                        <StatusBadge status={status} />
-                      </div>
-                    </div>
-                    <div className="p-4 flex flex-col flex-1 gap-3">
-                      <div>
-                        <h3 className="font-bold text-gray-900 text-base leading-tight truncate">{c.fullName || "—"}</h3>
-                        <p className="text-xs text-gray-400 mt-0.5 truncate">{c.speciality || "General Care"}</p>
-                      </div>
-                      <div className="space-y-1.5 text-xs text-gray-500">
-                        <div className="flex items-center gap-1.5 truncate">
-                          <span className="text-gray-400">✉</span> <span className="truncate">{c.email || "—"}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-gray-400">📞</span> {c.phoneNumber || "—"}
-                        </div>
-                        <div className="flex items-center gap-1.5 truncate">
-                          <span className="text-gray-400">📍</span> <span className="truncate">{c.address || "—"}</span>
-                        </div>
-                        {(c.experience || c.chargeMin) && (
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-gray-400">💼</span>
-                            {c.experience && `${c.experience} yrs`}
-                            {c.chargeMin && c.chargeMax && ` · Rs ${c.chargeMin}–${c.chargeMax}`}
-                          </div>
-                        )}
-                      </div>
-                      <div className="mt-auto pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
-                        <button onClick={() => setSelected(c)} className="text-xs text-gray-400 hover:text-gray-700 font-semibold underline underline-offset-2 transition-colors">
-                          View Details
-                        </button>
-                        <ActionButtons c={c} size="sm" />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              {filtered.map((c) =>
+                activeTab === "reports"
+                  ? <ReportCard key={c.id} c={c} />
+                  : <CaregiverCard key={c.id} c={c} />
+              )}
             </div>
           )}
         </div>
       </main>
 
-      {/* ── DETAIL MODAL ── */}
+      {/* DETAIL MODAL */}
       {selected && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={(e) => { if (e.target === e.currentTarget) setSelected(null); }}>
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setSelected(null); }}
+        >
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100 z-10">
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold text-gray-800">Caregiver Profile</h3>
                 <StatusBadge status={selected.status || "PENDING"} />
               </div>
-              <button onClick={() => setSelected(null)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition">
+              <button
+                onClick={() => setSelected(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition"
+              >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
+
             <div className="px-6 py-5 space-y-5">
-              <div className="flex items-center gap-4">
-                <img
-                  src={`http://localhost:8080/uploads/${selected.profilePhoto?.replace(/\s+/g, "_")}`}
-                  alt={selected.fullName}
-                  className="w-20 h-20 rounded-2xl object-cover border-2 border-gray-100 shadow-sm"
-                  onError={(e) => { e.target.onerror = null; e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selected.fullName || "C")}&background=e5e7eb&color=374151&size=200`; }}
-                />
+              {/* Modal hero with photo */}
+              <div className={`rounded-xl bg-gradient-to-br ${cardGradient[selected.status || "PENDING"] ?? "from-gray-100 to-gray-50"} p-5 flex items-center gap-4`}>
+                <div className="relative flex-shrink-0">
+                  <div className={`absolute inset-0 rounded-full blur-md opacity-30 scale-110 ${
+                    (selected.status || "PENDING") === "VERIFIED" ? "bg-emerald-400" :
+                    (selected.status || "PENDING") === "BLOCKED"  ? "bg-red-400"     : "bg-amber-300"
+                  }`} />
+                  <img
+                    src={`http://localhost:8080/uploads/${selected.profilePhoto?.replace(/\s+/g, "_")}`}
+                    alt={selected.fullName}
+                    className="relative w-20 h-20 rounded-2xl object-cover border-2 border-white shadow-md"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selected.fullName || "C")}&background=e5e7eb&color=374151&size=200`;
+                    }}
+                  />
+                </div>
                 <div>
                   <h4 className="text-xl font-bold text-gray-900">{selected.fullName}</h4>
-                  <p className="text-sm text-gray-500 mt-0.5">{selected.speciality || "General Care"}</p>
+                  <p className="text-sm text-gray-600 mt-0.5 font-medium">{selected.speciality || "General Care"}</p>
                   <p className="text-xs text-gray-400 mt-1">{selected.email}</p>
                 </div>
               </div>
+
+              {/* Detail grid */}
               <div className="grid grid-cols-2 gap-2.5">
                 {[
                   { icon: "📞", label: "Phone",      val: selected.phoneNumber },
@@ -435,12 +495,14 @@ export default function AdminDashboard() {
                   </div>
                 ))}
               </div>
+
               {selected.details && (
                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                   <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">About</p>
                   <p className="text-sm text-gray-700 leading-relaxed">{selected.details}</p>
                 </div>
               )}
+
               {selected.citizenshipPhoto && (
                 <div>
                   <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">📄 Citizenship Document</p>
@@ -452,6 +514,7 @@ export default function AdminDashboard() {
                   />
                 </div>
               )}
+
               <div className="pt-3 border-t border-gray-100">
                 <ActionButtons c={selected} size="md" />
               </div>

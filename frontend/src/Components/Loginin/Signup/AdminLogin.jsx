@@ -38,15 +38,22 @@ export default function AdminLogin() {
         email: form.email.trim(),
         password: form.password.trim(),
       });
+
+      // Log the response to see exactly what the backend is sending
+      console.log("Login Response:", res.data);
+
       if (res.data.token) {
         localStorage.setItem("adminToken", res.data.token);
-        navigate("/admin/dashboard");
-      } else if (res.data.error) {
-        setMessage(res.data.error);
+        // Ensure this path matches your App.js/main.jsx routes exactly
+        navigate("/admin/dashboard"); 
+      } else {
+        setMessage("Invalid response from server.");
       }
     } catch (err) {
-      console.error(err);
-      setMessage(err.response?.data || "Login failed. Please try again.");
+      console.error("Login Error:", err);
+      // If the backend returns 401, it lands here
+      const errorMsg = err.response?.data?.error || "Login failed. Please check your credentials.";
+      setMessage(errorMsg);
     } finally {
       setLoading(false);
     }

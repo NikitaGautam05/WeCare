@@ -13,7 +13,7 @@ public class Users {
     private String id;
     private String userName;
     private String password;
-
+    private String photo;
     public String getConfirmPassword() {
         return confirmPassword;
     }
@@ -22,13 +22,13 @@ public class Users {
         this.confirmPassword = confirmPassword;
     }
 
-//    public String getPhoto() {
-//        return photo;
-//    }
+    public String getPhoto() {
+        return photo;
+    }
 
-//    public void setPhoto(String photo) {
-//        this.photo = photo;
-//    }
+    public void setPhoto(String photo) {
+        this.photo = photo;
+    }
 
     private String confirmPassword;
 //    private String photo;

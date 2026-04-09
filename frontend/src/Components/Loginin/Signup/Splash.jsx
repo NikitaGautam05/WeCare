@@ -253,7 +253,7 @@ const Splash = () => {
             <div style={{ width: 1, height: 20, background: navScrolled ? "#e0d8cc" : "rgba(255,255,255,0.2)" }} />
             <button className="nav-link" style={{ color: navScrolled ? "rgba(26,26,46,0.75)" : "rgba(255,255,255,0.85)" }}
               onClick={() => navigate("/optionLogin")}>
-              Sign In
+              Log In
             </button>
             <button
               onClick={() => navigate("/optionLogin", { state: { mode: "SIGNUP" } })}
@@ -341,7 +341,7 @@ const Splash = () => {
 
             <div className="hero-text-reveal" style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
               <button className="btn-primary" onClick={() => navigate("/optionLogin")}>
-                <span>Find a Caregiver</span>
+                <span>Join Now</span>
               </button>
               <button
                 className="btn-outline"

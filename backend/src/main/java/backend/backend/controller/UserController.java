@@ -9,6 +9,7 @@ import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,6 +42,8 @@ public class UserController {
     EmailService emailService;
     @Autowired
     UserRepo userRepository;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @GetMapping("/users")
     public List<Users> getAllUser() {
@@ -72,6 +75,11 @@ public class UserController {
                 .filter(u -> u.getUserName().equals(username))
                 .findFirst()
                 .orElse(null);
+    }
+
+    @GetMapping("/{id}")
+    public Users getUserById(@PathVariable String id) {
+        return userRepository.findById(id).orElse(null);
     }
 
     //    @PostMapping("/change-photo")
@@ -139,6 +147,7 @@ public class UserController {
         }
 
         user.setRole(user.getRole() == null ? "USER" : user.getRole().toUpperCase().replaceAll("\\s",""));
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         userService.saveUser(user);
 
         try {
@@ -150,90 +159,48 @@ public class UserController {
         resp.put("message", "Registration complete");
         return ResponseEntity.ok(resp);
     }
+    @PostMapping("/change-photo")
+    public ResponseEntity<Map<String, String>> changePhoto(
+            @RequestParam("userId") String userId,
+            @RequestParam("file") MultipartFile file) {
 
-//    @PostMapping("/register-with-photo")
-//    public ResponseEntity<Map<String, String>> registerWithPhoto(
-//            @RequestParam String email,
-//            @RequestParam String userName,
-//            @RequestParam String password,
-//            @RequestParam String role,
-//            @RequestParam("photo") MultipartFile photo) {
-//
-//        Map<String, String> resp = new HashMap<>();
-//
-//        // Validate password
-//        if (password == null || password.length() < 8 || !password.matches(".*[!@#$%^&*].*")) {
-//            resp.put("error", "Password must be at least 8 characters and include special characters");
-//            return ResponseEntity.badRequest().body(resp);
-//        }
-//
-//        // Validate email
-//        if (email == null || email.isEmpty()) {
-//            resp.put("error", "Email is required");
-//            return ResponseEntity.badRequest().body(resp);
-//        }
-//
-//        // Check if username exists
-//        boolean exists = userService.getAllUsers()
-//                .stream()
-//                .anyMatch(u -> u.getUserName().equals(userName));
-//        if (exists) {
-//            resp.put("error", "Username already exists");
-//            return ResponseEntity.badRequest().body(resp);
-//        }
-//
-//        // Check if email exists
-//        boolean emailExists = userService.getAllUsers()
-//                .stream()
-//                .anyMatch(u -> u.getEmail().equalsIgnoreCase(email));
-//        if (emailExists) {
-//            resp.put("error", "Email already registered");
-//            return ResponseEntity.badRequest().body(resp);
-//        }
-//
-//        // Create user
-//        Users user = new Users();
-//        user.setEmail(email);
-//        user.setUserName(userName);
-//        user.setPassword(password);
-//        user.setRole(role == null ? "USER" : role.toUpperCase().replaceAll("\\s", ""));
-//
-//        // Save user first to get ID
-//        Users savedUser = userService.saveUser(user);
-//
-//        // Handle photo upload
-//        try {
-//            String folder = "./uploads/";
-//            Path folderPath = Paths.get(folder);
-//            if (!Files.exists(folderPath)) {
-//                Files.createDirectories(folderPath);
-//            }
-//
-//            String filename = savedUser.getId() + "_" + photo.getOriginalFilename();
-//            Path filePath = folderPath.resolve(filename);
-//            Files.write(filePath, photo.getBytes());
-//
-//            // Set photo path
-//            savedUser.setPhoto("/uploads/" + filename);
-//            userRepository.save(savedUser);
-//
-//        } catch (Exception e) {
-//            // If photo upload fails, delete the user?
-//            userService.deleteUsers(savedUser);
-//            resp.put("error", "Failed to upload photo: " + e.getMessage());
-//            return ResponseEntity.status(500).body(resp);
-//        }
-//
-//        // Send email
-//        try {
-//            emailService.signupNotification(user.getEmail(), user.getUserName());
-//        } catch (Exception e) {
-//            System.err.println("Failed to send welcome email: " + e.getMessage());
-//        }
-//
-//        resp.put("message", "Registration complete");
-//        return ResponseEntity.ok(resp);
-//    }
+        Map<String, String> resp = new HashMap<>();
+
+        try {
+            Users user = userRepository.findById(userId).orElse(null);
+            if (user == null) {
+                resp.put("error", "User not found");
+                return ResponseEntity.badRequest().body(resp);
+            }
+
+            // 1. Define the upload directory
+            String uploadDir = "uploads/";
+            Path uploadPath = Paths.get(uploadDir);
+
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+
+            // 2. Save the file with a unique name
+            String filename = userId + "_" + System.currentTimeMillis() + "_" + file.getOriginalFilename();
+            Path filePath = uploadPath.resolve(filename);
+            Files.copy(file.getInputStream(), filePath);
+
+            // 3. Update User object with the URL
+            // This URL matches the Resource Handler we will create in step 2
+            String photoUrl = "http://localhost:8080/uploads/" + filename;
+            user.setPhoto(photoUrl);
+            userRepository.save(user);
+
+            resp.put("message", "Photo updated successfully");
+            resp.put("photoUrl", photoUrl);
+            return ResponseEntity.ok(resp);
+
+        } catch (Exception e) {
+            resp.put("error", "Failed to upload photo: " + e.getMessage());
+            return ResponseEntity.status(500).body(resp);
+        }
+    }
 
 
     @PostMapping("/login")
@@ -251,7 +218,15 @@ public class UserController {
             return response;
         }
 
-        if (!user.getPassword().equals(loginRequest.getPassword())) {
+        boolean passwordMatches = passwordEncoder.matches(loginRequest.getPassword(), user.getPassword());
+        if (!passwordMatches && loginRequest.getPassword().equals(user.getPassword())) {
+            // Upgrade legacy plain-text password to bcrypt without forcing a reset
+            user.setPassword(passwordEncoder.encode(loginRequest.getPassword()));
+            userRepository.save(user);
+            passwordMatches = true;
+        }
+
+        if (!passwordMatches) {
             response.put("error", "Wrong password");
             return response;
         }
@@ -290,7 +265,7 @@ public class UserController {
         }
 
         // Update password
-        user.setPassword(newPassword);
+        user.setPassword(passwordEncoder.encode(newPassword));
         userService.updateUser(user);
 
         resp.put("message", "Password updated successfully");
@@ -357,10 +332,10 @@ public class UserController {
 
         return userRepository.save(user);
     }
-    @GetMapping("/{id}")
-    public ResponseEntity<Users> getUserById(@PathVariable String id) {
-        return userRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
+    // @GetMapping("/{id}")
+    // public ResponseEntity<Users> getUserById(@PathVariable String id) {
+    //     return userRepository.findById(id)
+    //             .map(ResponseEntity::ok)
+    //             .orElse(ResponseEntity.notFound().build());
+    // }
 }

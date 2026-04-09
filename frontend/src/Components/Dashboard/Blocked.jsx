@@ -15,11 +15,22 @@ export default function Blocked() {
   const [actionLoading, setActionLoading] = useState(null);
   const [toast, setToast]                 = useState(null); // { msg, type }
 
+  const adminToken = localStorage.getItem("adminToken");
+  const axiosConfig = adminToken ? { headers: { Authorization: `Bearer ${adminToken}` } } : {};
+
+  useEffect(() => {
+    if (!adminToken) {
+      navigate("/admin/login");
+      return;
+    }
+    fetchBlocked();
+  }, [adminToken, navigate]);
+
   // ── Fetch all caregivers, filter for PENDING ──────────────────────────────
   const fetchBlocked = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${BASE_URL}/caregivers/admin/blocked`);
+      const res = await axios.get(`${BASE_URL}/admin/blocked`, axiosConfig);
       const data = Array.isArray(res.data) ? res.data
         : Array.isArray(res.data?.content) ? res.data.content
         : Array.isArray(res.data?.data) ? res.data.data
@@ -34,8 +45,6 @@ export default function Blocked() {
     }
   };
 
-  useEffect(() => { fetchBlocked(); }, []);
-
   // ── Show toast ────────────────────────────────────────────────────────────
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -46,20 +55,19 @@ export default function Blocked() {
   const unblock = async (id) => {
     setActionLoading(id);
     try {
-      await axios.post(`${BASE_URL}/caregivers/admin/${id}/unblock`, {}, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
-      });
+      await axios.put(`${BASE_URL}/admin/caregivers/${id}/unblock`, {}, axiosConfig);
       setAll((prev) => prev.filter((c) => c.id !== id));
+      
       if (selected?.id === id) setSelected(null);
       showToast("Caregiver unblocked! ↩", "success");
     } catch (err) {
-      console.error(err);
-      showToast("Failed to unblock. Try again.", "error");
+      console.error("Unblock Error:", err);
+      showToast("Failed to unblock. Check backend connection.", "error");
     } finally {
       setActionLoading(null);
     }
   };
-
+  
   // ── Filter by search ──────────────────────────────────────────────────────
   const filtered = all.filter((c) =>
     !search ||

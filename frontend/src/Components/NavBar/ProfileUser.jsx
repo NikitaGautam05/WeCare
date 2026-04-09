@@ -1,249 +1,248 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { FaTimes, FaCamera, FaUser, FaEnvelope, FaGlobe, FaWhatsapp, FaTelegram } from "react-icons/fa";
+import { 
+  FaCamera, FaLock, FaEnvelope, FaUser, FaSignOutAlt, 
+  FaHome, FaUserMd, FaHistory, FaStar, FaHeart, FaBars 
+} from "react-icons/fa";
+import axios from "axios";
 import logo from "../../assets/logo.jpg";
 
 const ProfileUser = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const userName = localStorage.getItem("userName") || "Nikita";
+  const fileInputRef = useRef(null);
+  
+  const userId = localStorage.getItem("userId");
   const role = localStorage.getItem("role") || "User";
+  const token = localStorage.getItem("jwtToken");
+  const axiosConfig = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [profileData, setProfileData] = useState({
-    firstName: "Nikita",
-    lastName: "Sharma",
-    username: "nikita123",
-    nickname: "Nikki",
-    email: "nikita@example.com",
-    whatsapp: "@nikita",
-    telegram: "@nikita",
-    website: "https://nikita.io",
-    bio: "Hard working is my passion.",
-    photo: "https://randomuser.me/api/portraits/women/65.jpg",
+    userName: "",
+    email: "",
+    photo: ""
   });
 
-  const navItems = [
-    { name: "☰", isHamburger: true },
-    { name: "🏠 Home", link: "/dash", isGrey: true },
-    { name: "👩‍⚕️ Caregivers", link: "/my-caregivers" },
-    { name: "📜 History", link: "/history" },
-    { name: "⭐ Top Interest", link: "/top-interest" },
-    { name: "❤️ Favourites", link: "/favourites" },
-    { name: "👤 Profile", link: "/my-profile", isGrey: true },
-  ];
-  const isActive = (link) => location.pathname === link;
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
 
-  const handleUpdate = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+  const [passwordMsg, setPasswordMsg] = useState({ text: "", isError: false });
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    if (!userId || !token) {
+      navigate("/login");
+      return;
+    }
+    axios.get(`http://localhost:8080/api/users/${userId}`, axiosConfig)
+      .then(res => setProfileData(res.data))
+      .catch(err => console.error(err));
+  }, [userId, token, navigate]);
+
+  const navItems = [
+    { name: "Dashboard", icon: <FaHome />, link: "/dash" },
+    { name: "Caregivers", icon: <FaUserMd />, link: "/my-caregivers" },
+    { name: "History", icon: <FaHistory />, link: "/history" },
+    // { name: "Interests", icon: <FaStar />, link: "/top-interest" },
+    { name: "Favorites", icon: <FaHeart />, link: "/favourites" },
+    { name: "Profile", icon: <FaUser />, link: "/my-profile" },
+  ];
+
+  const handlePhotoClick = () => fileInputRef.current.click();
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("userId", userId);
+    formData.append("file", file);
+    setUploading(true);
+    try {
+      const res = await axios.post("http://localhost:8080/api/users/change-photo", formData, {
+        ...axiosConfig,
+        headers: { ...axiosConfig.headers, "Content-Type": "multipart/form-data" }
+      });
+      setProfileData({ ...profileData, photo: res.data.photoUrl });
+    } catch (err) {
+      alert("Upload failed.");
+    } finally { setUploading(false); }
   };
 
-  const fieldConfig = {
-    firstName:  { label: "First Name",  icon: <FaUser size={12} />,     col: 1 },
-    lastName:   { label: "Last Name",   icon: <FaUser size={12} />,     col: 1 },
-    username:   { label: "Username",    icon: <FaUser size={12} />,     col: 1 },
-    nickname:   { label: "Nickname",    icon: <FaUser size={12} />,     col: 1 },
-    email:      { label: "Email",       icon: <FaEnvelope size={12} />, col: 2 },
-    whatsapp:   { label: "WhatsApp",    icon: <FaWhatsapp size={12} />, col: 2 },
-    telegram:   { label: "Telegram",    icon: <FaTelegram size={12} />, col: 2 },
-    website:    { label: "Website",     icon: <FaGlobe size={12} />,    col: 2 },
+  const handlePasswordChange = async () => {
+    const { currentPassword, newPassword, confirmPassword } = passwordData;
+    if (newPassword !== confirmPassword) {
+      setPasswordMsg({ text: "Passwords do not match", isError: true });
+      return;
+    }
+    try {
+      await axios.put(`http://localhost:8080/api/users/change-password`, null, {
+        ...axiosConfig,
+        params: { username: profileData.userName, currentPassword, newPassword }
+      });
+      setPasswordMsg({ text: "Password updated!", isError: false });
+      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (err) {
+      setPasswordMsg({ text: "Current password incorrect", isError: true });
+    }
   };
 
   return (
-    <div className="min-h-screen w-screen bg-gray-100 font-sans">
+    <div className="flex min-h-screen w-screen bg-[#f1f5f9] text-slate-900 overflow-x-hidden">
+      
+      {/* --- SIDEBAR --- */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+        <div className="flex flex-col h-full">
+          <div className="p-6 flex items-center gap-3">
+            <img src={logo} alt="Logo" className="h-10 w-10 rounded-lg" />
+            <span className="text-xl font-bold tracking-tight">ElderEase</span>
+          </div>
 
-      {/* SIDE MENU — UNCHANGED */}
-      <aside className={`fixed top-0 left-0 h-full bg-white shadow-xl z-50 w-72 transform transition-transform duration-300 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <div className="flex flex-col p-6 h-full">
-          <button className="self-end text-gray-700 hover:text-gray-900 mb-6" onClick={() => setMenuOpen(false)}>
-            <FaTimes size={24} />
-          </button>
-          <ul className="flex flex-col gap-4 mt-4">
+          <nav className="flex-1 px-4 space-y-1 mt-4">
             {navItems.map((item) => (
-              <li key={item.name}>
-                <div
-                  onClick={() => { navigate(item.link); setMenuOpen(false); }}
-                  className={`cursor-pointer px-4 py-3 rounded-xl shadow-sm transition duration-200 font-medium ${isActive(item.link) ? "bg-gray-200 text-gray-900 underline" : "bg-gray-100 text-gray-800 hover:bg-gray-200"}`}
-                >
-                  {item.name}
-                </div>
-              </li>
+              <button
+                key={item.name}
+                onClick={() => navigate(item.link)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                  location.pathname === item.link 
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20" 
+                    : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                }`}
+              >
+                {item.icon} {item.name}
+              </button>
             ))}
-            <li className="mt-6">
-              <button onClick={() => navigate("/")} className="w-full bg-red-500 text-white py-3 rounded-xl hover:bg-red-600 transition shadow-md">Logout</button>
-            </li>
-          </ul>
+          </nav>
+
+          <div className="p-4 border-t border-slate-800">
+            <button 
+              onClick={() => navigate("/")}
+              className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-xl transition"
+            >
+              <FaSignOutAlt /> Logout
+            </button>
+          </div>
         </div>
       </aside>
 
-      {/* HEADER — UNCHANGED */}
-      <header className="bg-white shadow-md w-full fixed top-0 z-40">
-        <div className="flex items-center justify-between px-6 py-4 w-full max-w-full">
-          <div className="flex items-center gap-4">
-            <img src={logo} alt="Elder Ease Logo" className="h-10 w-auto cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} />
-            <span className="cursor-pointer text-gray-700 font-bold text-xl hover:text-black transition" onClick={() => setMenuOpen(true)}>☰ Menu</span>
+      {/* --- MAIN CONTENT AREA --- */}
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarOpen ? "lg:ml-64" : ""}`}>
+        
+        <header className="h-16 bg-white border-b border-slate-200 sticky top-0 z-40 px-8 flex items-center justify-end shadow-sm">
+  
+  <div className="flex items-center gap-4">
+    <div className="text-right hidden sm:block">
+      <p className="text-xs font-bold text-slate-400 uppercase leading-none">
+        {role}
+      </p>
+      <p className="text-sm font-bold text-slate-700">
+        {profileData.userName}
+      </p>
+    </div>
+
+    <img
+      src={
+        profileData.photo ||
+        "https://ui-avatars.com/api/?name=" + profileData.userName
+      }
+      className="h-9 w-9 rounded-full border border-slate-200 object-cover"
+      alt="User"
+    />
+  </div>
+
+</header>
+
+        {/* PAGE CONTENT */}
+        <main className="p-8 max-w-4xl mx-auto w-full">
+          <div className="mb-8">
+            <h1 className="text-3xl font-black text-slate-800 tracking-tight">Profile Settings</h1>
+            <p className="text-slate-500 mt-1">Update your account security and photo.</p>
           </div>
-          <div className="flex items-center gap-6">
-            {navItems.filter((i) => ["🏠 Home", "👩‍⚕️ Caregivers", "❤️ Favourites"].includes(i.name)).map((item) => {
-              const name = item.name.replace(/[^a-zA-Z ]/g, "");
-              return (
-                <span key={item.name} onClick={() => navigate(item.link)} className="cursor-pointer text-gray-700 hover:text-black px-4 py-2 rounded-lg hover:bg-gray-300 transition font-medium">
-                  {name}
-                </span>
-              );
-            })}
-            <div className="hidden md:flex items-center gap-4 ml-4 cursor-pointer" onClick={() => navigate("/my-profile")}>
-              <img src="https://randomuser.me/api/portraits/women/65.jpg" alt="Profile" className="w-12 h-12 rounded-full border object-cover" />
-              <div className="text-right">
-                <h3 className="font-semibold text-gray-900">{userName}</h3>
-                <p className="text-sm text-gray-500">{role}</p>
+
+          <div className="grid grid-cols-1 gap-8">
+            
+            {/* Identity Card */}
+            <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Username</label>
+                  <div className="flex items-center gap-3 px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-slate-500 pointer-events-none">
+                    <FaUser className="opacity-50" />
+                    <span className="font-semibold">{profileData.userName || "Loading..."}</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Registered Email</label>
+                  <div className="flex items-center gap-3 px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-slate-500 pointer-events-none">
+                    <FaEnvelope className="opacity-50" />
+                    <span className="font-semibold">{profileData.email || "Loading..."}</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </header>
+            </section>
 
-      {/* MAIN */}
-      <main className="pt-[72px] w-full min-h-screen bg-gray-100">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+              {/* Photo Card */}
+              <section className="lg:col-span-2 bg-white rounded-3xl border border-slate-200 shadow-sm p-8 flex flex-col items-center justify-center">
+                <div className="relative mb-6 group cursor-pointer" onClick={handlePhotoClick}>
+                  <div className="w-32 h-32 rounded-full overflow-hidden ring-4 ring-white shadow-2xl">
+                    <img 
+                      src={profileData.photo || "https://ui-avatars.com/api/?name=" + profileData.userName} 
+                      className="w-full h-full object-cover transition duration-500 group-hover:scale-110"
+                      alt="Avatar"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                      <FaCamera size={24} />
+                    </div>
+                  </div>
+                </div>
+                <h3 className="font-bold text-lg">{profileData.userName}</h3>
+                <p className="text-blue-600 font-bold text-xs uppercase tracking-tighter mb-4">{role}</p>
+                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+                <button 
+                  onClick={handlePhotoClick}
+                  className="px-6 py-2 bg-slate-100 hover:bg-slate-200 text-slate-300 text-xs font-bold rounded-full transition"
+                >
+                  {uploading ? "Uploading..." : "Update Photo"}
+                </button>
+              </section>
 
-        {/* Dark top banner */}
-        <div className="w-full bg-gray-900 px-8 py-8">
-          <p className="text-gray-500 text-xs font-semibold uppercase tracking-widest mb-1">Account</p>
-          <h1 className="text-3xl font-bold text-white">My Profile</h1>
-          <p className="text-gray-400 text-sm mt-1">Manage your personal information</p>
-        </div>
-
-        {/* Content */}
-        <div className="w-full px-8 py-8 max-w-6xl">
-          <div className="flex flex-col lg:flex-row gap-6">
-
-            {/* ── LEFT: Avatar card ── */}
-            <div className="flex-shrink-0 w-full lg:w-64">
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col items-center text-center">
-                {/* Photo */}
-                <div className="relative mb-4">
-                  <img
-                    src={profileData.photo}
-                    alt={profileData.firstName}
-                    className="w-32 h-32 rounded-2xl object-cover border-2 border-gray-100 shadow"
-                  />
-                  <button className="absolute -bottom-2 -right-2 bg-gray-900 text-white rounded-full p-2 shadow hover:bg-gray-700 transition">
-                    <FaCamera size={12} />
+              {/* Password Card */}
+              <section className="lg:col-span-3 bg-white rounded-3xl border border-slate-200 shadow-sm p-8">
+                <h4 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
+                  <FaLock className="text-blue-500" /> Change Password
+                </h4>
+                <div className="space-y-4">
+                  {["currentPassword", "newPassword", "confirmPassword"].map((key) => (
+                    <input
+                      key={key}
+                      type="password"
+                      placeholder={key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                      value={passwordData[key]}
+                      onChange={(e) => setPasswordData({...passwordData, [key]: e.target.value})}
+                      className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition"
+                    />
+                  ))}
+                  {passwordMsg.text && (
+                    <p className={`text-xs font-bold px-4 py-2 rounded-lg ${passwordMsg.isError ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"}`}>
+                      {passwordMsg.text}
+                    </p>
+                  )}
+                  <button 
+                    onClick={handlePasswordChange}
+                    className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-sm hover:bg-blue-700 shadow-lg shadow-blue-200 transition active:scale-95 mt-2"
+                  >
+                    Save Changes
                   </button>
                 </div>
-
-                <h2 className="text-lg font-bold text-gray-900">{profileData.firstName} {profileData.lastName}</h2>
-                <p className="text-sm text-gray-400 mt-0.5">@{profileData.username}</p>
-                <span className="mt-3 inline-block bg-gray-100 text-gray-600 text-xs font-semibold px-3 py-1 rounded-full">{role}</span>
-
-                <div className="w-full border-t border-gray-100 mt-5 pt-4 space-y-2 text-left">
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <FaEnvelope size={11} className="text-gray-400" />
-                    <span className="truncate">{profileData.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <FaGlobe size={11} className="text-gray-400" />
-                    <span className="truncate">{profileData.website}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <FaWhatsapp size={11} className="text-gray-400" />
-                    <span>{profileData.whatsapp}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* ── RIGHT: Edit form ── */}
-            <div className="flex-1 space-y-5">
-
-              {/* Personal Info */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-5 pb-3 border-b border-gray-100">
-                  Personal Information
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {["firstName", "lastName", "username", "nickname"].map((key) => (
-                    <div key={key}>
-                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
-                        {fieldConfig[key]?.label || key}
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300">
-                          {fieldConfig[key]?.icon}
-                        </span>
-                        <input
-                          type="text"
-                          value={profileData[key]}
-                          onChange={(e) => setProfileData({ ...profileData, [key]: e.target.value })}
-                          className="w-full pl-8 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-800 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-gray-300 focus:outline-none transition"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Contact Info */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-5 pb-3 border-b border-gray-100">
-                  Contact & Social
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {["email", "whatsapp", "telegram", "website"].map((key) => (
-                    <div key={key}>
-                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">
-                        {fieldConfig[key]?.label || key}
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300">
-                          {fieldConfig[key]?.icon}
-                        </span>
-                        <input
-                          type="text"
-                          value={profileData[key]}
-                          onChange={(e) => setProfileData({ ...profileData, [key]: e.target.value })}
-                          className="w-full pl-8 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-800 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-gray-300 focus:outline-none transition"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Bio */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest mb-5 pb-3 border-b border-gray-100">
-                  Bio
-                </h3>
-                <textarea
-                  value={profileData.bio}
-                  onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
-                  rows={4}
-                  placeholder="Tell us something about yourself..."
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-800 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-gray-300 focus:outline-none transition resize-none"
-                />
-              </div>
-
-              {/* Save button */}
-              <div className="flex justify-end">
-                <button
-                  onClick={handleUpdate}
-                  className={`px-8 py-3 rounded-xl font-semibold text-sm transition-all duration-200 shadow-sm ${
-                    saved
-                      ? "bg-green-600 text-white scale-95"
-                      : "bg-gray-900 text-white hover:bg-gray-700"
-                  }`}
-                >
-                  {saved ? "✓ Profile Updated!" : "Update Profile"}
-                </button>
-              </div>
+              </section>
             </div>
 
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 };

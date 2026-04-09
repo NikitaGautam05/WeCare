@@ -24,14 +24,25 @@ import Verified from './Components/Dashboard/Verified'
 import Blocked from './Components/Dashboard/Blocked'
 import Reports from './Components/Dashboard/Reports'
 import History from  './Components/NavBar/History'
-
+import { Navigate } from 'react-router-dom';
 
 function App() {
-  const [count, setCount] = useState(0)
+  // Protection for standard Users & Caregivers
+  const ProtectedRoute = ({ children }) => {
+    const token = localStorage.getItem("jwtToken");
+    return token ? children : <Navigate to="/login" replace />;
+  };
+
+  // NEW: Specific Protection for Admin
+  const AdminRoute = ({ children }) => {
+    const adminToken = localStorage.getItem("adminToken");
+    // Redirect to /admin (Admin Login) if no admin token is found
+    return adminToken ? children : <Navigate to="/admin" replace />;
+  };
 
   return (
     <Router>
-      <Routes>
+      {/* <Routes>
         <Route path='/' element={<Splash/>}></Route>
         <Route path='/login' element={<Login/>}></Route>
         <Route path='/signup' element={<Signup/>}></Route>
@@ -58,6 +69,34 @@ function App() {
 
         
 
+      </Routes> */}
+      <Routes>
+        {/* Public Routes */}
+        <Route path='/' element={<Splash />} />
+        <Route path='/login' element={<Login />} />
+        <Route path='/signup' element={<Signup />} />
+        <Route path='/optionLogin' element={<OptionLogin />} />
+        <Route path='/forgetPassword' element={<ForgetPassword />} />
+        <Route path='/aboutUs' element={<Aboutus />} />
+        <Route path="/admin" element={<AdminLogin />} />
+
+        {/* Protected User Routes */}
+        <Route path='/dash' element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path='/welcome' element={<ProtectedRoute><Welcome /></ProtectedRoute>} />
+        <Route path="/profile/:id" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/my-profile" element={<ProtectedRoute><ProfileUser /></ProtectedRoute>} />
+        <Route path="/my-caregivers" element={<ProtectedRoute><Caregivers /></ProtectedRoute>} />
+        <Route path="/favourites" element={<ProtectedRoute><Favourites /></ProtectedRoute>} />
+        <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+        <Route path="/terms" element={<ProtectedRoute><TermsAndServices /></ProtectedRoute>} />
+
+        {/* Protected Caregiver/Admin Routes */}
+        <Route path='/CareGiverDash/:id' element={<ProtectedRoute><CareGiverDash /></ProtectedRoute>} />
+        <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+        <Route path="/admin/pending" element={<AdminRoute><Pending /></AdminRoute>} />
+        <Route path="/admin/verified" element={<AdminRoute><Verified /></AdminRoute>} />
+        <Route path="/admin/blocked" element={<AdminRoute><Blocked /></AdminRoute>} />
+        <Route path="/admin/reports" element={<AdminRoute><Reports /></AdminRoute>} />
       </Routes>
     </Router>
   )
