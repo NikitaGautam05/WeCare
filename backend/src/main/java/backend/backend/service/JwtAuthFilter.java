@@ -47,4 +47,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         filterChain.doFilter(request, response);
     }
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+        return path.equals("/api/users/complete-google-profile")
+                || path.equals("/api/google-signup")
+                || path.equals("/api/users/login")
+                || path.equals("/api/users/register");
+    }
 }

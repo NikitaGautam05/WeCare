@@ -82,44 +82,7 @@ public class UserController {
         return userRepository.findById(id).orElse(null);
     }
 
-    //    @PostMapping("/change-photo")
-//    public ResponseEntity<Map<String, String>> changePhoto(
-//            @RequestParam String userId,
-//            @RequestParam("file") MultipartFile file) {
-//
-//        Map<String, String> resp = new HashMap<>();
-//
-//        try {
-//            Users user = userRepository.findById(userId).orElse(null);
-//            if (user == null) {
-//                resp.put("error", "User not found");
-//                return ResponseEntity.badRequest().body(resp);
-//            }
-//
-//            // Save file locally (you can change path as needed)
-//            String folder = "./uploads/";
-//            Path folderPath = Paths.get(folder);
-//            if (!Files.exists(folderPath)) {
-//                Files.createDirectories(folderPath);
-//            }
-//
-//            String filename = userId + "_" + file.getOriginalFilename();
-//            Path filePath = folderPath.resolve(filename);
-//            Files.write(filePath, file.getBytes());
-//
-//            // Save the file path/URL in user document
-////            user.setPhoto("/uploads/" + filename); // or your public URL if hosted
-////            userRepository.save(user);
-//
-////            resp.put("message", "Photo updated successfully");
-////            resp.put("photoUrl", user.getPhoto());
-////            return ResponseEntity.ok(resp);
-//
-//        } catch (Exception e) {
-//            resp.put("error", "Failed to upload photo: " + e.getMessage());
-//            return ResponseEntity.status(500).body(resp);
-//        }
-//    }
+
     @PostMapping("/register")
     public ResponseEntity<Map<String, String>> register(@RequestBody Users user) {
         Map<String, String> resp = new HashMap<>();
@@ -259,7 +222,7 @@ public class UserController {
         }
 
         // Check current password
-        if (!user.getPassword().equals(currentPassword)) {
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
             resp.put("error", "Current password is incorrect");
             return ResponseEntity.badRequest().body(resp);
         }

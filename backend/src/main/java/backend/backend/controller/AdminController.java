@@ -40,7 +40,6 @@ public class AdminController {
     // Temporary in-memory OTP store (same pattern as ForgetPasswordController)
     private final Map<String, String> otpStorage = new HashMap<>();
 
-    // ── POST /api/admin/login ─────────────────────────────────────────────
     @PostMapping("/login")
     public ResponseEntity<Map<String, String>> login(@RequestBody LoginRequest req) {
         Map<String, String> resp = new HashMap<>();
@@ -72,8 +71,6 @@ public class AdminController {
         return ResponseEntity.ok(resp);
     }
 
-    // ── POST /api/admin/forgetPassword ────────────────────────────────────
-    // Frontend sends: { "email": "admin@example.com" }
     @PostMapping("/forgetPassword")
     public String forgetPassword(@RequestBody EmailRequest req) {
         Admin admin = adminRepo.findByEmail(req.getEmail());
@@ -86,8 +83,6 @@ public class AdminController {
         return "OTP sent to registered email!";
     }
 
-    // ── POST /api/admin/verify-otp ────────────────────────────────────────
-    // Frontend sends: { "email": "admin@example.com", "otp": "123456" }
     @PostMapping("/verify-otp")
     public String verifyOtp(@RequestBody OtpRequest req) {
         String stored = otpStorage.get(req.getEmail());
@@ -98,8 +93,6 @@ public class AdminController {
         return "Invalid OTP!";
     }
 
-    // ── POST /api/admin/reset-password ────────────────────────────────────
-    // Frontend sends: { "email": "admin@example.com", "newPassword": "..." }
     @PostMapping("/reset-password")
     public ResponseEntity<String> resetPassword(@RequestBody ResetRequest req) {
         Admin admin = adminRepo.findByEmail(req.getEmail());

@@ -13,6 +13,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import backend.backend.model.CaregiverStatus;
+import java.util.HashMap;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/caregivers")
 @CrossOrigin(origins = "http://localhost:5173")
@@ -96,49 +99,7 @@ private UserRepo userRepo;
     public List<Caregiver> getVerifiedCaregivers(){
         return caregiverService.getCaregiversByStatus(CaregiverStatus.VERIFIED);
     }
-//    @PostMapping("/admin/{id}/verify")
-//    public Caregiver verifyCaregiver(@PathVariable String id){
-//
-//        Caregiver caregiver = caregiverService.getCaregiverById(id);
-//
-//        if(caregiver == null){
-//            throw new RuntimeException("Caregiver not found");
-//        }
-//
-//        caregiver.setStatus(CaregiverStatus.VERIFIED);
-//
-//        return caregiverService.saveCaregiver(caregiver);
-//    }
-//    @PostMapping("/admin/{id}/block")
-//    public Caregiver blockCaregiver(@PathVariable String id){
-//
-//        Caregiver caregiver = caregiverService.getCaregiverById(id);
-//
-//        caregiver.setStatus(CaregiverStatus.BLOCKED);
-//
-//        return caregiverService.saveCaregiver(caregiver);
-//    }
-//    @PostMapping("/admin/{id}/unblock")
-//    public Caregiver unblockCaregiver(@PathVariable String id){
-//
-//        Caregiver caregiver = caregiverService.getCaregiverById(id);
-//
-//        caregiver.setStatus(CaregiverStatus.VERIFIED);
-//
-//        return caregiverService.saveCaregiver(caregiver);
-//    }
-//    @GetMapping("/admin/pending")
-//    public List<Caregiver> getPending(){
-//        return caregiverService.getCaregiversByStatus(CaregiverStatus.PENDING);
-//    }
-//    @GetMapping("/admin/verified")
-//    public List<Caregiver> getVerified(){
-//        return caregiverService.getCaregiversByStatus(CaregiverStatus.VERIFIED);
-//    }
-//    @GetMapping("/admin/blocked")
-//    public List<Caregiver> getBlocked(){
-//        return caregiverService.getCaregiversByStatus(CaregiverStatus.BLOCKED);
-//    }
+
     @GetMapping("/all")
     public List<Caregiver> getAllCaregivers() {
         return caregiverService.getAllCaregivers();
@@ -158,7 +119,7 @@ private UserRepo userRepo;
     public Caregiver notifyCaregiver(
             @PathVariable String id,
             @RequestParam String message,
-            @RequestParam String userId   // 👈 ADD THIS
+            @RequestParam String userId
     ) {
         Caregiver caregiver = caregiverService.getCaregiverById(id);
 
@@ -166,27 +127,51 @@ private UserRepo userRepo;
             throw new RuntimeException("Caregiver not found");
         }
 
-        // ✅ Save notification
+        // Save notification
         caregiver.getNotifications().add(message);
 
-        // ✅ Get USER details
+        // Get USER details
         Users user = userRepo.findById(userId).orElseThrow();
 
-        // ✅ Send EMAIL
+        // Send EMAIL
         emailService.sendInterestEmail(
-                caregiver.getEmail(),   // caregiver email
-                user.getUserName(),     // sender name
-                user.getEmail()         // sender email
+                caregiver.getEmail(),
+                user.getUserName(),
+                user.getEmail()
         );
 
         return caregiverService.saveCaregiver(caregiver);
+    }
+    @PostMapping("/{id}/interest")
+    public ResponseEntity<?> handleInterest(@PathVariable String id, @RequestBody Map<String, String> request) {
+        Caregiver caregiver = caregiverService.getCaregiverById(id);
+        String interestedUserId = request.get("userId");
+        Users interestedUser = userRepo.findById(interestedUserId).orElse(null);
+
+        if (caregiver != null && interestedUser != null) {
+            // Use getUserName() if getFullName() is missing in your Users model
+            String name = interestedUser.getUserName();
+
+            // 1. Send the Email
+            emailService.sendInterestEmail(
+                    caregiver.getEmail(),
+                    name,
+                    interestedUser.getEmail()
+            );
+
+            // 2. Add to Caregiver's notification list
+            caregiver.getNotifications().add("New interest from " + name + ". Check your email for futher details.");
+            caregiverService.saveCaregiver(caregiver);
+
+            return ResponseEntity.ok("Interest sent successfully");
+        }
+        return ResponseEntity.status(404).body("Caregiver or User not found");
     }
     @GetMapping("/user/{userId}")
     public ResponseEntity<Caregiver> getByUserId(@PathVariable String userId) {
         Caregiver caregiver = caregiverService.getByUserId(userId);
 
         // If no profile exists, return 200 with null or 404
-        // This allows React to handle the "Empty Profile" state
         if (caregiver == null) {
             return ResponseEntity.ok(null);
         }

@@ -44,7 +44,25 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/users/login", "/api/users/register", "/uploads/**").permitAll()
+                        .requestMatchers("/api/caregivers/**").permitAll()
+
+                        .requestMatchers(
+                                "/api/users/login",
+                                "/api/users/register",
+                                "/api/admin/login",
+                                "/api/google-signup",
+                                "/api/users/complete-google-profile",
+                                "/api/admin/forgetPassword",
+                                "/api/admin/verify-otp",
+                                "/api/admin/reset-password",
+                                "/api/forgetPassword",
+                                "/api/verify-otp",
+                                "/api/reset-password",
+                                "/api/admin/pending",
+//                                "/api/caregivers/add",
+                                "/uploads/**"
+                        ).permitAll()
+
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
@@ -53,29 +71,6 @@ public class SecurityConfig {
 
         return http.build();
     }
-//@Bean
-//public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-//    http
-//            .cors(cors -> cors.configurationSource(request -> {
-//                var corsConfig = new org.springframework.web.cors.CorsConfiguration();
-//                corsConfig.setAllowedOriginPatterns(List.of("*")); // allow all dev origins
-//                corsConfig.setAllowedMethods(List.of("*"));
-//                corsConfig.setAllowedHeaders(List.of("*"));
-//                corsConfig.setAllowCredentials(false); // easier for dev
-//                return corsConfig;
-//            }))
-//            .csrf(csrf -> csrf.disable()) // 🔥 DISABLE CSRF
-//            .authorizeHttpRequests(auth -> auth
-//                    .requestMatchers("/api/**").permitAll()
-//                    .anyRequest().authenticated()
-//            )
-//            .formLogin(form -> form.disable())
-//            .oauth2Login(oauth -> oauth.disable())
-//            .logout(logout -> logout.disable());
-//
-//    return http.build();
-//}
-
 
     // === Success handler for login (OTP/email) ===
     @Bean
