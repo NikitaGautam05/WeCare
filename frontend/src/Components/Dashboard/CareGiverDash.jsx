@@ -209,13 +209,13 @@ const CareGiverDash = () => {
       </main>
 
       {/* Floating Chat Button */}
-      <button
+      {/* <button
         onClick={() => navigate("/messages")}
         className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-2xl flex items-center justify-center transition-all transform hover:scale-110 hover:shadow-blue-500/50"
         title="Open Messages"
       >
         <FaComments size={20} />
-      </button>
+      </button> */}
     </div>
   );
 };

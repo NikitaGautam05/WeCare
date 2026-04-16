@@ -81,16 +81,44 @@ const Chat = ({ conversationId, conversationWith, onClose, userType = 'user', is
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
+    
+    const role = localStorage.getItem('role');
     const freshUserId = localStorage.getItem('userId')?.trim() || '';
+    const freshCaregiverId = localStorage.getItem('caregiverId')?.trim() || '';
     const freshUserName = localStorage.getItem('userName') || 'You';
     const freshToken = getToken();
-    if (!freshUserId || !freshToken) { alert('Session missing. Please log in again.'); return; }
+    
+    // Determine which ID to send as senderId based on role
+    const senderId = role === 'CAREGIVER' ? freshCaregiverId : freshUserId;
+    
+    // DEBUG: Log information for troubleshooting
+    console.log('Send Message Debug:', {
+      role,
+      freshUserId,
+      freshCaregiverId,
+      senderId,
+      hasToken: !!freshToken
+    });
+    
+    if (!senderId) {
+      const errorMsg = role === 'CAREGIVER' 
+        ? 'Caregiver ID not found. Please log out and log back in as a caregiver.' 
+        : 'User ID not found. Please log in again.';
+      alert(errorMsg);
+      return;
+    }
+    
+    if (!freshToken) {
+      alert('Session missing. Please log in again.');
+      return;
+    }
+    
     setSending(true);
     try {
       const recipientId = conversationWith.userId || conversationWith.caregiverId || conversationWith.id;
       const params = new URLSearchParams();
       params.append('conversationId', conversationId);
-      params.append('senderId', freshUserId);
+      params.append('senderId', senderId);
       params.append('senderName', freshUserName);
       params.append('recipientId', recipientId);
       params.append('text', newMessage);
@@ -114,35 +142,45 @@ const Chat = ({ conversationId, conversationWith, onClose, userType = 'user', is
   const theirAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=e8e8e8&color=333&bold=true`;
   const myAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=111827&color=fff&bold=true`;
 
-  // For full-page mode, return a different layout
-  if (isFullPage) {
+if (isFullPage) {
     return (
-      <div className="h-full w-full flex flex-col bg-gray-100">
+      <div className="h-full w-full flex flex-col bg-gray-50">
         {/* Messages area */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4 custom-scrollbar">
           {loading ? (
             <div className="flex items-center justify-center h-full">
-              <div className="w-8 h-8 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+              <div className="w-8 h-8 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin" />
             </div>
           ) : messages.length === 0 ? (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-gray-500">No messages yet. Start the conversation!</p>
+            <div className="flex flex-col items-center justify-center h-full opacity-40">
+              <FaPaperPlane size={40} className="mb-4 text-slate-300" />
+              <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">No messages yet. Start the conversation!</p>
             </div>
           ) : (
             messages.map((message, idx) => {
+              // Get the correct ID to compare based on user role
+              const role = localStorage.getItem('role');
               const freshUserId = localStorage.getItem('userId')?.trim() || '';
+              const freshCaregiverId = localStorage.getItem('caregiverId')?.trim() || '';
+              
+              // For caregivers, compare with caregiverId; for users, compare with userId
+              const myId = role === 'CAREGIVER' ? freshCaregiverId : freshUserId;
               const normalizedSender = String(message.senderId || '').trim();
-              const isMe = normalizedSender === freshUserId.trim() && freshUserId.trim() !== '';
+              
+              // If normalizedSender matches myId, it's MY message (Right)
+              const isMe = normalizedSender === myId && myId !== '';
 
               return (
-                <div key={message.id || idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-xs px-4 py-2 rounded-lg ${
-                    isMe 
-                      ? 'bg-blue-600 text-white rounded-br-none' 
-                      : 'bg-white text-gray-900 rounded-bl-none shadow-sm'
-                  }`}>
-                    <p className="text-sm">{message.text}</p>
-                    <p className={`text-xs mt-1 ${isMe ? 'text-blue-100' : 'text-gray-500'}`}>
+                <div key={message.id || idx} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[70%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                    <div className={`px-4 py-2.5 rounded-2xl shadow-sm text-sm ${
+                      isMe 
+                        ? 'bg-blue-600 text-white rounded-tr-none' 
+                        : 'bg-white text-slate-800 border border-slate-100 rounded-tl-none'
+                    }`}>
+                      <p className="leading-relaxed">{message.text}</p>
+                    </div>
+                    <p className={`text-[10px] font-bold mt-1 uppercase tracking-tighter ${isMe ? 'text-blue-400' : 'text-slate-400'}`}>
                       {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
@@ -154,28 +192,28 @@ const Chat = ({ conversationId, conversationWith, onClose, userType = 'user', is
         </div>
 
         {/* Input area */}
-        <div className="bg-white border-t border-gray-200 p-4">
-          <form onSubmit={handleSendMessage} className="flex items-center gap-3">
+        <div className="bg-white border-t border-slate-100 p-4">
+          <form onSubmit={handleSendMessage} className="flex items-center gap-3 max-w-4xl mx-auto">
             <input
               type="text"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Type a message..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-600 text-gray-900"
+              placeholder="Write your message..."
+              className="flex-1 px-6 py-3 bg-slate-50 border border-transparent rounded-2xl focus:outline-none focus:bg-white focus:border-blue-500 transition-all text-slate-900 text-sm"
             />
             <button
               type="submit"
               disabled={sending || !newMessage.trim() || !userIdReady || !tokenReady}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-all"
+              className="w-12 h-12 flex items-center justify-center bg-blue-600 text-white rounded-2xl hover:bg-blue-700 disabled:opacity-30 disabled:grayscale transition-all shadow-lg shadow-blue-100 active:scale-95"
             >
-              <FaPaperPlane size={16} />
+              <FaPaperPlane size={18} />
             </button>
           </form>
         </div>
       </div>
     );
   }
-
+    
   return (
     <div className="fixed bottom-5 right-5 z-50 w-[340px] flex flex-col rounded-2xl overflow-hidden shadow-2xl border border-gray-200 bg-white">
 
@@ -249,10 +287,14 @@ const Chat = ({ conversationId, conversationWith, onClose, userType = 'user', is
               </div>
             ) : (
               messages.map((message, idx) => {
+                const role = localStorage.getItem('role');
                 const freshUserId = localStorage.getItem('userId')?.trim() || '';
+                const freshCaregiverId = localStorage.getItem('caregiverId')?.trim() || '';
+                
+                // For caregivers, compare with caregiverId; for users, compare with userId
+                const myId = role === 'CAREGIVER' ? freshCaregiverId : freshUserId;
                 const normalizedSender = String(message.senderId || '').trim();
-                const normalizedMe = String(freshUserId).trim();
-                const isMe = normalizedSender === normalizedMe && normalizedMe !== '';
+                const isMe = normalizedSender === myId && myId !== '';
 
                 const nextMsg = messages[idx + 1];
                 const isLast = !nextMsg || String(nextMsg.senderId || '').trim() !== normalizedSender;

@@ -39,15 +39,30 @@ const ChatPage = () => {
 
   const isActive = (link) => location.pathname === link;
 
+  // DEBUG: Log localStorage state when component loads
+  useEffect(() => {
+    console.log('ChatPage localStorage state:', {
+      userId: localStorage.getItem('userId'),
+      caregiverId: localStorage.getItem('caregiverId'),
+      role: localStorage.getItem('role'),
+      userName: localStorage.getItem('userName'),
+      userType
+    });
+  }, []);
+
   // 1. Fix for Caregivers: If caregiverId is null, fetch it from the backend using the userId
   useEffect(() => {
     const resolveId = async () => {
       if (userType === 'caregiver' && !resolvedCaregiverId) {
         try {
+          console.log('Attempting to resolve caregiverId for userId:', userId);
           const res = await axios.get(`http://localhost:8080/api/caregivers/user/${userId}`, axiosConfig);
           if (res.data && res.data.id) {
+            console.log('Successfully resolved caregiverId:', res.data.id);
             localStorage.setItem('caregiverId', res.data.id);
             setResolvedCaregiverId(res.data.id);
+          } else {
+            console.warn('API returned null caregiver for userId:', userId);
           }
         } catch (err) {
           console.error("Could not resolve caregiver ID", err);

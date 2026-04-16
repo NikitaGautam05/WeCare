@@ -27,6 +27,19 @@ const handleLogin = async (e) => {
       localStorage.setItem("userName", response.data.userName);   
       localStorage.setItem("role", response.data.role);       
       localStorage.setItem("email", response.data.email);    
+      
+      // If user is a caregiver, also store caregiverId
+      if (response.data.caregiverId) {
+        localStorage.setItem("caregiverId", response.data.caregiverId);
+      }
+      
+      // DEBUG: Log what was saved
+      console.log("Login successful:", {
+        userId: response.data.userId,
+        caregiverId: response.data.caregiverId,
+        role: response.data.role,
+        userName: response.data.userName
+      });
 
       const normalizedRole = (response.data.role || "USER").toLowerCase().replace(/\s/g,'');
       if (normalizedRole.includes("caregiver")) navigate("/welcome");
@@ -80,6 +93,11 @@ const handleGoogleLogin = async (credentialResponse) => {
       localStorage.setItem("userName", res.data.userName); 
       localStorage.setItem("role", actualRole);
       localStorage.setItem("email", res.data.email);
+      
+      // If user is a caregiver, also store caregiverId
+      if (res.data.caregiverId) {
+        localStorage.setItem("caregiverId", res.data.caregiverId);
+      }
 
       // 3. Redirect based on the REAL role
       if (actualRole.includes("CAREGIVER")) {
