@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
-import { FaTimes, FaCheck, FaHeart, FaSearch, FaArrowRight } from "react-icons/fa";
+import { FaTimes, FaCheck, FaHeart, FaSearch, FaArrowRight, FaComments } from "react-icons/fa";
 import logo from "../../assets/logo.jpg";
 
 const Dashboard = () => {
@@ -109,7 +109,7 @@ const handleInterest = async (caregiver) => {
   const navItems = [
     { name: "🏠 Home", link: "/dash" },
     { name: "👩‍⚕️ Caregivers", link: "/my-caregivers" },
-    { name: "📜 History", link: "/history" },
+    { name: "� History", link: "/history" },
     { name: "❤️ Favourites", link: "/favourites" },
     { name: "👤 Profile", link: "/my-profile" },
   ];
@@ -427,6 +427,13 @@ const handleInterest = async (caregiver) => {
           </section>
         </div>
       </main>
+      <button 
+        onClick={() => navigate("/messages")}
+        className="fixed bottom-8 right-8 w-16 h-16 bg-blue-600 text-white rounded-2xl shadow-2xl shadow-blue-200 flex items-center justify-center hover:bg-blue-700 hover:-translate-y-2 transition-all z-40 active:scale-95 group"
+      >
+        <FaComments size={24} className="group-hover:rotate-12 transition-transform" />
+        <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 border-4 border-slate-50 rounded-full"></span>
+      </button>
 
       {/* MODAL */}
       {dialogue && (

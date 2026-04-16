@@ -1,25 +1,16 @@
 package backend.backend.model;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.ArrayList;
-import java.util.List;
-import backend.backend.model.CaregiverStatus;
 @Document(collection = "caregivers")
 public class Caregiver {
 
     @Id
     private String id;
-
-    public String getUserId() {
-        return userId;
-    }
-
-    public void setUserId(String userId) {
-        this.userId = userId;
-    }
-
     private String userId;
     private String fullName;
     private String address;
@@ -30,27 +21,19 @@ public class Caregiver {
     private String speciality;
     private String chargeMin;
     private String chargeMax;
+    private String profilePhoto;
+    private String citizenshipPhoto;
 
-    private String profilePhoto;       // store filename or URL
-    private String citizenshipPhoto;   // store filename or URL
+    // Status and Reports
     private CaregiverStatus status = CaregiverStatus.PENDING;
-    private int reportsCount = 0;
-    // Inside Caregiver class
+    private Integer reportsCount = 0;
+
+    // Lists for Interaction
     private List<String> comments = new ArrayList<>();
-
-    public List<String> getComments() {
-        return comments;
-    }
-
-    public void setComments(List<String> comments) {
-        this.comments = comments;
-    }
-
     private List<String> notifications = new ArrayList<>();
+    private List<String> acceptedUserIds = new ArrayList<>();
 
-    public List<String> getNotifications() {
-        return notifications;
-    }
+    // --- NEW: Status Getter and Setter (Fixes AdminController error) ---
     public CaregiverStatus getStatus() {
         return status;
     }
@@ -59,42 +42,61 @@ public class Caregiver {
         this.status = status;
     }
 
-    public int getReportsCount() {
+    // --- Reports Count Getter and Setter ---
+    public Integer getReportsCount() {
         return reportsCount;
     }
 
-    public void setReportsCount(int reportsCount) {
+    public void setReportsCount(Integer reportsCount) {
         this.reportsCount = reportsCount;
     }
-    public void setNotifications(List<String> notifications) {
-        this.notifications = notifications;
-    }
 
-//    private List<String> notifications = new ArrayList<>();
-
-    // Getters and Setters
+    // --- Standard Getters and Setters ---
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
+
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
+
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
+
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
+
     public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
     public String getDetails() { return details; }
     public void setDetails(String details) { this.details = details; }
+
     public String getExperience() { return experience; }
     public void setExperience(String experience) { this.experience = experience; }
+
     public String getSpeciality() { return speciality; }
     public void setSpeciality(String speciality) { this.speciality = speciality; }
+
     public String getChargeMin() { return chargeMin; }
     public void setChargeMin(String chargeMin) { this.chargeMin = chargeMin; }
+
     public String getChargeMax() { return chargeMax; }
     public void setChargeMax(String chargeMax) { this.chargeMax = chargeMax; }
+
     public String getProfilePhoto() { return profilePhoto; }
     public void setProfilePhoto(String profilePhoto) { this.profilePhoto = profilePhoto; }
+
     public String getCitizenshipPhoto() { return citizenshipPhoto; }
     public void setCitizenshipPhoto(String citizenshipPhoto) { this.citizenshipPhoto = citizenshipPhoto; }
+
+    public List<String> getComments() { return comments; }
+    public void setComments(List<String> comments) { this.comments = comments; }
+
+    public List<String> getNotifications() { return notifications; }
+    public void setNotifications(List<String> notifications) { this.notifications = notifications; }
+
+    public List<String> getAcceptedUserIds() { return acceptedUserIds; }
+    public void setAcceptedUserIds(List<String> acceptedUserIds) { this.acceptedUserIds = acceptedUserIds; }
 }

@@ -282,7 +282,7 @@ export default function Verified() {
               <div className="rounded-xl bg-gradient-to-br from-emerald-100 to-teal-50 p-5 flex items-center gap-4">
                 <div className="relative flex-shrink-0">
                   <div className="absolute inset-0 rounded-full blur-md opacity-30 scale-110 bg-emerald-400" />
-                  <img src={`http://localhost:8080/uploads/${selected.profilePhoto?.replace(/\s+/g, "_")}`} alt={selected.fullName}
+                  <img src={selected.profilePhoto?.startsWith('http') ? selected.profilePhoto : `http://localhost:8080/uploads/${selected.profilePhoto?.replace(/\s+/g, "_")}`} alt={selected.fullName}
                     className="relative w-20 h-20 rounded-2xl object-cover border-2 border-white shadow-md"
                     onError={(e) => { e.target.onerror = null; e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selected.fullName || "C")}&background=d1fae5&color=065f46&size=200&bold=true`; }} />
                 </div>

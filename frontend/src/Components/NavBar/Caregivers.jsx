@@ -8,7 +8,8 @@ import {
   FaMapMarkerAlt, 
   FaArrowRight,
   FaShieldAlt,
-  FaChevronRight
+  FaChevronRight,
+  FaComments
 } from "react-icons/fa";
 import logo from "../../assets/logo.jpg";
 
@@ -72,7 +73,7 @@ const Caregivers = () => {
   const navItems = [
     { name: "🏠 Home", link: "/dash" },
     { name: "👩‍⚕️ Caregivers", link: "/my-caregivers" },
-    { name: "📜 History", link: "/history" },
+    { name: "� History", link: "/history" },
     { name: "❤️ Favourites", link: "/favourites" },
     { name: "👤 Profile", link: "/my-profile" },
   ];
@@ -184,10 +185,10 @@ const Caregivers = () => {
             <FaShieldAlt /> 100% Verified Professionals
           </div>
           <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-4">
-            Find the Perfect <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-600 to-slate-700">Caregiver</span>
+             <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-600 to-slate-700">Caregivers</span>
           </h1>
           <p className="text-slate-500 text-lg max-w-2xl">
-            Browse our community of certified health experts dedicated to providing compassionate elderly care in your area.
+            View all the caregivers
           </p>
         </div>
 

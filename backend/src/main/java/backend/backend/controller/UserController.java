@@ -22,8 +22,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import backend.backend.model.Caregiver;
 import backend.backend.model.HistoryItems;
 import backend.backend.model.Users;
+import backend.backend.repository.CaregiverRepository;
 import backend.backend.repository.UserRepo;
 import backend.backend.service.EmailService;
 import backend.backend.service.JwtService;
@@ -42,6 +44,8 @@ public class UserController {
     EmailService emailService;
     @Autowired
     UserRepo userRepository;
+    @Autowired
+    private CaregiverRepository caregiverRepository;
     @Autowired
     private PasswordEncoder passwordEncoder;
 
@@ -197,8 +201,24 @@ public class UserController {
         String token = jwtService.generateToken(user);
         response.put("token", token);
         response.put("role", user.getRole()); // CAREGIVER or USER
-        response.put("userId",user.getId());
-        response.put("userName",user.getUserName());
+        response.put("userId", user.getId());
+        response.put("userName", user.getUserName());
+        response.put("email", user.getEmail() != null ? user.getEmail() : "");
+        
+        // If user is a CAREGIVER, also return the caregiverId
+        if ("CAREGIVER".equalsIgnoreCase(user.getRole())) {
+            System.out.println("🔍 User is CAREGIVER. Looking for caregiver profile...");
+            System.out.println("📝 UserId: " + user.getId());
+            Caregiver caregiver = caregiverRepository.findByUserId(user.getId());
+            System.out.println("🔎 Caregiver found: " + (caregiver != null ? caregiver.getId() : "NULL"));
+            if (caregiver != null) {
+                System.out.println("✅ Adding caregiverId to response: " + caregiver.getId());
+                response.put("caregiverId", caregiver.getId());
+            } else {
+                System.out.println("❌ No caregiver profile found for userId: " + user.getId());
+            }
+        }
+        
         return response;
     }
     @PutMapping("/change-password")
@@ -301,4 +321,94 @@ public class UserController {
     //             .map(ResponseEntity::ok)
     //             .orElse(ResponseEntity.notFound().build());
     // }
+
+    // ── User Care Profile Endpoints ──
+    @PostMapping("/profile")
+    public ResponseEntity<Users> createUserProfile(
+            @RequestParam("userId") String userId,
+            @RequestParam("address") String address,
+            @RequestParam("serviceType") String serviceType,
+            @RequestParam("additionalInfo") String additionalInfo,
+            @RequestParam("receiverType") String receiverType,
+            @RequestParam(value = "photo", required = false) MultipartFile photo) {
+
+        try {
+            Users user = userRepository.findById(userId).orElse(null);
+            if (user == null) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            user.setAddress(address);
+            user.setServiceType(serviceType);
+            user.setAdditionalInfo(additionalInfo);
+            user.setReceiverType(receiverType);
+
+            // Handle photo upload if provided
+            if (photo != null && !photo.isEmpty()) {
+                String uploadDir = "uploads/";
+                Path uploadPath = Paths.get(uploadDir);
+
+                if (!Files.exists(uploadPath)) {
+                    Files.createDirectories(uploadPath);
+                }
+
+                String filename = userId + "_profile_" + System.currentTimeMillis() + "_" + photo.getOriginalFilename();
+                Path filePath = uploadPath.resolve(filename);
+                Files.copy(photo.getInputStream(), filePath);
+                user.setPhoto(filename);
+            }
+
+            Users savedUser = userRepository.save(user);
+            return ResponseEntity.ok(savedUser);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @PostMapping("/update/{userId}")
+    public ResponseEntity<Users> updateUserProfile(
+            @PathVariable String userId,
+            @RequestParam("address") String address,
+            @RequestParam("serviceType") String serviceType,
+            @RequestParam("additionalInfo") String additionalInfo,
+            @RequestParam("receiverType") String receiverType,
+            @RequestParam(value = "photo", required = false) MultipartFile photo) {
+
+        try {
+            Users user = userRepository.findById(userId).orElse(null);
+            if (user == null) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            user.setAddress(address);
+            user.setServiceType(serviceType);
+            user.setAdditionalInfo(additionalInfo);
+            user.setReceiverType(receiverType);
+
+            // Handle photo upload if provided
+            if (photo != null && !photo.isEmpty()) {
+                String uploadDir = "uploads/";
+                Path uploadPath = Paths.get(uploadDir);
+
+                if (!Files.exists(uploadPath)) {
+                    Files.createDirectories(uploadPath);
+                }
+
+                String filename = userId + "_profile_" + System.currentTimeMillis() + "_" + photo.getOriginalFilename();
+                Path filePath = uploadPath.resolve(filename);
+                Files.copy(photo.getInputStream(), filePath);
+                user.setPhoto(filename);
+            }
+
+            Users savedUser = userRepository.save(user);
+            return ResponseEntity.ok(savedUser);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).build();
+        }
+    }
 }
+

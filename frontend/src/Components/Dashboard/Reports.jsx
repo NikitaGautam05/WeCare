@@ -265,7 +265,7 @@ export default function Reports() {
                 <div className="relative flex-shrink-0">
                   <div className="absolute inset-0 rounded-full blur-md opacity-30 scale-110 bg-orange-300" />
                   <div className="relative">
-                    <img src={`http://localhost:8080/uploads/${selected.profilePhoto?.replace(/\s+/g, "_")}`} alt={selected.fullName}
+                    <img src={selected.profilePhoto?.startsWith('http') ? selected.profilePhoto : `http://localhost:8080/uploads/${selected.profilePhoto?.replace(/\s+/g, "_")}`} alt={selected.fullName}
                       className="w-20 h-20 rounded-2xl object-cover border-2 border-white shadow-md"
                       onError={(e) => { e.target.onerror = null; e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selected.fullName || "C")}&background=fed7aa&color=9a3412&size=200&bold=true`; }} />
                     <div className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow">

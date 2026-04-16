@@ -1,6 +1,15 @@
 import React, { useEffect, useState } from "react";
 import ProfileForm from "./ProfileForm";
-import { FaUserCircle, FaBell, FaSignOutAlt, FaFileAlt, FaQuestionCircle, FaCheckDouble, FaStar, FaWallet } from "react-icons/fa";
+import AcceptedConnections from "../Chat/AcceptedConnections";
+import { 
+  FaUserCircle, 
+  FaBell, 
+  FaFileAlt, 
+  FaCheckDouble, 
+  FaStar, 
+  FaWallet,
+  FaComments
+} from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import axios from 'axios';
 
@@ -17,12 +26,27 @@ const CareGiverDash = () => {
       navigate("/login");
       return;
     }
-    axios.get(`http://localhost:8080/api/caregivers/user/${userId}`)
+
+    // Move token inside useEffect to keep the dependency array stable
+    const token = localStorage.getItem("jwtToken");
+    const axiosConfig = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+
+    axios.get(`http://localhost:8080/api/caregivers/user/${userId}`, axiosConfig)
       .then((res) => {
         setProfile(res.data);
-        setNotifications(res.data.notifications || []);
+        const parsedNotifications = (res.data.notifications || []).map(notif => {
+          try {
+            return typeof notif === 'string' ? JSON.parse(notif) : notif;
+          } catch (e) {
+            return { message: notif, type: 'general', userId: null };
+          }
+        });
+        setNotifications(parsedNotifications);
       })
-      .catch((err) => console.log("Profile check:", err.message));
+      .catch((err) => console.error("Sync Error:", err.message));
+    
+    // Dependencies must stay constant in size. 
+    // We removed 'token' from here because we fetch it from localStorage inside the effect.
   }, [userId, navigate]);
 
   const handleLogout = () => {
@@ -30,7 +54,7 @@ const CareGiverDash = () => {
     navigate("/");
   };
 
-  const displayName = profile?.fullName || localStorage.getItem("userName") || "Caregiver";
+  const displayName = profile?.fullName || "Caregiver";
   const initials = displayName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
 
   return (
@@ -63,13 +87,13 @@ const CareGiverDash = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-8 py-10">
-        {/* Top Stats Bar - This fills the "empty" feeling */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           <div className="bg-white p-6 rounded-[24px] border border-gray-200 shadow-sm flex items-center gap-5">
             <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center text-gray-900"><FaCheckDouble /></div>
             <div>
               <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Profile Status</p>
-              <p className="font-bold text-sm">{profile?.status || "Incomplete"}</p>
+              <p className="font-bold text-sm">{profile?.status || "Pending"}</p>
             </div>
           </div>
           <div className="bg-white p-6 rounded-[24px] border border-gray-200 shadow-sm flex items-center gap-5">
@@ -89,7 +113,7 @@ const CareGiverDash = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-12">
-          {/* Sidebar */}
+          {/* Sidebar Navigation */}
           <aside className="space-y-10">
             <div className="px-2">
               <div className="w-20 h-20 rounded-[28px] bg-black text-white flex items-center justify-center text-2xl font-bold mb-6 shadow-2xl shadow-black/20 italic">
@@ -109,6 +133,14 @@ const CareGiverDash = () => {
                 <FaUserCircle size={18} /> Profile
               </button>
               <button
+                onClick={() => setActiveTab("chats")}
+                className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-sm font-bold transition-all ${
+                  activeTab === "chats" ? "bg-black text-white shadow-xl shadow-black/10 scale-[1.02]" : "text-gray-400 hover:bg-white hover:text-black"
+                }`}
+              >
+                <FaCheckDouble size={18} /> Accepted (Chats)
+              </button>
+              <button
                 onClick={() => setActiveTab("notifications")}
                 className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-sm font-bold transition-all ${
                   activeTab === "notifications" ? "bg-black text-white shadow-xl shadow-black/10 scale-[1.02]" : "text-gray-400 hover:bg-white hover:text-black"
@@ -118,25 +150,30 @@ const CareGiverDash = () => {
               </button>
             </nav>
 
+            {/* Re-added Terms & Service */}
             <div className="pt-8 border-t border-gray-200">
-              <button onClick={() => navigate('/terms')} className="group w-full flex items-center gap-4 px-6 py-3 text-sm font-bold text-gray-400 hover:text-black transition-colors">
-                <FaFileAlt className="group-hover:text-black" /> Terms & Service
-              </button><br/>
-              {/* <button className="group w-full flex items-center gap-4 px-6 py-3 text-sm font-bold text-gray-400 hover:text-black transition-colors">
-                <FaQuestionCircle className="group-hover:text-black" /> Support
-              </button> */}
+              <button 
+                onClick={() => navigate('/terms')} 
+                className="w-full flex items-center gap-4 px-6 py-3 text-sm font-bold text-gray-400 hover:text-black transition-colors"
+              >
+                <FaFileAlt /> Terms & Service
+              </button>
             </div>
           </aside>
 
-          {/* Content Area */}
+          {/* Tab Content Section */}
           <section>
             <div className="bg-white border border-gray-200 rounded-[40px] p-12 shadow-sm min-h-[600px] relative overflow-hidden">
-               {/* Subtle background decoration */}
                <div className="absolute top-0 right-0 w-64 h-64 bg-gray-50 rounded-full -mr-32 -mt-32 blur-3xl opacity-50" />
                
                <div className="relative z-10">
                 {activeTab === "profile" ? (
                   <ProfileForm userId={userId} />
+                ) : activeTab === "chats" ? (
+                  <div>
+                    <h2 className="text-3xl font-black mb-8">Confirmed Connections</h2>
+                    <AcceptedConnections userType="caregiver" userId={userId} />
+                  </div>
                 ) : (
                   <div>
                     <h2 className="text-3xl font-black mb-8">Notifications</h2>
@@ -146,9 +183,19 @@ const CareGiverDash = () => {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {notifications.map((msg, i) => (
-                          <div key={i} className="p-6 bg-gray-50 rounded-3xl border border-gray-100 text-gray-600 font-medium">
-                            {msg}
+                        {notifications.map((notif, i) => (
+                          <div key={i} className="p-6 bg-gray-50 rounded-3xl border border-gray-100 flex justify-between items-center">
+                            <div className="text-gray-600 font-medium">
+                              {notif.message}
+                            </div>
+                            {notif.type === 'interest' && (
+                              <button
+                                onClick={() => navigate(`/profileReciever/${notif.userId}`)}
+                                className="px-5 py-2 bg-black text-white text-xs font-bold rounded-xl hover:bg-gray-800 transition-colors"
+                              >
+                                View Profile
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -160,6 +207,15 @@ const CareGiverDash = () => {
           </section>
         </div>
       </main>
+
+      {/* Floating Chat Button */}
+      <button
+        onClick={() => navigate("/messages")}
+        className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-2xl flex items-center justify-center transition-all transform hover:scale-110 hover:shadow-blue-500/50"
+        title="Open Messages"
+      >
+        <FaComments size={20} />
+      </button>
     </div>
   );
 };

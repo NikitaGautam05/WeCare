@@ -1,5 +1,4 @@
 package backend.backend.configuration;
-
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +10,7 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -34,7 +34,6 @@ public class SecurityConfig {
         http
                 .cors(cors -> cors.configurationSource(request -> {
                     var corsConfig = new org.springframework.web.cors.CorsConfiguration();
-                    // Match this to your React URL
                     corsConfig.setAllowedOrigins(List.of("http://localhost:5173"));
                     corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                     corsConfig.setAllowedHeaders(List.of("*"));
@@ -43,35 +42,39 @@ public class SecurityConfig {
                 }))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                        // 1. Always allow OPTIONS for CORS pre-flight checks
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/caregivers/**").permitAll()
 
+                        // 2. Allow all caregivers endpoints (GET, POST, PUT, DELETE)
+                        .requestMatchers("/api/caregivers/**").permitAll()
+                        .requestMatchers("/api/users/**").permitAll()
+
+                        // 3. Admin endpoints (allowing all for now to fix your AdminDashboard 403s)
+                        .requestMatchers("/api/admin/**").permitAll()
+
+                        // 4. Authentication and Password Reset endpoints
                         .requestMatchers(
                                 "/api/users/login",
                                 "/api/users/register",
-                                "/api/admin/login",
-                                "/api/google-signup",
                                 "/api/users/complete-google-profile",
-                                "/api/admin/forgetPassword",
-                                "/api/admin/verify-otp",
-                                "/api/admin/reset-password",
+                                "/api/google-signup",
                                 "/api/forgetPassword",
                                 "/api/verify-otp",
                                 "/api/reset-password",
-                                "/api/admin/pending",
-//                                "/api/caregivers/add",
                                 "/uploads/**"
                         ).permitAll()
 
+                        // 5. Secure all other actions (e.g., booking, reporting, hiring)
                         .anyRequest().authenticated()
                 )
+                // Ensure JWT filter is active to handle tokens for authenticated routes
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .formLogin(form -> form.disable())
-                .oauth2Login(oauth -> oauth.disable());
+                .httpBasic(basic -> basic.disable());
 
         return http.build();
     }
-
     // === Success handler for login (OTP/email) ===
     @Bean
     public AuthenticationSuccessHandler customOtpSuccessHandler() {

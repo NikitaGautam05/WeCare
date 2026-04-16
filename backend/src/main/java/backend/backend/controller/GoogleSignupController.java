@@ -121,23 +121,28 @@ package backend.backend.controller;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
-import backend.backend.service.EmailService;
-import backend.backend.service.JwtService;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.*;
-
-import backend.backend.model.Users;
-import backend.backend.service.MyUserDetailService;
-import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken.Payload;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.jackson2.JacksonFactory;
+
+import backend.backend.model.Caregiver;
+import backend.backend.model.Users;
+import backend.backend.repository.CaregiverRepository;
+import backend.backend.service.EmailService;
+import backend.backend.service.JwtService;
+import backend.backend.service.MyUserDetailService;
 
 @RestController
 @CrossOrigin(origins = "http://localhost:5173")
@@ -152,65 +157,12 @@ public class GoogleSignupController {
     EmailService emailService;
     @Autowired
     private PasswordEncoder passwordEncoder;
+    @Autowired
+    private CaregiverRepository caregiverRepository;
 
     private static final String GOOGLE_CLIENT_ID = "666312206626-bp4glho27euf5tr9041vq247fr707fi5.apps.googleusercontent.com";
 
-//    @PostMapping("/google-signup")
-//    public Map<String, String> googleSignup(@RequestBody Map<String, String> payload) {
-//
-//        Map<String, String> response = new HashMap<>();
-//        String token = payload.get("token");
-//        String roleFromFrontend = payload.getOrDefault("role", "USER");
-//
-//        try {
-//            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
-//                    GoogleNetHttpTransport.newTrustedTransport(),
-//                    JacksonFactory.getDefaultInstance()
-//            ).setAudience(Collections.singletonList(GOOGLE_CLIENT_ID)).build();
-//
-//            GoogleIdToken idToken = verifier.verify(token);
-//            if (idToken == null) {
-//                response.put("error", "Invalid Google token");
-//                return response;
-//            }
-//
-//            Payload payloadData = idToken.getPayload();
-//            String email = payloadData.getEmail();
-//            String name = (String) payloadData.get("name");
-//
-//            Users user = userService.getAllUsers()
-//                    .stream()
-//                    .filter(u -> email.equals(u.getEmail()))
-//                    .findFirst()
-//                    .orElse(null);
-//
-//            boolean needsSetup = false;
-//
-//            if (user == null) { // New signup
-//                user = new Users();
-//                user.setEmail(email);
-//                user.setUserName(""); // Will be set in quick setup
-//                user.setPassword(""); // Will be set in quick setup
-//                user.setRole(roleFromFrontend.toUpperCase().replaceAll("\\s","")); // CAREGIVER or USER
-//                userService.saveUser(user);
-//                needsSetup = true; // Show modal
-//            } else if (user.getPassword() == null || user.getPassword().isEmpty()) {
-//                needsSetup = true; // Existing Google user but hasn't completed profile
-//            }
-//
-//            String jwt = jwtService.generateToken(user);
-//            response.put("token", jwt);
-//            response.put("role", user.getRole());
-//            response.put("needsSetup", String.valueOf(needsSetup));
-//            response.put("userName", user.getUserName());
-//            response.put("userId", user.getId());
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            response.put("error", "Google authentication failed");
-//        }
-//
-//        return response;
-//    }
+
 @PostMapping("/google-signup")
 public Map<String, String> googleSignup(@RequestBody Map<String, String> payload) {
     Map<String, String> response = new HashMap<>();
@@ -252,6 +204,22 @@ public Map<String, String> googleSignup(@RequestBody Map<String, String> payload
             response.put("needsSetup", String.valueOf(user.getPassword() == null || user.getPassword().isEmpty()));
             response.put("userName", user.getUserName());
             response.put("userId", user.getId());
+            response.put("email", email);
+            
+            // If user is a CAREGIVER, also return the caregiverId
+            if ("CAREGIVER".equalsIgnoreCase(actualRole)) {
+                System.out.println("🔍 Google User is CAREGIVER. Looking for caregiver profile...");
+                System.out.println("📝 UserId: " + user.getId());
+                Caregiver caregiver = caregiverRepository.findByUserId(user.getId());
+                System.out.println("🔎 Caregiver found: " + (caregiver != null ? caregiver.getId() : "NULL"));
+                if (caregiver != null) {
+                    System.out.println("✅ Adding caregiverId to response: " + caregiver.getId());
+                    response.put("caregiverId", caregiver.getId());
+                } else {
+                    System.out.println("❌ No caregiver profile found for userId: " + user.getId());
+                }
+            }
+            
             return response;
         }
 
@@ -275,6 +243,7 @@ public Map<String, String> googleSignup(@RequestBody Map<String, String> payload
         response.put("needsSetup", "true");
         response.put("userName", user.getUserName());
         response.put("userId", user.getId());
+        response.put("email", email);
 
     } catch (Exception e) {
         e.printStackTrace();
@@ -284,56 +253,7 @@ public Map<String, String> googleSignup(@RequestBody Map<String, String> payload
     return response;
 }
 
-    // Complete profile after Google signup
-//    @PostMapping("/users/complete-google-profile")
-//    public ResponseEntity<?> completeGoogleProfile(
-//            @RequestBody Map<String, String> payload,
-//            @RequestHeader("Authorization") String authHeader) {
-//
-//        try {
-//            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-//                return ResponseEntity.status(401).body(Collections.singletonMap("error", "Missing Authorization Header"));
-//            }
-//
-//            String token = authHeader.replace("Bearer ", "");
-//            String email = jwtService.extractUsername(token);
-//
-//            if (email == null) {
-//                return ResponseEntity.status(401).body(Collections.singletonMap("error", "Invalid or Expired Token"));
-//            }
-//
-//            Optional<Users> userOpt = userService.getAllUsers()
-//                    .stream()
-//                    .filter(u -> email.equals(u.getEmail()))
-//                    .findFirst();
-//
-//            if (userOpt.isEmpty()) {
-//                return ResponseEntity.status(404).body(Collections.singletonMap("error", "User not found"));
-//            }
-//
-//            Users user = userOpt.get();
-//            String newUserName = payload.get("userName");
-//            String newPassword = payload.get("password");
-//
-//            if (newUserName == null || newUserName.isEmpty()) {
-//                return ResponseEntity.badRequest().body(Collections.singletonMap("error", "Username is required"));
-//            }
-//
-//            // 2. FIX THIS: Encode the password before saving
-//            user.setUserName(newUserName);
-//            user.setPassword(passwordEncoder.encode(newPassword));
-//            userService.saveUser(user);
-//
-//            Map<String, String> response = new HashMap<>();
-//            response.put("message", "Profile setup complete!");
-//            // Optional: Include userId so frontend can store it
-//            response.put("userId", user.getId());
-//            return ResponseEntity.ok(response);
-//
-//        } catch (Exception e) {
-//            return ResponseEntity.status(500).body(Collections.singletonMap("error", "Internal error: " + e.getMessage()));
-//        }
-//    }
+
     @PostMapping("/users/complete-google-profile")
     public ResponseEntity<Map<String, String>> completeGoogleProfile(@RequestBody Map<String, String> payload) {
         Map<String, String> resp = new HashMap<>();

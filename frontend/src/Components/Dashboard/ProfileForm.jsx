@@ -34,7 +34,7 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
       if (!form.fullName)    errs.fullName    = "Full name required";
       if (!form.address)     errs.address     = "Address required";
       if (!form.phoneNumber) errs.phoneNumber = "Phone required";
-      if (!form.email)       errs.email       = "Email required";
+      // if (!form.email)       errs.email       = "Email required";
     }
     if (step === 3) {
       if (!form.details)    errs.details    = "Description required";
@@ -60,13 +60,21 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
     const formData = new FormData();
     Object.entries(form).forEach(([k, v]) => { if (v !== null && v !== "") formData.append(k, v); });
     const uid = localStorage.getItem("userId");
+    const token = localStorage.getItem("jwtToken");
     formData.append("userId", uid);
+
+    const config = {
+      headers: {
+        "Content-Type": "multipart/form-data",
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
+    };
 
     try {
       setLoading(true);
       const res = submittedProfile
-        ? await axios.put(`http://localhost:8080/api/caregivers/update/${uid}`, formData, { headers: { "Content-Type": "multipart/form-data" } })
-        : await axios.post("http://localhost:8080/api/caregivers/add",          formData, { headers: { "Content-Type": "multipart/form-data" } });
+        ? await axios.put(`http://localhost:8080/api/caregivers/update/${uid}`, formData, config)
+        : await axios.post("http://localhost:8080/api/caregivers/add", formData, config);
 
       setSubmittedProfile(res.data);
       setEditMode(false);
@@ -83,8 +91,12 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
   // ── PRE-CHECK EXISTING PROFILE ──
   useEffect(() => {
     const uid = localStorage.getItem("userId");
+    const token = localStorage.getItem("jwtToken");
     if (!uid) return;
-    axios.get(`http://localhost:8080/api/caregivers/user/${uid}`)
+
+    axios.get(`http://localhost:8080/api/caregivers/user/${uid}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    })
       .then(res => { if (res.data) setSubmittedProfile(res.data); })
       .catch(() => {});
   }, []);
@@ -363,7 +375,7 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
               {[
                 { name:"fullName",    label:"Full Name",        placeholder:"Eg. Sita Gurung",           type:"text" },
                 { name:"phoneNumber", label:"Phone Number",     placeholder:"Eg. 9841234567",             type:"tel" },
-                { name:"email",       label:"Email Address",    placeholder:"Eg. sita@example.com",       type:"email" },
+                // { name:"email",       label:"Email Address",    placeholder:"Eg. sita@example.com",       type:"email" },
                 { name:"address",     label:"Location",         placeholder:"Eg. Kathmandu, Ward 5",      type:"text" },
               ].map(({ name, label, placeholder, type }) => (
                 <div key={name} className="field-group">

@@ -341,7 +341,7 @@ export default function Blocked() {
               {/* Avatar + name */}
               <div className="flex items-center gap-4">
                 <img
-                  src={`http://localhost:8080/uploads/${selected.profilePhoto?.replace(/\s+/g, "_")}`}
+                  src={selected.profilePhoto?.startsWith('http') ? selected.profilePhoto : `http://localhost:8080/uploads/${selected.profilePhoto?.replace(/\s+/g, "_")}`}
                   alt={selected.fullName}
                   className="w-20 h-20 rounded-2xl object-cover border-2 border-red-100 shadow-sm"
                   onError={(e) => {
