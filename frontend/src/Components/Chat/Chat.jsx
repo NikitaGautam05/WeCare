@@ -13,6 +13,8 @@ const Chat = ({ conversationId, conversationWith, onClose, userType = 'user', is
   const [userIdReady, setUserIdReady] = useState(false);
   const [tokenReady, setTokenReady] = useState(false);
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const isUserAtBottom = useRef(true);
 
   const userId = localStorage.getItem('userId')?.trim() || '';
   const userName = (localStorage.getItem('userName') || 'You')?.trim();
@@ -51,16 +53,49 @@ const Chat = ({ conversationId, conversationWith, onClose, userType = 'user', is
   }, []);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   };
 
-  useEffect(() => { scrollToBottom(); }, [messages]);
+  const checkIfAtBottom = () => {
+    if (!messagesContainerRef.current) return true;
+    const container = messagesContainerRef.current;
+    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+    isUserAtBottom.current = isAtBottom;
+  };
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    
+    container.addEventListener('scroll', checkIfAtBottom);
+    return () => container.removeEventListener('scroll', checkIfAtBottom);
+  }, []);
+
+  useEffect(() => { 
+    if (isUserAtBottom.current) {
+      scrollToBottom();
+    }
+  }, [messages]);
 
   useEffect(() => {
     fetchMessages();
+    isUserAtBottom.current = true;
     const interval = setInterval(fetchMessages, 2000);
     return () => clearInterval(interval);
   }, [conversationId]);
+
+  useEffect(() => {
+    if (!loading && messages.length > 0) {
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+          isUserAtBottom.current = true;
+        }
+      }, 50);
+    }
+  }, [loading]);
 
   const fetchMessages = async () => {
     try {
@@ -129,6 +164,7 @@ const Chat = ({ conversationId, conversationWith, onClose, userType = 'user', is
       );
       setMessages([...messages, res.data]);
       setNewMessage('');
+      isUserAtBottom.current = true;
       setTimeout(fetchMessages, 500);
     } catch (err) {
       console.error('Failed to send message:', err);
@@ -146,7 +182,7 @@ if (isFullPage) {
     return (
       <div className="h-full w-full flex flex-col bg-gray-50">
         {/* Messages area */}
-        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4 custom-scrollbar">
+        <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-6 py-6 space-y-4 custom-scrollbar">
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <div className="w-8 h-8 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin" />
