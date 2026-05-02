@@ -24,11 +24,12 @@ import Verified from './Components/Dashboard/Verified'
 import Blocked from './Components/Dashboard/Blocked'
 import Reports from './Components/Dashboard/Reports'
 import History from  './Components/NavBar/History'
+import Connections from './Components/NavBar/Connections'
 import ProfileReceiver from './Components/Dashboard/ProfileReceiver'
 import Chat from './Components/Chat/Chat';
 import ChatPage from './Components/Chat/ChatPage';
 import { Navigate } from 'react-router-dom';
-
+import Notifications from './Components/Dashboard/Notifications'
 function App() {
   // Protection for standard Users & Caregivers
   const ProtectedRoute = ({ children }) => {
@@ -94,9 +95,10 @@ function App() {
         <Route path="/my-caregivers" element={<ProtectedRoute><Caregivers /></ProtectedRoute>} />
         <Route path="/favourites" element={<ProtectedRoute><Favourites /></ProtectedRoute>} />
         <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+        <Route path="/connections" element={<ProtectedRoute><Connections /></ProtectedRoute>} />
         <Route path="/messages" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
         <Route path="/terms" element={<ProtectedRoute><TermsAndServices /></ProtectedRoute>} />
-
+        <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         {/* Protected Caregiver/Admin Routes */}
         <Route path='/CareGiverDash/:id' element={<ProtectedRoute><CareGiverDash /></ProtectedRoute>} />
         <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />

@@ -12,6 +12,8 @@ const Chat = ({ conversationId, conversationWith, onClose, userType = 'user', is
   const [minimized, setMinimized] = useState(false);
   const [userIdReady, setUserIdReady] = useState(false);
   const [tokenReady, setTokenReady] = useState(false);
+  const [canChat, setCanChat] = useState(true); // NEW: Check if interest is accepted
+  const [checkingPermission, setCheckingPermission] = useState(true); // NEW: Loading state for permission check
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const isUserAtBottom = useRef(true);
@@ -78,6 +80,68 @@ const Chat = ({ conversationId, conversationWith, onClose, userType = 'user', is
       scrollToBottom();
     }
   }, [messages]);
+
+  // NEW: Check if chat is allowed (interest accepted or old AcceptedRequest)
+  useEffect(() => {
+    const checkChatPermission = async () => {
+      try {
+        setCheckingPermission(true);
+        const role = localStorage.getItem('role');
+        const userId = localStorage.getItem('userId')?.trim() || '';
+        const caregiverId = localStorage.getItem('caregiverId')?.trim() || '';
+        const token = getToken();
+
+        if (!token) {
+          setCheckingPermission(false);
+          return;
+        }
+
+        // Determine IDs based on role
+        let checkCaregiverId = '';
+        let checkUserId = '';
+
+        if (role === 'CAREGIVER') {
+          checkCaregiverId = caregiverId;
+          checkUserId = conversationWith?.userId || conversationWith?.user?.id || userId;
+        } else {
+          checkCaregiverId = conversationWith?.caregiverId || conversationWith?.caregiver?.id || '';
+          checkUserId = userId;
+        }
+
+        // If ids are missing, skip the permission check and allow the chat UI
+        if (!checkCaregiverId || !checkUserId) {
+          setCanChat(true);
+          setCheckingPermission(false);
+          return;
+        }
+
+        // Check if interest is accepted or if AcceptedRequest exists
+        const response = await axios.get(
+          `http://localhost:8080/api/interest/can-chat/${checkCaregiverId}/${checkUserId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        setCanChat(response.data === true);
+        console.log('💬 Chat permission check:', response.data);
+      } catch (err) {
+        // If endpoint doesn't exist or error, allow chat (backward compatibility)
+        console.log('📝 Chat permission check skipped, allowing chat');
+        setCanChat(true);
+      } finally {
+        setCheckingPermission(false);
+      }
+    };
+
+    if (conversationId) {
+      checkChatPermission();
+    }
+  }, [
+    conversationId,
+    conversationWith?.userId,
+    conversationWith?.caregiverId,
+    conversationWith?.user?.id,
+    conversationWith?.caregiver?.id,
+  ]);
 
   useEffect(() => {
     fetchMessages();
@@ -229,22 +293,36 @@ if (isFullPage) {
 
         {/* Input area */}
         <div className="bg-white border-t border-slate-100 p-4">
-          <form onSubmit={handleSendMessage} className="flex items-center gap-3 max-w-4xl mx-auto">
-            <input
-              type="text"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Write your message..."
-              className="flex-1 px-6 py-3 bg-slate-50 border border-transparent rounded-2xl focus:outline-none focus:bg-white focus:border-blue-500 transition-all text-slate-900 text-sm"
-            />
-            <button
-              type="submit"
-              disabled={sending || !newMessage.trim() || !userIdReady || !tokenReady}
-              className="w-12 h-12 flex items-center justify-center bg-blue-600 text-white rounded-2xl hover:bg-blue-700 disabled:opacity-30 disabled:grayscale transition-all shadow-lg shadow-blue-100 active:scale-95"
-            >
-              <FaPaperPlane size={18} />
-            </button>
-          </form>
+          {checkingPermission ? (
+            <div className="flex items-center justify-center py-3">
+              <div className="w-5 h-5 border-3 border-slate-200 border-t-blue-600 rounded-full animate-spin mr-2" />
+              <p className="text-xs text-slate-500">Checking permissions...</p>
+            </div>
+          ) : !canChat ? (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-center">
+              <p className="text-sm font-bold text-yellow-800 mb-2">💭 Chat Not Available</p>
+              <p className="text-xs text-yellow-700">
+                The caregiver needs to accept your interest request before you can chat.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleSendMessage} className="flex items-center gap-3 max-w-4xl mx-auto">
+              <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Write your message..."
+                className="flex-1 px-6 py-3 bg-slate-50 border border-transparent rounded-2xl focus:outline-none focus:bg-white focus:border-blue-500 transition-all text-slate-900 text-sm"
+              />
+              <button
+                type="submit"
+                disabled={sending || !newMessage.trim() || !userIdReady || !tokenReady}
+                className="w-12 h-12 flex items-center justify-center bg-blue-600 text-white rounded-2xl hover:bg-blue-700 disabled:opacity-30 disabled:grayscale transition-all shadow-lg shadow-blue-100 active:scale-95"
+              >
+                <FaPaperPlane size={18} />
+              </button>
+            </form>
+          )}
         </div>
       </div>
     );

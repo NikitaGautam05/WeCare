@@ -14,6 +14,20 @@ const UserProfileForm = () => {
     serviceType: "",
     additionalInfo: "",
     receiverType: "self", // "self" or "other"
+    accountType: "INDIVIDUAL",
+    // Organization fields
+    organizationName: "",
+    foundationDate: "",
+    capacity: "",
+    city: "",
+    phoneNumber: "",
+    website: "",
+    aboutOrganization: "",
+    licenseNumber: "",
+    registrationNumber: "",
+    contactPersonName: "",
+    contactPersonTitle: "",
+    contactPersonPhone: "",
   });
 
   const serviceTypes = [
@@ -62,6 +76,24 @@ const UserProfileForm = () => {
     formData.append("serviceType", form.serviceType);
     formData.append("additionalInfo", form.additionalInfo);
     formData.append("receiverType", form.receiverType);
+    formData.append("accountType", form.accountType);
+    
+    // Organization fields
+    if (form.accountType === "ORGANIZATION") {
+      if (form.organizationName) formData.append("organizationName", form.organizationName);
+      if (form.foundationDate) formData.append("foundationDate", form.foundationDate);
+      if (form.capacity) formData.append("capacity", form.capacity);
+      if (form.city) formData.append("city", form.city);
+      if (form.phoneNumber) formData.append("phoneNumber", form.phoneNumber);
+      if (form.website) formData.append("website", form.website);
+      if (form.aboutOrganization) formData.append("aboutOrganization", form.aboutOrganization);
+      if (form.licenseNumber) formData.append("licenseNumber", form.licenseNumber);
+      if (form.registrationNumber) formData.append("registrationNumber", form.registrationNumber);
+      if (form.contactPersonName) formData.append("contactPersonName", form.contactPersonName);
+      if (form.contactPersonTitle) formData.append("contactPersonTitle", form.contactPersonTitle);
+      if (form.contactPersonPhone) formData.append("contactPersonPhone", form.contactPersonPhone);
+    }
+    
     if (form.photo instanceof File) {
       formData.append("photo", form.photo);
     }
@@ -79,10 +111,16 @@ const UserProfileForm = () => {
         ? `http://localhost:8080/api/users/update/${userId}`
         : `http://localhost:8080/api/users/profile`;
       
+      console.log("📤 Sending profile to:", endpoint);
+      console.log("📋 Data:", { address: form.address, serviceType: form.serviceType, additionalInfo: form.additionalInfo, accountType: form.accountType });
+      
       const res = await axios.post(endpoint, formData, config);
+      console.log("✅ Response:", res.data);
       setProfile(res.data);
       setEditMode(false);
+      alert("✅ Care profile updated successfully!");
     } catch (err) {
+      console.error("❌ Error:", err.response?.data || err.message);
       const msg = err.response?.data?.message || err.message || "Error saving profile";
       alert(msg);
     } finally {
@@ -105,6 +143,19 @@ const UserProfileForm = () => {
             serviceType: res.data.serviceType || "",
             additionalInfo: res.data.additionalInfo || "",
             receiverType: res.data.receiverType || "self",
+            accountType: res.data.accountType || "INDIVIDUAL",
+            organizationName: res.data.organizationName || "",
+            foundationDate: res.data.foundationDate || "",
+            capacity: res.data.capacity || "",
+            city: res.data.city || "",
+            phoneNumber: res.data.phoneNumber || "",
+            website: res.data.website || "",
+            aboutOrganization: res.data.aboutOrganization || "",
+            licenseNumber: res.data.licenseNumber || "",
+            registrationNumber: res.data.registrationNumber || "",
+            contactPersonName: res.data.contactPersonName || "",
+            contactPersonTitle: res.data.contactPersonTitle || "",
+            contactPersonPhone: res.data.contactPersonPhone || "",
           });
         }
       })
@@ -122,6 +173,19 @@ const UserProfileForm = () => {
         serviceType: profile.serviceType || "",
         additionalInfo: profile.additionalInfo || "",
         receiverType: profile.receiverType || "self",
+        accountType: profile.accountType || "INDIVIDUAL",
+        organizationName: profile.organizationName || "",
+        foundationDate: profile.foundationDate || "",
+        capacity: profile.capacity || "",
+        city: profile.city || "",
+        phoneNumber: profile.phoneNumber || "",
+        website: profile.website || "",
+        aboutOrganization: profile.aboutOrganization || "",
+        licenseNumber: profile.licenseNumber || "",
+        registrationNumber: profile.registrationNumber || "",
+        contactPersonName: profile.contactPersonName || "",
+        contactPersonTitle: profile.contactPersonTitle || "",
+        contactPersonPhone: profile.contactPersonPhone || "",
       });
     }
     setStep(1);
@@ -290,8 +354,47 @@ const UserProfileForm = () => {
         <p style={{ fontSize: 13, color: "#aaa" }}>Help caregivers understand your care needs better.</p>
       </div>
 
+      {/* Account Type Selector (Individual/Organization) */}
+      {!editMode && (
+        <div style={{ marginBottom: 24, padding: "14px", background: "#f9f9f9", border: "1px solid #e5e5e5", borderRadius: 12 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 10 }}>Account Type</label>
+          <div className="radio-group">
+            <div className="radio-option">
+              <input
+                type="radio"
+                id="individual"
+                name="accountType"
+                value="INDIVIDUAL"
+                checked={form.accountType === "INDIVIDUAL"}
+                onChange={handleChange}
+              />
+              <label htmlFor="individual" className="radio-label" style={{ cursor: "pointer" }}>
+                👤 Individual
+              </label>
+            </div>
+            <div className="radio-option">
+              <input
+                type="radio"
+                id="organization"
+                name="accountType"
+                value="ORGANIZATION"
+                checked={form.accountType === "ORGANIZATION"}
+                onChange={handleChange}
+              />
+              <label htmlFor="organization" className="radio-label" style={{ cursor: "pointer" }}>
+                🏢 Organization
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: "flex", alignItems: "center", marginBottom: 28 }}>
-        {["Photo", "Care Needs", "Details"].map((label, i) => {
+        {(form.accountType === "INDIVIDUAL" 
+          ? ["Photo", "Care Needs", "Details"] 
+          : ["Photo", "Care Needs", "Details", "Organization"]
+        ).map((label, i) => {
+          const totalSteps = form.accountType === "INDIVIDUAL" ? 3 : 4;
           const isActive = step === i + 1;
           const isDone = step > i + 1;
           return (
@@ -302,7 +405,7 @@ const UserProfileForm = () => {
                 </div>
                 <span style={{ fontSize: 10, fontWeight: isActive ? 700 : 400, color: isActive ? "#111" : "#bbb", whiteSpace: "nowrap" }}>{label}</span>
               </div>
-              {i < 2 && (
+              {i < totalSteps - 1 && (
                 <div style={{ flex: 1, height: 2, background: step > i + 1 ? "#22c55e" : "#ebebeb", margin: "0 6px 16px", transition: "background 0.4s" }} />
               )}
             </React.Fragment>
@@ -432,6 +535,210 @@ const UserProfileForm = () => {
           </div>
         )}
 
+        {/* Step 4 – Organization Details (only for organizations) */}
+        {form.accountType === "ORGANIZATION" && step === 4 && (
+          <div className="step-section">
+            <div style={{ marginBottom: 18 }}>
+              <h3 style={{ fontFamily: "'Instrument Serif', serif", fontSize: 20, color: "#111", margin: "0 0 3px" }}>Organization Details</h3>
+              <p style={{ fontSize: 13, color: "#aaa" }}>Tell caregivers about your organization.</p>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>Organization Name</label>
+                <input
+                  type="text"
+                  name="organizationName"
+                  placeholder="Eg. Happy Care Center"
+                  value={form.organizationName}
+                  onChange={handleChange}
+                  style={fs("organizationName")}
+                  onFocus={onFocus}
+                  onBlur={onBlur("organizationName")}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>Foundation Date</label>
+                <input
+                  type="date"
+                  name="foundationDate"
+                  value={form.foundationDate}
+                  onChange={handleChange}
+                  style={fs("foundationDate")}
+                  onFocus={onFocus}
+                  onBlur={onBlur("foundationDate")}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>Capacity (beds)</label>
+                <input
+                  type="number"
+                  name="capacity"
+                  placeholder="Eg. 10"
+                  value={form.capacity}
+                  onChange={handleChange}
+                  style={fs("capacity")}
+                  onFocus={onFocus}
+                  onBlur={onBlur("capacity")}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>City</label>
+                <input
+                  type="text"
+                  name="city"
+                  placeholder="Eg. Kathmandu"
+                  value={form.city}
+                  onChange={handleChange}
+                  style={fs("city")}
+                  onFocus={onFocus}
+                  onBlur={onBlur("city")}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>Phone Number</label>
+                <input
+                  type="tel"
+                  name="phoneNumber"
+                  placeholder="Eg. +977-1-1234567"
+                  value={form.phoneNumber}
+                  onChange={handleChange}
+                  style={fs("phoneNumber")}
+                  onFocus={onFocus}
+                  onBlur={onBlur("phoneNumber")}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>Website</label>
+                <input
+                  type="url"
+                  name="website"
+                  placeholder="Eg. https://example.com"
+                  value={form.website}
+                  onChange={handleChange}
+                  style={fs("website")}
+                  onFocus={onFocus}
+                  onBlur={onBlur("website")}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>License Number</label>
+              <input
+                type="text"
+                name="licenseNumber"
+                placeholder="Eg. LIC-2024-001"
+                value={form.licenseNumber}
+                onChange={handleChange}
+                style={fs("licenseNumber")}
+                onFocus={onFocus}
+                onBlur={onBlur("licenseNumber")}
+              />
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>Registration Number</label>
+              <input
+                type="text"
+                name="registrationNumber"
+                placeholder="Eg. REG-2024-001"
+                value={form.registrationNumber}
+                onChange={handleChange}
+                style={fs("registrationNumber")}
+                onFocus={onFocus}
+                onBlur={onBlur("registrationNumber")}
+              />
+            </div>
+
+            <div style={{ marginBottom: 14, padding: "12px", background: "#f0f9ff", border: "1px solid #bfdbfe", borderRadius: 10 }}>
+              <p style={{ fontSize: 12, color: "#0369a1", margin: 0, fontWeight: 500 }}>Contact Person Information</p>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>Contact Person Name</label>
+                <input
+                  type="text"
+                  name="contactPersonName"
+                  placeholder="Eg. John Doe"
+                  value={form.contactPersonName}
+                  onChange={handleChange}
+                  style={fs("contactPersonName")}
+                  onFocus={onFocus}
+                  onBlur={onBlur("contactPersonName")}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>Title</label>
+                <input
+                  type="text"
+                  name="contactPersonTitle"
+                  placeholder="Eg. Director"
+                  value={form.contactPersonTitle}
+                  onChange={handleChange}
+                  style={fs("contactPersonTitle")}
+                  onFocus={onFocus}
+                  onBlur={onBlur("contactPersonTitle")}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>Contact Phone</label>
+              <input
+                type="tel"
+                name="contactPersonPhone"
+                placeholder="Eg. +977-9841234567"
+                value={form.contactPersonPhone}
+                onChange={handleChange}
+                style={fs("contactPersonPhone")}
+                onFocus={onFocus}
+                onBlur={onBlur("contactPersonPhone")}
+              />
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>About Your Organization</label>
+              <textarea
+                name="aboutOrganization"
+                rows={4}
+                placeholder="Describe your organization, mission, services offered, and specialty areas..."
+                value={form.aboutOrganization}
+                onChange={handleChange}
+                style={{ ...fs("aboutOrganization"), resize: "vertical", lineHeight: 1.6, fontFamily: "'Outfit', sans-serif" }}
+                onFocus={onFocus}
+                onBlur={onBlur("aboutOrganization")}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Step 3 OLD (keeping for individual users) – Additional Details */}
+        {form.accountType === "INDIVIDUAL" && step === 3 && (
+          <div className="step-section">
+            <div style={{ marginBottom: 18 }}>
+              <h3 style={{ fontFamily: "'Instrument Serif', serif", fontSize: 20, color: "#111", margin: "0 0 3px" }}>Additional Details</h3>
+              <p style={{ fontSize: 13, color: "#aaa" }}>Help caregivers understand your specific needs and preferences.</p>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>Tell us more</label>
+              <textarea
+                name="additionalInfo"
+                rows={5}
+                placeholder="Describe your health condition, preferences, schedule, or any special requirements. For example: 'I need help with daily living, medications at 9am and 6pm, and prefer morning shifts.'"
+                value={form.additionalInfo}
+                onChange={handleChange}
+                style={{ ...fs("additionalInfo"), resize: "vertical", lineHeight: 1.6, fontFamily: "'Outfit', sans-serif" }}
+                onFocus={onFocus}
+                onBlur={onBlur("additionalInfo")}
+              />
+              {errors.additionalInfo && <p style={{ color: "#ef4444", fontSize: 12, marginTop: 5 }}>{errors.additionalInfo}</p>}
+            </div>
+          </div>
+        )}
+
         {/* Navigation */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 28, paddingTop: 22, borderTop: "1px solid #f0f0f0" }}>
           <div>
@@ -439,20 +746,22 @@ const UserProfileForm = () => {
             {editMode && step === 1 && <button type="button" className="action-btn ghost" onClick={() => { setEditMode(false); setStep(1); }}>Cancel</button>}
           </div>
           <div>
-            {step < 3
-              ? <button type="button" className="action-btn primary" onClick={next}>Continue →</button>
-              : (
-                <button type="submit" className="action-btn primary" disabled={loading}>
-                  {loading
-                    ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <div style={{ width: 13, height: 13, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
-                        Saving...
-                      </span>
-                    : editMode ? "Save Changes ✓" : "Complete Profile ✓"
-                  }
-                </button>
-              )
-            }
+            {(() => {
+              const maxSteps = form.accountType === "INDIVIDUAL" ? 3 : 4;
+              return step < maxSteps
+                ? <button type="button" className="action-btn primary" onClick={next}>Continue →</button>
+                : (
+                  <button type="submit" className="action-btn primary" disabled={loading}>
+                    {loading
+                      ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <div style={{ width: 13, height: 13, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+                          Saving...
+                        </span>
+                      : editMode ? "Save Changes ✓" : "Complete Profile ✓"
+                    }
+                  </button>
+                );
+            })()}
           </div>
         </div>
       </form>

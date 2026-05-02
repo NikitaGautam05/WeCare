@@ -28,7 +28,24 @@ const ProfileUser = () => {
     address: "",
     serviceType: "",
     additionalInfo: "",
-    receiverType: "self"
+    receiverType: "self",
+    // Organization fields (NEW)
+    accountType: "INDIVIDUAL",
+    organizationName: "",
+    foundationDate: "",
+    capacity: "",
+    city: "",
+    phoneNumber: "",
+    website: "",
+    servicesOffered: [],
+    aboutOrganization: "",
+    licenseNumber: "",
+    registrationNumber: "",
+    logo: "",
+    bannerImage: "",
+    contactPersonName: "",
+    contactPersonTitle: "",
+    contactPersonPhone: ""
   });
 
   const [careEditMode, setCareEditMode] = useState(false);
@@ -66,7 +83,15 @@ const ProfileUser = () => {
       return;
     }
     axios.get(`http://localhost:8080/api/users/${userId}`, axiosConfig)
-      .then(res => setProfileData(res.data))
+      .then(res => {
+        const data = res.data;
+        // If accountType is missing, default to INDIVIDUAL (for care receivers)
+        // This handles existing users in the database
+        if (!data.accountType) {
+          data.accountType = data.organizationName ? "ORGANIZATION" : "INDIVIDUAL";
+        }
+        setProfileData(data);
+      })
       .catch(err => console.error(err));
 
     fetchAcceptedConnections();
@@ -133,16 +158,33 @@ const ProfileUser = () => {
       formData.append("serviceType", profileData.serviceType);
       formData.append("additionalInfo", profileData.additionalInfo);
       formData.append("receiverType", profileData.receiverType);
+      formData.append("accountType", profileData.accountType);
 
-      const res = await axios.post(`http://localhost:8080/api/users/profile`, formData, {
+      // Add organization fields if organization account
+      if (profileData.accountType === "ORGANIZATION") {
+        formData.append("organizationName", profileData.organizationName);
+        formData.append("foundationDate", profileData.foundationDate);
+        formData.append("capacity", profileData.capacity);
+        formData.append("city", profileData.city);
+        formData.append("phoneNumber", profileData.phoneNumber);
+        formData.append("website", profileData.website);
+        formData.append("aboutOrganization", profileData.aboutOrganization);
+        formData.append("licenseNumber", profileData.licenseNumber);
+        formData.append("registrationNumber", profileData.registrationNumber);
+        formData.append("contactPersonName", profileData.contactPersonName);
+        formData.append("contactPersonTitle", profileData.contactPersonTitle);
+        formData.append("contactPersonPhone", profileData.contactPersonPhone);
+      }
+
+      const res = await axios.post(`http://localhost:8080/api/users/update/${userId}`, formData, {
         headers: { ...axiosConfig.headers, "Content-Type": "multipart/form-data" }
       });
       setProfileData(res.data);
       setCareEditMode(false);
-      alert("Care profile updated successfully!");
+      alert("✅ " + (profileData.accountType === "ORGANIZATION" ? "Organization" : "Care") + " profile updated successfully!");
     } catch (err) {
       console.error("Error saving care profile:", err);
-      alert("Failed to save care profile.");
+      alert("Failed to save profile.");
     } finally {
       setCareSaving(false);
     }
@@ -262,20 +304,27 @@ const ProfileUser = () => {
               </section>
             </div>
 
-            {/* Care Profile Section */}
+            {/* CARE/ORGANIZATION PROFILE SECTION - FOR BOTH INDIVIDUAL AND ORGANIZATION */}
             <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-8 flex items-center justify-between">
+              <div className={`bg-gradient-to-r ${profileData.accountType === "ORGANIZATION" ? "from-slate-800 via-slate-700 to-slate-800" : "from-blue-600 to-indigo-600"} text-white p-8 flex items-center justify-between`}>
                 <div>
-                  <h2 className="text-2xl font-bold mb-2">Care Profile Summary</h2>
-                  <p className="text-blue-100">This information helps caregivers understand your care needs</p>
+                  <h2 className="text-2xl font-bold mb-2">
+                    {profileData.accountType === "ORGANIZATION" ? "Organization Profile" : "Care Profile Summary"}
+                  </h2>
+                  <p className="text-blue-100">
+                    {profileData.accountType === "ORGANIZATION" 
+                      ? "Manage your facility information and services"
+                      : "This information helps caregivers understand your care needs"}
+                  </p>
                 </div>
-                <button onClick={() => setCareEditMode(!careEditMode)} className="px-6 py-3 bg-white text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition">
+                <button onClick={() => setCareEditMode(!careEditMode)} className={`px-6 py-3 bg-white font-bold rounded-xl hover:bg-opacity-90 transition ${profileData.accountType === "ORGANIZATION" ? "text-slate-800" : "text-blue-600"}`}>
                   {careEditMode ? "Cancel" : "✏️ Edit"}
                 </button>
               </div>
 
               <div className="p-8">
-                {!careEditMode ? (
+                {/* INDIVIDUAL ACCOUNT - DISPLAY MODE */}
+                {profileData.accountType === "INDIVIDUAL" && !careEditMode && (
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="bg-blue-50 rounded-2xl p-5 border border-blue-100">
@@ -302,7 +351,10 @@ const ProfileUser = () => {
                       </div>
                     )}
                   </div>
-                ) : (
+                )}
+
+                {/* INDIVIDUAL ACCOUNT - EDIT MODE */}
+                {profileData.accountType === "INDIVIDUAL" && careEditMode && (
                   <div className="space-y-6">
                     <div>
                       <label className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-3 block">Who needs care?</label>
@@ -328,6 +380,111 @@ const ProfileUser = () => {
                     </div>
                     <button onClick={handleCareSave} disabled={careSaving} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-sm hover:bg-blue-700 shadow-lg transition active:scale-95 disabled:opacity-60">
                       {careSaving ? "Saving..." : "Save Care Profile"}
+                    </button>
+                  </div>
+                )}
+
+                {/* ORGANIZATION ACCOUNT - DISPLAY MODE */}
+                {profileData.accountType === "ORGANIZATION" && !careEditMode && (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">🏢 Organization Name</p>
+                        <p className="text-lg font-bold text-slate-900">{profileData.organizationName || "Not specified"}</p>
+                      </div>
+                      <div className="bg-green-50 rounded-xl p-4 border border-green-100">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">📅 Founded</p>
+                        <p className="text-lg font-bold text-slate-900">{profileData.foundationDate || "Not specified"}</p>
+                      </div>
+                      <div className="bg-purple-50 rounded-xl p-4 border border-purple-100">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">🛏️ Capacity</p>
+                        <p className="text-lg font-bold text-slate-900">{profileData.capacity || "N/A"} beds</p>
+                      </div>
+                      <div className="bg-orange-50 rounded-xl p-4 border border-orange-100">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">📍 Location</p>
+                        <p className="text-lg font-bold text-slate-900">{profileData.address || profileData.city || "Not specified"}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">📜 License</p>
+                        <p className="text-lg font-bold text-slate-900">{profileData.licenseNumber || "Not specified"}</p>
+                      </div>
+                      <div className="bg-green-50 rounded-xl p-4 border border-green-100">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">✓ Registration</p>
+                        <p className="text-lg font-bold text-slate-900">{profileData.registrationNumber || "Not specified"}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ORGANIZATION ACCOUNT - EDIT MODE */}
+                {profileData.accountType === "ORGANIZATION" && careEditMode && (
+                  <div className="space-y-6">
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 uppercase tracking-widest block mb-3">Organization Name</label>
+                      <input type="text" value={profileData.organizationName} onChange={(e) => setProfileData({...profileData, organizationName: e.target.value})} placeholder="Your Organization" className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-900 font-semibold outline-none focus:border-blue-500 transition" />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 uppercase tracking-widest block mb-3">Foundation Date</label>
+                        <input type="date" value={profileData.foundationDate} onChange={(e) => setProfileData({...profileData, foundationDate: e.target.value})} className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-900 font-semibold outline-none focus:border-blue-500 transition" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 uppercase tracking-widest block mb-3">Capacity (beds)</label>
+                        <input type="number" value={profileData.capacity} onChange={(e) => setProfileData({...profileData, capacity: e.target.value})} placeholder="50" className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-900 font-semibold outline-none focus:border-blue-500 transition" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 uppercase tracking-widest block mb-3">License Number</label>
+                        <input type="text" value={profileData.licenseNumber} onChange={(e) => setProfileData({...profileData, licenseNumber: e.target.value})} placeholder="LIC-2020-001" className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-900 font-semibold outline-none focus:border-blue-500 transition" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 uppercase tracking-widest block mb-3">Registration Number</label>
+                        <input type="text" value={profileData.registrationNumber} onChange={(e) => setProfileData({...profileData, registrationNumber: e.target.value})} placeholder="REG-2015-001" className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-900 font-semibold outline-none focus:border-blue-500 transition" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 uppercase tracking-widest block mb-3">City/District</label>
+                        <input type="text" value={profileData.city} onChange={(e) => setProfileData({...profileData, city: e.target.value})} placeholder="Kathmandu" className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-900 font-semibold outline-none focus:border-blue-500 transition" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 uppercase tracking-widest block mb-3">Address</label>
+                        <input type="text" value={profileData.address} onChange={(e) => setProfileData({...profileData, address: e.target.value})} placeholder="123 Care Street" className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-900 font-semibold outline-none focus:border-blue-500 transition" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 uppercase tracking-widest block mb-3">Phone Number</label>
+                        <input type="tel" value={profileData.phoneNumber} onChange={(e) => setProfileData({...profileData, phoneNumber: e.target.value})} placeholder="+977-1-4234567" className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-900 font-semibold outline-none focus:border-blue-500 transition" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 uppercase tracking-widest block mb-3">Website</label>
+                        <input type="url" value={profileData.website} onChange={(e) => setProfileData({...profileData, website: e.target.value})} placeholder="www.organization.com" className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-900 font-semibold outline-none focus:border-blue-500 transition" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 uppercase tracking-widest block mb-3">About Organization</label>
+                      <textarea value={profileData.aboutOrganization} onChange={(e) => setProfileData({...profileData, aboutOrganization: e.target.value})} placeholder="Tell caregivers about your organization..." rows={4} className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-900 font-semibold outline-none focus:border-blue-500 transition resize-none" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 uppercase tracking-widest block mb-3">Contact Person Name</label>
+                      <input type="text" value={profileData.contactPersonName} onChange={(e) => setProfileData({...profileData, contactPersonName: e.target.value})} placeholder="Name" className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-900 font-semibold outline-none focus:border-blue-500 transition" />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 uppercase tracking-widest block mb-3">Contact Person Title</label>
+                        <input type="text" value={profileData.contactPersonTitle} onChange={(e) => setProfileData({...profileData, contactPersonTitle: e.target.value})} placeholder="Director" className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-900 font-semibold outline-none focus:border-blue-500 transition" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-600 uppercase tracking-widest block mb-3">Contact Person Phone</label>
+                        <input type="tel" value={profileData.contactPersonPhone} onChange={(e) => setProfileData({...profileData, contactPersonPhone: e.target.value})} placeholder="+977-9841234567" className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-slate-900 font-semibold outline-none focus:border-blue-500 transition" />
+                      </div>
+                    </div>
+                    <button onClick={handleCareSave} disabled={careSaving} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-sm hover:bg-blue-700 shadow-lg transition active:scale-95 disabled:opacity-60">
+                      {careSaving ? "Saving..." : "Save Organization Profile"}
                     </button>
                   </div>
                 )}

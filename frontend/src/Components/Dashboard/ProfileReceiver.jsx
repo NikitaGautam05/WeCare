@@ -29,6 +29,7 @@ const ProfileReceiver = () => {
 
         // 1. Get User Profile Data
         const userRes = await axios.get(`http://localhost:8080/api/users/${userId}`, axiosConfig);
+        console.log("👤 User Profile Data:", userRes.data);
         setUserProfile(userRes.data);
 
         // 2. Get Caregiver Profile Data (to get the internal caregiver.id)
@@ -195,23 +196,87 @@ const ProfileReceiver = () => {
 
             {/* Profile Details */}
             <div className="p-10 border-b border-slate-200">
-              <div className="grid grid-cols-2 gap-6 mb-10">
-                <div className="p-6 bg-slate-50 rounded-2xl">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Service Requested</p>
-                  <p className="font-bold text-slate-800">{userProfile?.serviceType || "General Care"}</p>
-                </div>
-                <div className="p-6 bg-slate-50 rounded-2xl">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Care For</p>
-                  <p className="font-bold text-slate-800">{userProfile?.receiverType === 'other' ? "Family Member" : "Self"}</p>
-                </div>
-              </div>
-              {userProfile?.additionalInfo && (
-                <div>
-                  <h3 className="font-bold text-slate-900 mb-3">Additional Information</h3>
-                  <div className="p-6 bg-blue-50/50 rounded-2xl border border-blue-100 text-slate-600 leading-relaxed">
-                    {userProfile.additionalInfo}
+              {userProfile?.accountType === 'ORGANIZATION' ? (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                    <div className="p-6 bg-slate-50 rounded-2xl">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Organization Name</p>
+                      <p className="font-bold text-slate-800">{userProfile.organizationName || "Not specified"}</p>
+                    </div>
+                    <div className="p-6 bg-slate-50 rounded-2xl">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Foundation Date</p>
+                      <p className="font-bold text-slate-800">{userProfile.foundationDate || "Not specified"}</p>
+                    </div>
+                    <div className="p-6 bg-slate-50 rounded-2xl">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Capacity</p>
+                      <p className="font-bold text-slate-800">{userProfile.capacity ? `${userProfile.capacity} beds` : "N/A"}</p>
+                    </div>
+                    <div className="p-6 bg-slate-50 rounded-2xl">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Location</p>
+                      <p className="font-bold text-slate-800">{userProfile.city || userProfile.address || "Not specified"}</p>
+                    </div>
                   </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                    <div className="p-6 bg-slate-50 rounded-2xl">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">License</p>
+                      <p className="font-bold text-slate-800">{userProfile.licenseNumber || "Not specified"}</p>
+                    </div>
+                    <div className="p-6 bg-slate-50 rounded-2xl">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Registration</p>
+                      <p className="font-bold text-slate-800">{userProfile.registrationNumber || "Not specified"}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                    <div className="p-6 bg-slate-50 rounded-2xl">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Contact Person</p>
+                      <p className="font-bold text-slate-800">{userProfile.contactPersonName || "Not specified"}</p>
+                      <p className="text-sm text-slate-500 mt-1">{userProfile.contactPersonTitle || "Title not specified"}</p>
+                    </div>
+                    <div className="p-6 bg-slate-50 rounded-2xl">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Contact Phone</p>
+                      <p className="font-bold text-slate-800">{userProfile.contactPersonPhone || "Not specified"}</p>
+                    </div>
+                  </div>
+                  {(userProfile.website || userProfile.aboutOrganization) && (
+                    <div className="space-y-4">
+                      {userProfile.website && (
+                        <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Website</p>
+                          <a href={userProfile.website.startsWith('http') ? userProfile.website : `https://${userProfile.website}`} target="_blank" rel="noreferrer" className="text-blue-600 font-bold hover:underline">
+                            {userProfile.website}
+                          </a>
+                        </div>
+                      )}
+                      {userProfile.aboutOrganization && (
+                        <div className="p-6 bg-blue-50/50 rounded-2xl border border-blue-100 text-slate-600 leading-relaxed">
+                          <h3 className="font-bold text-slate-900 mb-2">About Organization</h3>
+                          <p>{userProfile.aboutOrganization}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-6 mb-10">
+                    <div className="p-6 bg-slate-50 rounded-2xl">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Service Requested</p>
+                      <p className="font-bold text-slate-800">{userProfile?.serviceType || "General Care"}</p>
+                    </div>
+                    <div className="p-6 bg-slate-50 rounded-2xl">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Care For</p>
+                      <p className="font-bold text-slate-800">{userProfile?.receiverType === 'other' ? "Family Member" : "Self"}</p>
+                    </div>
+                  </div>
+                  {userProfile?.additionalInfo && (
+                    <div>
+                      <h3 className="font-bold text-slate-900 mb-3">Additional Information</h3>
+                      <div className="p-6 bg-blue-50/50 rounded-2xl border border-blue-100 text-slate-600 leading-relaxed">
+                        {userProfile.additionalInfo}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -236,24 +301,87 @@ const ProfileReceiver = () => {
             </div>
 
             <div className="p-10">
-                <div className="grid grid-cols-2 gap-6 mb-10">
+              {userProfile?.accountType === 'ORGANIZATION' ? (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
                     <div className="p-6 bg-slate-50 rounded-2xl">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Service Requested</p>
-                        <p className="font-bold text-slate-800">{userProfile?.serviceType || "General Care"}</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Organization Name</p>
+                      <p className="font-bold text-slate-800">{userProfile.organizationName || "Not specified"}</p>
                     </div>
                     <div className="p-6 bg-slate-50 rounded-2xl">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Care For</p>
-                        <p className="font-bold text-slate-800">{userProfile?.receiverType === 'other' ? "Family Member" : "Self"}</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Founded</p>
+                      <p className="font-bold text-slate-800">{userProfile.foundationDate || "Not specified"}</p>
                     </div>
-                </div>
-
-              {userProfile?.additionalInfo && (
-                <div className="mb-10">
-                  <h3 className="font-bold text-slate-900 mb-3">Additional Information</h3>
-                  <div className="p-6 bg-blue-50/50 rounded-2xl border border-blue-100 text-slate-600 leading-relaxed">
-                    {userProfile.additionalInfo}
+                    <div className="p-6 bg-slate-50 rounded-2xl">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Capacity</p>
+                      <p className="font-bold text-slate-800">{userProfile.capacity ? `${userProfile.capacity} beds` : "N/A"}</p>
+                    </div>
+                    <div className="p-6 bg-slate-50 rounded-2xl">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Location</p>
+                      <p className="font-bold text-slate-800">{userProfile.city || userProfile.address || "Not specified"}</p>
+                    </div>
                   </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                    <div className="p-6 bg-slate-50 rounded-2xl">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">License</p>
+                      <p className="font-bold text-slate-800">{userProfile.licenseNumber || "Not specified"}</p>
+                    </div>
+                    <div className="p-6 bg-slate-50 rounded-2xl">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Registration</p>
+                      <p className="font-bold text-slate-800">{userProfile.registrationNumber || "Not specified"}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                    <div className="p-6 bg-slate-50 rounded-2xl">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Contact Person</p>
+                      <p className="font-bold text-slate-800">{userProfile.contactPersonName || "Not specified"}</p>
+                      <p className="text-sm text-slate-500 mt-1">{userProfile.contactPersonTitle || "Title not specified"}</p>
+                    </div>
+                    <div className="p-6 bg-slate-50 rounded-2xl">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Contact Phone</p>
+                      <p className="font-bold text-slate-800">{userProfile.contactPersonPhone || "Not specified"}</p>
+                    </div>
+                  </div>
+                  {(userProfile.website || userProfile.aboutOrganization) && (
+                    <div className="space-y-4">
+                      {userProfile.website && (
+                        <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Website</p>
+                          <a href={userProfile.website.startsWith('http') ? userProfile.website : `https://${userProfile.website}`} target="_blank" rel="noreferrer" className="text-blue-600 font-bold hover:underline">
+                            {userProfile.website}
+                          </a>
+                        </div>
+                      )}
+                      {userProfile.aboutOrganization && (
+                        <div className="p-6 bg-blue-50/50 rounded-2xl border border-blue-100 text-slate-600 leading-relaxed">
+                          <h3 className="font-bold text-slate-900 mb-2">About Organization</h3>
+                          <p>{userProfile.aboutOrganization}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-6 mb-10">
+                    <div className="p-6 bg-slate-50 rounded-2xl">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Service Requested</p>
+                      <p className="font-bold text-slate-800">{userProfile?.serviceType || "General Care"}</p>
+                    </div>
+                    <div className="p-6 bg-slate-50 rounded-2xl">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Care For</p>
+                      <p className="font-bold text-slate-800">{userProfile?.receiverType === 'other' ? "Family Member" : "Self"}</p>
+                    </div>
+                  </div>
+                  {userProfile?.additionalInfo && (
+                    <div className="mb-10">
+                      <h3 className="font-bold text-slate-900 mb-3">Additional Information</h3>
+                      <div className="p-6 bg-blue-50/50 rounded-2xl border border-blue-100 text-slate-600 leading-relaxed">
+                        {userProfile.additionalInfo}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
               <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-slate-100">

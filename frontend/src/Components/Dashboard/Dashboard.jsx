@@ -1,25 +1,21 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
-import { FaTimes, FaCheck, FaHeart, FaSearch, FaArrowRight, FaComments } from "react-icons/fa";
+import { FaTimes, FaCheck, FaHeart, FaSearch, FaArrowRight, FaComments, FaExclamationTriangle, FaCheckCircle, FaArrowUp, FaUserEdit } from "react-icons/fa";
 import logo from "../../assets/logo.jpg";
+import Layout from "../Layout/Layout";
 
 const Dashboard = () => {
   const [search, setSearch] = useState("");
   const [caregivers, setCaregivers] = useState([]);
   const [dialogue, setDialogue] = useState(null);
   const [favouriteCaregivers, setFavouriteCaregivers] = useState([]);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [userPhoto, setUserPhoto] = useState(null);
+  const [showProfileReminder, setShowProfileReminder] = useState(false);
 
   const navigate = useNavigate();
   const userName = localStorage.getItem("userName") || "User";
-  const role = localStorage.getItem("role") || "User";
   const userId = localStorage.getItem("userId");
   const token = localStorage.getItem("jwtToken");
-  const location = useLocation();
-  const isActive = (link) => location.pathname === link;
-
   const axiosConfig = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
   useEffect(() => {
@@ -28,434 +24,387 @@ const Dashboard = () => {
       return;
     }
 
-    const fetchUserPhoto = async () => {
-      try {
-        const res = await axios.get(`http://localhost:8080/api/users/${userId}`, axiosConfig);
-        const rawPhoto = res.data?.photo || res.data?.profilePhoto || res.data?.photoUrl || null;
-        if (rawPhoto && rawPhoto !== "undefined" && rawPhoto !== "null") {
-          setUserPhoto(rawPhoto.toString().trim());
+    const currentSessions = parseInt(localStorage.getItem(`profileReminder_${userId}`)) || 0;
+    const newSessionCount = currentSessions + 1;
+    localStorage.setItem(`profileReminder_${userId}`, newSessionCount);
+
+    if (newSessionCount === 10) {
+      setShowProfileReminder(true);
+      localStorage.setItem(`profileReminder_${userId}`, 0);
+    }
+
+    axios.get("http://localhost:8080/api/caregivers/verified", axiosConfig)
+      .then((res) => setCaregivers(res.data))
+      .catch((err) => {
+        if (err.response?.status === 401) navigate("/");
+      });
+
+    axios.get(`http://localhost:8080/api/users/favorites/${userId}`, axiosConfig)
+      .then((res) => {
+        const favIds = res.data;
+        if (Array.isArray(favIds) && favIds.length > 0) {
+          axios.get("http://localhost:8080/api/caregivers/verified", axiosConfig)
+            .then((res) => {
+              const favCaregivers = res.data.filter((c) => favIds.includes(c.id));
+              setFavouriteCaregivers(favCaregivers);
+            });
         }
-      } catch (err) {
-        console.error("Failed to fetch user photo", err);
-      }
-    };
+      })
+      .catch((err) => console.error("Failed to fetch favourites", err));
+  }, [userId, token]);
 
-    fetchUserPhoto();
-
-   axios
-  .get("http://localhost:8080/api/caregivers/verified", axiosConfig)
-  .then((res) => setCaregivers(res.data))
-  .catch((err) => {
-    if (err.response && err.response.status === 401) {
-      handleLogout(); // Force logout if the token is invalid/expired
+  const handleInterest = async (caregiver) => {
+    try {
+      await axios.post(`http://localhost:8080/api/caregivers/${caregiver.id}/interest`, { userId }, axiosConfig);
+      setDialogue({ type: "interest", caregiver });
+    } catch (err) {
+      alert("Could not send interest.");
     }
-  });
-    if (userId) {
-      axios
-        .get(`http://localhost:8080/api/users/favorites/${userId}`, axiosConfig)
-        .then((res) => {
-          const favIds = res.data;
-          if (Array.isArray(favIds) && favIds.length > 0) {
-            axios
-              .get("http://localhost:8080/api/caregivers/verified", axiosConfig)
-              .then((res) => {
-                const allCaregivers = res.data;
-                const favCaregivers = allCaregivers.filter((c) => favIds.includes(c.id));
-                setFavouriteCaregivers(favCaregivers);
-              });
-          }
-        })
-        .catch((err) => console.error("Failed to fetch favourites", err));
-    }
-  }, [userId, token, navigate]);
+  };
 
-  const filteredCaregivers = caregivers
-    .filter(
-      (c) =>
-        c.fullName?.toLowerCase().includes(search.toLowerCase()) ||
-        c.speciality?.toLowerCase().includes(search.toLowerCase()) ||
-        c.address?.toLowerCase().includes(search.toLowerCase())
-    )
-    .slice(0, 12);
-    const handleLogout = () => {
-  // 1. Clear all session data from the browser
-  localStorage.removeItem("jwtToken");
-  localStorage.removeItem("userId");
-  localStorage.removeItem("userName");
-  localStorage.removeItem("role");
-
-  // 2. Redirect to the login page or splash screen
-  navigate("/"); 
-};
-
-const handleInterest = async (caregiver) => {
-  try {
-    // 1. Send the request to the backend
-    // Assumes you have an endpoint: /api/caregivers/{id}/interest
-    await axios.post(
-      `http://localhost:8080/api/caregivers/${caregiver.id}/interest`, 
-      { userId: userId }, // Sending the ID of the person interested
-      axiosConfig
-    );
-
-    // 2. Only show the success UI if the request succeeds
-    setDialogue({ type: "interest", caregiver });
-  } catch (err) {
-    console.error("Failed to send interest:", err);
-    alert("Could not send interest. Please try again.");
-  }
-};
-
-  const navItems = [
-    { name: "🏠 Home", link: "/dash" },
-    { name: "👩‍⚕️ Caregivers", link: "/my-caregivers" },
-    { name: "� History", link: "/history" },
-    { name: "❤️ Favourites", link: "/favourites" },
-    { name: "👤 Profile", link: "/my-profile" },
-  ];
-
-  const quickLinks = [
-    { icon: "👩‍⚕️", label: "Caregivers", link: "/my-caregivers" },
-    { icon: "❤️", label: "Favourites", link: "/favourites" },
-    { icon: "📜", label: "History", link: "/history" },
-  ];
+  const filteredCaregivers = caregivers.filter(c =>
+    c.fullName?.toLowerCase().includes(search.toLowerCase()) ||
+    c.speciality?.toLowerCase().includes(search.toLowerCase()) ||
+    c.address?.toLowerCase().includes(search.toLowerCase())
+  ).slice(0, 12);
 
   return (
-    <div className="min-h-screen w-screen bg-slate-50 font-sans text-slate-900">
-      
-      {/* BEAUTIFIED SIDE MENU */}
-      <aside
-        className={`fixed top-0 left-0 h-full bg-white/95 backdrop-blur-xl shadow-2xl z-50 w-80 transform transition-all duration-500 ease-in-out border-r border-slate-100 ${
-          menuOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="flex flex-col h-full">
-          {/* Header Part with Profile Context */}
-         <div className="p-8 bg-slate-900 text-white relative overflow-hidden">
-  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl -mr-16 -mt-16"></div>
-  
-  <button 
-    className="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors" 
-    onClick={() => setMenuOpen(false)}
-  >
-    <FaTimes size={20} />
-  </button>
+    <Layout>
+      {/* HERO SECTION */}
+      <div className="relative w-full bg-slate-900 overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+        <div className="max-w-7xl mx-auto px-8 py-14 flex flex-col md:flex-row md:items-center justify-between gap-10 relative z-10">
+          <div className="space-y-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-bold uppercase tracking-widest">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
+              Live Portal
+            </div>
+            <h2 className="text-4xl font-black text-white tracking-tight leading-tight">
+              Welcome back, <br />
+              <span className="text-blue-500">{userName}</span>
+            </h2>
+            <p className="text-slate-400 text-base max-w-sm font-medium opacity-80">
+              Find and manage the best professional support for your family's daily needs.
+            </p>
+          </div>
 
-  <div className="flex items-center gap-4 relative z-10">
-    <img
-      // Same logic as Header: Use userPhoto, format path, or fallback to UI-Avatar
-      src={userPhoto ? (userPhoto.startsWith("http") ? userPhoto : `http://localhost:8080/uploads/${encodeURIComponent(userPhoto)}`) : `https://ui-avatars.com/api/?name=${userName}`}
-      alt="Profile"
-      className="w-14 h-14 rounded-2xl border-2 border-blue-500/30 object-cover shadow-lg"
-      // Error handling to ensure it never shows a broken image icon
-      onError={(e) => { e.target.onerror = null; e.target.src = `https://ui-avatars.com/api/?name=${userName}`; }}
-    />
-    <div>
-      <h3 className="font-black text-lg leading-none">{userName}</h3>
-      <p className="text-blue-400 text-[10px] uppercase tracking-[0.2em] font-bold mt-1.5">{role}</p>
-    </div>
-  </div>
-</div>
-
-          {/* Navigation Links */}
-          <nav className="flex-1 px-4 py-8 overflow-y-auto">
-            <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-4">Main Menu</p>
-            <ul className="flex flex-col gap-2">
-              {navItems.map((item) => {
-                const active = isActive(item.link);
-                return (
-                  <li key={item.name}>
-                    <div
-                      onClick={() => { navigate(item.link); setMenuOpen(false); }}
-                      className={`group cursor-pointer flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 ${
-                        active 
-                          ? "bg-slate-900 text-white shadow-xl shadow-slate-200 translate-x-2" 
-                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                      }`}
-                    >
-                      <span className={`text-lg transition-transform duration-300 ${active ? "scale-110" : "group-hover:scale-110"}`}>
-                        {item.name.split(" ")[0]}
-                      </span>
-                      <span className="font-bold text-sm tracking-tight">
-                        {item.name.split(" ")[1]}
-                      </span>
-                      {active && <div className="ml-auto w-1.5 h-1.5 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.8)]"></div>}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-
-          {/* Bottom Logout Section */}
-          <div className="p-6 border-t border-slate-100 bg-slate-50/50">
-            <button 
-  onClick={handleLogout} // ✅ Now it clears the token first
-  className="group w-full flex items-center justify-center gap-3 ..."
->
-  <span className="group-hover:rotate-12 text-white transition-transform">Logout</span>
-  <FaArrowRight size={12} className="opacity-50 group-hover:opacity-100" />
-</button>
+          <div className="w-full max-w-md">
+            <div className="bg-white/5 p-1.5 rounded-2xl backdrop-blur-xl border border-white/10 shadow-2xl">
+              <div className="relative">
+                <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="Search name, skill, or city..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3.5 rounded-xl bg-white border-none focus:ring-2 focus:ring-blue-500/50 focus:outline-none text-slate-800 text-sm font-medium"
+                />
+              </div>
+            </div>
           </div>
         </div>
-      </aside>
-
-      {/* HEADER */}
-      {/* STICKY GLASS HEADER - MATCHED TO CAREGIVERS PAGE */}
-<header className="fixed top-0 inset-x-0 h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 z-40 flex items-center justify-between px-8">
-  <div className="flex items-center gap-6">
-    <img 
-      src={logo} 
-      alt="Logo" 
-      className="h-10 w-auto hover:opacity-80 transition cursor-pointer" 
-      onClick={() => navigate("/dash")} 
-    />
-    <button 
-      onClick={() => setMenuOpen(true)} 
-      className="flex items-center gap-2 font-bold text-white hover:text-sky-600 transition"
-    >
-      <div className="w-8 h-8 flex flex-col justify-center gap-1.5">
-        <span className="h-0.5 w-6 bg-current rounded-full"></span>
-        <span className="h-0.5 w-4 bg-current rounded-full"></span>
-        <span className="h-0.5 w-6 bg-current rounded-full"></span>
       </div>
-      Menu
-    </button>
-  </div>
-  
-  <div className="hidden md:flex items-center gap-8">
-    {navItems.slice(0, 4).map(item => (
-      <span 
-        key={item.name} 
-        onClick={() => navigate(item.link)}
-        className={`text-sm font-bold cursor-pointer transition-colors ${
-          isActive(item.link) ? "text-sky-600" : "text-slate-500 hover:text-sky-500"
-        }`}
-      >
-        {item.name.split(" ")[1]}
-      </span>
-    ))}
-    <div className="h-8 w-px bg-slate-200"></div>
-    
-    <div 
-      className="flex items-center gap-3 cursor-pointer group" 
-      onClick={() => navigate("/my-profile")}
-    >
-      <div className="text-right hidden sm:block">
-        <h3 className="font-bold text-sm text-slate-900 group-hover:text-sky-600 transition-colors">
-          {userName}
-        </h3>
-        <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">
-          {role}
-        </p>
-      </div>
-      <img 
-        src={userPhoto ? (userPhoto.startsWith("http") ? userPhoto : `http://localhost:8080/uploads/${encodeURIComponent(userPhoto)}`) : `https://ui-avatars.com/api/?name=${userName}`} 
-        className="w-10 h-10 rounded-full border-2 border-white shadow-sm hover:ring-2 ring-sky-100 transition-all object-cover" 
-        alt="Profile"
-        onError={(e) => { e.target.onerror = null; e.target.src = `https://ui-avatars.com/api/?name=${userName}`; }}
-      />
-    </div>
-  </div>
-</header>
 
-      {/* MAIN CONTENT */}
-      <main className="pt-[64px] w-full min-h-screen flex flex-col">
-        
-        {/* UPDATED WELCOME & SEARCH HERO */}
-        <div className="relative w-full bg-slate-900 overflow-hidden">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
-          <div className="max-w-7xl mx-auto px-8 py-16 flex flex-col md:flex-row md:items-center justify-between gap-10 relative z-10">
-            <div className="space-y-4">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-bold uppercase tracking-widest">
-                <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
-                 Online
-              </div>
-              <h2 className="text-5xl font-black text-white tracking-tight leading-tight">
-                Welcome back, <br />
-                <span className="text-blue-500">{userName}</span> 👋
-              </h2>
-              <p className="text-slate-400 text-lg max-w-sm font-medium">
-                Manage your caregivers and find the best support for your family's ease.
-              </p>
+      <div className="max-w-7xl mx-auto w-full px-8 py-10">
+        <section className="mb-16">
+          <div className="flex items-end justify-between mb-8 border-b border-slate-100 pb-6">
+            <div>
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight">Verified Professionals</h2>
+              <p className="text-slate-400 font-bold text-[11px] uppercase tracking-wider mt-1">Available across your region</p>
             </div>
+            <button
+              onClick={() => navigate("/my-caregivers")}
+              className="group flex items-center gap-2 text-[11px] font-black uppercase tracking-widest bg-slate-400 text-white px-5 py-3 rounded-xl hover:bg-blue-600 transition-all"
+            >
+              View All <FaArrowRight size={10} className="group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
 
-            <div className="w-full max-w-md">
-              <div className="bg-white/5 p-2 rounded-3xl backdrop-blur-xl border border-white/10 shadow-2xl">
-                <div className="relative">
-                  <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                  <input
-                    type="text"
-                    placeholder="Search by name, skill, or city..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white border-none focus:ring-4 focus:ring-blue-500/20 focus:outline-none text-slate-800 font-medium"
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {filteredCaregivers.map((c) => (
+              <div key={c.id} className="group bg-white rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col">
+                <div className="relative h-44 overflow-hidden">
+                  <img
+                    src={`http://localhost:8080/uploads/${c.profilePhoto?.replace(/\s+/g, "_")}`}
+                    alt={c.fullName}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    onError={(e) => (e.target.src = `https://ui-avatars.com/api/?name=${c.fullName}`)}
                   />
+                  <div className="absolute top-3 left-3">
+                    <span className="bg-white/90 backdrop-blur-md text-slate-900 text-[9px] font-black px-2.5 py-1 rounded-lg uppercase tracking-tighter shadow-sm border border-slate-100">
+                      {c.speciality || "Care"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-5 flex flex-col flex-1">
+                  <h3 className="font-bold text-slate-900 text-base tracking-tight truncate group-hover:text-blue-600 transition-colors">
+                    {c.fullName}
+                  </h3>
+                  <p className="text-slate-400 text-[10px] font-bold flex items-center gap-1 mt-0.5 uppercase tracking-tighter truncate">
+                    📍 {c.address || "Location Hidden"}
+                  </p>
+
+                  <div className="mt-4 flex items-center justify-between bg-slate-50 px-3 py-2.5 rounded-xl border border-slate-100">
+                    <div>
+                      <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest">Rate</p>
+                      <p className="text-[11px] font-black text-slate-900">Rs {c.chargeMin}-{c.chargeMax}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest">Status</p>
+                      <p className="text-[11px] font-black text-green-600">Verified</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 mt-5">
+                    <button onClick={() => navigate(`/profile/${c.id}`)} className="py-2.5 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all">
+                      View
+                    </button>
+                    <button onClick={() => handleInterest(c)} className="py-2.5 rounded-xl border border-slate-200 text-slate-200 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all">
+                      Interest
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* FAVOURITES */}
+        <section className="bg-white rounded-[2.5rem] p-8 border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <FaHeart className="text-pink-500" size={18} /> Shortlisted
+              </h2>
+            </div>
+            <button
+              onClick={() => navigate("/favourites")}
+              className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 hover:text-pink-500 hover:border-pink-500 transition-all"
+            >
+              View All
+            </button>
+          </div>
+
+          {favouriteCaregivers.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+              {favouriteCaregivers.map((c) => (
+                <div
+                  key={c.id}
+                  onClick={() => navigate(`/profile/${c.id}`)}
+                  className="group relative bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 overflow-hidden cursor-pointer"
+                >
+                  <div className="relative h-32 w-full overflow-hidden">
+                    <img
+                      src={`http://localhost:8080/uploads/${c.profilePhoto?.replace(/\s+/g, "_")}`}
+                      alt={c.fullName}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      onError={(e) => (e.target.src = `https://ui-avatars.com/api/?name=${c.fullName}&background=f1f5f9&color=475569&bold=true`)}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent" />
+                    <div className="absolute top-2 left-2">
+                      <span className="bg-white/90 backdrop-blur-sm text-slate-700 text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-tight shadow-sm border border-slate-100">
+                        {c.speciality || "Care"}
+                      </span>
+                    </div>
+                    <div className="absolute top-2 right-2">
+                      <div className="w-6 h-6 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm">
+                        <FaHeart size={9} className="text-pink-500" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-3">
+                    <h3 className="font-black text-slate-900 text-[11px] tracking-tight truncate leading-tight group-hover:text-blue-600 transition-colors">
+                      {c.fullName}
+                    </h3>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight truncate mt-0.5">
+                      📍 {c.address || "Kathmandu"}
+                    </p>
+                    <div className="mt-2.5 flex items-center justify-between">
+                      <p className="text-[9px] font-black text-slate-900">Rs {c.chargeMin}–{c.chargeMax}</p>
+                      <span className="text-[8px] font-black text-green-600 bg-green-50 border border-green-100 px-1.5 py-0.5 rounded-md uppercase tracking-tight">
+                        ✓ Verified
+                      </span>
+                    </div>
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 bg-slate-900 py-2 text-center translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                    <span className="text-[9px] font-black text-white uppercase tracking-widest">View Profile →</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-slate-400 font-bold text-[11px] uppercase tracking-widest italic">
+              No favorites saved yet
+            </div>
+          )}
+        </section>
+      </div>
+
+      {/* ══════════════════════════════════════════════
+          PROFILE REMINDER MODAL — redesigned
+      ══════════════════════════════════════════════ */}
+      {showProfileReminder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-slate-900/75 backdrop-blur-md"
+            onClick={() => setShowProfileReminder(false)}
+          />
+
+          {/* Card */}
+          <div className="relative w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl overflow-hidden">
+
+            {/* Top dark header band */}
+            <div className="relative bg-slate-900 px-8 pt-10 pb-14 overflow-hidden">
+              {/* Glow orbs */}
+              <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/20 rounded-full blur-2xl" />
+              <div className="absolute -bottom-6 -left-6 w-32 h-32 bg-blue-600/10 rounded-full blur-xl" />
+
+              {/* Close */}
+              <button
+                onClick={() => setShowProfileReminder(false)}
+                className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-500 hover:text-white hover:bg-slate-700 transition-all"
+              >
+                <FaTimes size={12} />
+              </button>
+
+              {/* Icon */}
+              <div className="relative z-10 flex flex-col items-center text-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
+                  <FaUserEdit size={26} className="text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.25em] mb-1">Action Required</p>
+                  <h3 className="text-2xl font-black text-white tracking-tight leading-tight">
+                    Complete Your<br />Profile
+                  </h3>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* QUICK ACCESS STRIP */}
-        <div className="w-full bg-white border-b border-slate-200 px-8 py-4 sticky top-[64px] z-30">
-          <div className="max-w-7xl mx-auto flex items-center gap-3 overflow-x-auto no-scrollbar">
-            <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest mr-4 whitespace-nowrap">Dashboard Links</span>
-            {quickLinks.map((q) => (
-              <button
-                key={q.label}
-                onClick={() => navigate(q.link)}
-                className="flex items-center gap-2 bg-slate-50 hover:bg-slate-600 hover:text-slate-400 text-white text-xs font-bold px-5 py-2.5 rounded-xl border border-slate-100 transition-all duration-300 whitespace-nowrap"
-              >
-                <span>{q.icon}</span> {q.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* CONTENT GRID */}
-        <div className="max-w-7xl mx-auto w-full px-8 py-12">
-          
-          {/* CAREGIVERS SECTION */}
-          <section className="mb-20">
-            <div className="flex items-end justify-between mb-10">
-              <div>
-                <h2 className="text-3xl font-black text-slate-900 tracking-tight">Verified Caregivers</h2>
-                <p className="text-slate-400 font-medium text-sm mt-1">Showing {filteredCaregivers.length} available professionals</p>
+            {/* White body — overlaps the header */}
+            <div className="relative -mt-6 bg-white rounded-t-[2rem] px-8 pt-7 pb-8">
+              {/* Progress bar decoration */}
+              <div className="w-full h-1.5 bg-slate-100 rounded-full mb-6 overflow-hidden">
+                <div className="h-full w-2/3 bg-gradient-to-r from-blue-500 to-blue-400 rounded-full" />
               </div>
-              <button 
-                onClick={() => navigate("/my-caregivers")}
-                className="group flex items-center gap-2 text-xs font-bold bg-slate-900 text-white px-5 py-3 rounded-2xl hover:bg-blue-600 transition-all shadow-lg shadow-slate-200"
-              >
-                View Directory <FaArrowRight className="group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 l:grid-cols-4 gap-8">
-              {filteredCaregivers.map((c, idx) => {
-                const cleanPhoto = c.profilePhoto?.replace(/\s+/g, "_").trim();
-                return (
-                  <div key={c.id} className="group bg-white rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-blue-900/10 transition-all duration-500 overflow-hidden flex flex-col">
-                    <div className="relative h-52 overflow-hidden">
-                      <img
-                        src={`http://localhost:8080/uploads/${cleanPhoto}`}
-                        alt={c.fullName}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                        onError={(e) => (e.target.src = `https://randomuser.me/api/portraits/${idx % 2 === 0 ? "women" : "men"}/${30 + idx}.jpg`)}
-                      />
-                      <div className="absolute top-4 left-4">
-                        <span className="bg-white/90 backdrop-blur-md text-slate-900 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-tighter shadow-sm">
-                          {c.speciality || "Caregiver"}
-                        </span>
-                      </div>
+              <p className="text-slate-600 text-sm font-medium leading-relaxed text-center mb-2">
+                Make sure to update your profile so caregivers can see the real you.
+              </p>
+              <p className="text-slate-400 text-xs font-bold text-center mb-8">
+                A complete profile leads to <span className="text-blue-500">3× better matches</span>.
+              </p>
+
+              {/* Checklist */}
+              <div className="space-y-2.5 mb-8">
+                {["Add a profile photo", "Fill in your address", "Describe your needs"].map((item, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <div className="w-5 h-5 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0">
+                      <div className="w-2 h-2 rounded-full bg-blue-400" />
                     </div>
-
-                    <div className="p-6 flex flex-col flex-1">
-                      <h3 className="font-bold text-slate-900 text-xl tracking-tight group-hover:text-blue-600 transition-colors">{c.fullName}</h3>
-                      <p className="text-slate-400 text-xs font-bold flex items-center gap-1 mt-1 uppercase tracking-tighter italic">
-                        📍 {c.address || "Location Hidden"}
-                      </p>
-
-                      <div className="mt-6 flex items-center justify-between bg-slate-50 px-4 py-3 rounded-2xl border border-slate-100">
-                        <div>
-                          <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest">Rate / Day</p>
-                          <p className="text-sm font-black text-slate-900">Rs {c.chargeMin} - {c.chargeMax}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest">Experience</p>
-                          <p className="text-sm font-black text-blue-600">Verified</p>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3 mt-6">
-                        <button onClick={() => navigate(`/profile/${c.id}`)} className="py-3.5 rounded-2xl bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-md">
-                          Profile
-                        </button>
-                        <button onClick={() => handleInterest(c)} className="py-6 rounded-2xl border-2 border-slate-100 text-white text-[11px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all">
-                          Interested
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          {/* FAVOURITES SECTION */}
-          <section className="bg-gradient-to-br from-pink- to-white rounded-[3rem] p-10 border border-pink-100 shadow-xl shadow-pink-900/5">
-            <div className="flex items-center justify-between mb-10">
-              <div>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-                  <FaHeart className="text-pink-500" /> Your Favorites
-                </h2>
-                <p className="text-pink-400 font-bold text-xs uppercase tracking-widest mt-1">Shortlisted Caregivers</p>
-              </div>
-              <button onClick={() => navigate("/favourites")} className="text-xs font-white  text-white border-b-2 border-slate-900 pb-1 hover:text-pink-500 hover:border-pink-500 transition-all">
-                View All Shortlists
-              </button>
-            </div>
-
-            {favouriteCaregivers.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {favouriteCaregivers.map((c, idx) => (
-                  <div key={c.id} className="bg-white p-4 rounded-[2rem] shadow-sm hover:shadow-xl transition-all group relative border border-white">
-                    <div className="relative h-40 rounded-2xl overflow-hidden mb-4">
-                      <img
-                        src={`http://localhost:8080/uploads/${c.profilePhoto?.replace(/\s+/g, "_")}`}
-                        alt={c.fullName}
-                        className="w-full h-full object-cover"
-                        onError={(e) => (e.target.src = `https://randomuser.me/api/portraits/women/${50 + idx}.jpg`)}
-                      />
-                      <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm p-2 rounded-full text-pink-500 shadow-md">
-                        <FaHeart size={12} />
-                      </div>
-                    </div>
-                    <h3 className="font-bold text-slate-900 text-sm mb-1">{c.fullName}</h3>
-                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-tighter mb-4">{c.speciality}</p>
-                    <button onClick={() => navigate(`/profile/${c.id}`)} className="w-full py-2 bg-slate-50 text-white text-[10px] font-black uppercase rounded-xl group-hover:bg-slate-900 group-hover:text-white transition-all">
-                      View Details
-                    </button>
+                    <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">{item}</span>
                   </div>
                 ))}
               </div>
-            ) : (
-              <div className="text-center py-10 bg-white/50 rounded-2xl border-2 border-dashed border-pink-200 text-bla font-bold text-sm italic">
-                Your heart list is empty. Start adding some!
-              </div>
-            )}
-          </section>
-        </div>
-      </main>
-      <button 
-        onClick={() => navigate("/messages")}
-        className="fixed bottom-8 right-8 w-16 h-16 bg-blue-600 text-white rounded-2xl shadow-2xl shadow-blue-200 flex items-center justify-center hover:bg-blue-700 hover:-translate-y-2 transition-all z-40 active:scale-95 group"
-      >
-        <FaComments size={24} className="group-hover:rotate-12 transition-transform" />
-        <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 border-4 border-slate-50 rounded-full"></span>
-      </button>
 
-      {/* MODAL */}
-      {dialogue && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-6">
-          <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-sm w-full p-10 flex flex-col items-center relative animate-in fade-in zoom-in duration-300">
-            <button className="absolute top-6 right-6 text-slate-300 hover:text-slate-900 transition-colors" onClick={() => setDialogue(null)}>
-              <FaTimes size={20} />
-            </button>
-            <div className="bg-green-50 w-20 h-20 rounded-full flex items-center justify-center mb-6">
-              <FaCheck className="text-green-500 text-3xl" />
+              {/* Buttons */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setShowProfileReminder(false)}
+                  className="py-3.5 rounded-2xl border border-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 hover:border-slate-300 transition-all"
+                >
+                  Maybe Later
+                </button>
+                <button
+                  onClick={() => {
+                    setShowProfileReminder(false);
+                    navigate("/my-profile");
+                  }}
+                  className="py-3.5 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg shadow-slate-900/20 flex items-center justify-center gap-2"
+                >
+                  <FaArrowUp size={9} /> Update Now
+                </button>
+              </div>
             </div>
-            <h3 className="text-2xl font-black text-center text-slate-900 leading-tight mb-2">Request Sent!</h3>
-            <p className="text-center text-slate-500 text-sm font-medium px-4">
-              We've notified {dialogue.caregiver.fullName}. They might contact you soon.
-            </p>
-            <button onClick={() => setDialogue(null)} className="mt-10 w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-blue-600 transition-all shadow-xl shadow-blue-900/10">
-              Back to Dashboard
-            </button>
           </div>
         </div>
       )}
-    </div>
+
+      {/* ══════════════════════════════════════════════
+          INTEREST SENT MODAL — redesigned
+      ══════════════════════════════════════════════ */}
+      {dialogue && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-slate-900/75 backdrop-blur-md"
+            onClick={() => setDialogue(null)}
+          />
+
+          {/* Card */}
+          <div className="relative w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl overflow-hidden">
+
+            {/* Top dark header band */}
+            <div className="relative bg-slate-900 px-8 pt-10 pb-14 overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-40 h-40 bg-green-500/15 rounded-full blur-2xl" />
+              <div className="absolute -bottom-6 -left-6 w-32 h-32 bg-green-600/10 rounded-full blur-xl" />
+
+              {/* Close */}
+              <button
+                onClick={() => setDialogue(null)}
+                className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-500 hover:text-white hover:bg-slate-700 transition-all"
+              >
+                <FaTimes size={12} />
+              </button>
+
+              <div className="relative z-10 flex flex-col items-center text-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-green-500/20 border border-green-500/30 flex items-center justify-center">
+                  <FaCheck size={26} className="text-green-400" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-green-400 uppercase tracking-[0.25em] mb-1">Success</p>
+                  <h3 className="text-2xl font-black text-white tracking-tight leading-tight">
+                    Request Sent!
+                  </h3>
+                </div>
+              </div>
+            </div>
+
+            {/* White body */}
+            <div className="relative -mt-6 bg-white rounded-t-[2rem] px-8 pt-7 pb-8">
+              {/* Caregiver row */}
+              <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
+                  <FaCheck size={14} className="text-green-500" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Notified</p>
+                  <p className="text-sm font-black text-slate-900 truncate">{dialogue.caregiver.fullName}</p>
+                </div>
+                <div className="ml-auto flex-shrink-0">
+                  <span className="text-[9px] font-black text-green-600 bg-green-50 border border-green-100 px-2 py-1 rounded-lg uppercase tracking-tight">
+                    Sent ✓
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-slate-500 text-sm font-medium leading-relaxed text-center mb-8">
+                We've notified <span className="font-black text-slate-800">{dialogue.caregiver.fullName}</span>. They may contact you shortly.
+              </p>
+
+              <button
+                onClick={() => setDialogue(null)}
+                className="w-full py-3.5 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg shadow-slate-900/20"
+              >
+                Back to Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </Layout>
   );
 };
 
