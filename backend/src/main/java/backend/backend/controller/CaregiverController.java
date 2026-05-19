@@ -20,8 +20,10 @@ import org.springframework.web.multipart.MultipartFile;
 import backend.backend.model.AcceptedRequest;
 import backend.backend.model.Caregiver;
 import backend.backend.model.CaregiverStatus;
+import backend.backend.model.InterestRequest;
 import backend.backend.model.Users;
 import backend.backend.repository.AcceptedRequestRepository;
+import backend.backend.repository.InterestRequestRepository;
 import backend.backend.repository.UserRepo;
 import backend.backend.service.CaregiverService;
 import backend.backend.service.EmailService;
@@ -38,6 +40,8 @@ public class CaregiverController {
     @Autowired
     private UserRepo userRepo;
     @Autowired
+    private InterestRequestRepository interestRequestRepository;
+    @Autowired
     private AcceptedRequestRepository acceptedRequestRepository;
     @PostMapping("/add")
     public Caregiver addCaregiver(
@@ -53,7 +57,9 @@ public class CaregiverController {
             @RequestParam String experience,
             @RequestParam String speciality,
             @RequestParam String chargeMin,
-            @RequestParam String chargeMax
+            @RequestParam String chargeMax,
+            @RequestParam(required = false) String certification,
+            @RequestParam(required = false) MultipartFile certificatePhoto
     ) throws IOException {
         Caregiver existing = caregiverService.getByUserId(userId);
         if (existing != null) {
@@ -70,10 +76,10 @@ public class CaregiverController {
             }
         }
 
-        // Generate unique filenames
+        // Generate unique filenames with spaces replaced
         // --- 3. Generate unique filenames ---
-        String profileFileName = System.currentTimeMillis() + "_" + profilePhoto.getOriginalFilename();
-        String citizenshipFileName = System.currentTimeMillis() + "_" + citizenshipPhoto.getOriginalFilename();
+        String profileFileName = System.currentTimeMillis() + "_" + profilePhoto.getOriginalFilename().replaceAll("\\s+", "_");
+        String citizenshipFileName = System.currentTimeMillis() + "_" + citizenshipPhoto.getOriginalFilename().replaceAll("\\s+", "_");
 
         // --- 4. Save files ---
         try {
@@ -97,8 +103,15 @@ public class CaregiverController {
         caregiver.setSpeciality(speciality);
         caregiver.setChargeMin(chargeMin);
         caregiver.setChargeMax(chargeMax);
+        caregiver.setCertification(certification);
         caregiver.setProfilePhoto(profileFileName);
         caregiver.setCitizenshipPhoto(citizenshipFileName);
+
+        if (certificatePhoto != null && !certificatePhoto.isEmpty()) {
+            String certificateFileName = System.currentTimeMillis() + "_" + certificatePhoto.getOriginalFilename().replaceAll("\\s+", "_");
+            certificatePhoto.transferTo(new File(uploadFolder, certificateFileName));
+            caregiver.setCertificatePhoto(certificateFileName);
+        }
 
         // --- 6. Save to MongoDB ---
         Caregiver saved = caregiverService.saveCaregiver(caregiver);
@@ -161,8 +174,14 @@ public class CaregiverController {
         Users interestedUser = userRepo.findById(interestedUserId).orElse(null);
 
         if (caregiver != null && interestedUser != null) {
-            // Use getUserName() if getFullName() is missing in your Users model
             String name = interestedUser.getUserName();
+
+            // Ensure the interest request is stored for the caregiver.
+            List<InterestRequest> existing = interestRequestRepository.findByCaregiverIdAndUserId(id, interestedUserId);
+            if (existing.isEmpty()) {
+                InterestRequest newInterest = new InterestRequest(id, caregiver.getFullName(), interestedUserId, name);
+                interestRequestRepository.save(newInterest);
+            }
 
             // 1. Send the Email
             emailService.sendInterestEmail(
@@ -203,8 +222,10 @@ public class CaregiverController {
             @RequestParam String speciality,
             @RequestParam String chargeMin,
             @RequestParam String chargeMax,
+            @RequestParam(required = false) String certification,
             @RequestParam(required = false) MultipartFile profilePhoto,
-            @RequestParam(required = false) MultipartFile citizenshipPhoto
+            @RequestParam(required = false) MultipartFile citizenshipPhoto,
+            @RequestParam(required = false) MultipartFile certificatePhoto
     ) throws IOException {
 
         Caregiver caregiver = caregiverService.getByUserId(userId);
@@ -221,18 +242,25 @@ public class CaregiverController {
         caregiver.setSpeciality(speciality);
         caregiver.setChargeMin(chargeMin);
         caregiver.setChargeMax(chargeMax);
+        caregiver.setCertification(certification);
 
-        // Handle optional photos
+        // Handle optional photos with spaces replaced
         if (profilePhoto != null) {
-            String profileFileName = System.currentTimeMillis() + "_" + profilePhoto.getOriginalFilename();
+            String profileFileName = System.currentTimeMillis() + "_" + profilePhoto.getOriginalFilename().replaceAll("\\s+", "_");
             profilePhoto.transferTo(new File(uploadDir, profileFileName));
             caregiver.setProfilePhoto(profileFileName);
         }
 
         if (citizenshipPhoto != null) {
-            String citizenshipFileName = System.currentTimeMillis() + "_" + citizenshipPhoto.getOriginalFilename();
+            String citizenshipFileName = System.currentTimeMillis() + "_" + citizenshipPhoto.getOriginalFilename().replaceAll("\\s+", "_");
             citizenshipPhoto.transferTo(new File(uploadDir, citizenshipFileName));
             caregiver.setCitizenshipPhoto(citizenshipFileName);
+        }
+
+        if (certificatePhoto != null && !certificatePhoto.isEmpty()) {
+            String certificateFileName = System.currentTimeMillis() + "_" + certificatePhoto.getOriginalFilename().replaceAll("\\s+", "_");
+            certificatePhoto.transferTo(new File(uploadDir, certificateFileName));
+            caregiver.setCertificatePhoto(certificateFileName);
         }
 
         return caregiverService.saveCaregiver(caregiver);
@@ -289,6 +317,16 @@ public class CaregiverController {
 
         // Create or retrieve AcceptedRequest record for chat
         try {
+            // Update any existing interest request status so chat permission checks pass
+            List<InterestRequest> matchingInterests = interestRequestRepository.findByCaregiverIdAndUserId(caregiver.getId(), userId);
+            if (matchingInterests != null && !matchingInterests.isEmpty()) {
+                for (InterestRequest interest : matchingInterests) {
+                    interest.setStatus("ACCEPTED");
+                    interest.setRespondedAt(java.time.LocalDateTime.now().toString());
+                    interestRequestRepository.save(interest);
+                }
+            }
+
             // Check if AcceptedRequest already exists to prevent duplicates
             List<AcceptedRequest> existingRequests = acceptedRequestRepository.findByCaregiverIdAndUserId(caregiver.getId(), userId);
             
@@ -349,6 +387,16 @@ public class CaregiverController {
             if (!acceptedRequests.isEmpty()) {
                 acceptedRequestRepository.deleteAll(acceptedRequests);
             }
+
+            // Mark any matching interest requests as rejected so the caregiver pending list removes them
+            List<InterestRequest> interestRequests = interestRequestRepository.findByCaregiverIdAndUserId(id, userId);
+            if (interestRequests != null && !interestRequests.isEmpty()) {
+                for (InterestRequest interest : interestRequests) {
+                    interest.setStatus("REJECTED");
+                    interest.setRespondedAt(java.time.LocalDateTime.now().toString());
+                    interestRequestRepository.save(interest);
+                }
+            }
             
             return ResponseEntity.ok("Request declined successfully");
         } catch (Exception e) {
@@ -380,6 +428,24 @@ public class CaregiverController {
             
             if (!acceptedRequests.isEmpty()) {
                 acceptedRequestRepository.deleteAll(acceptedRequests);
+
+                // Also remove the user from the caregiver's accepted-user list if it exists
+                Caregiver caregiver = caregiverService.getCaregiverById(id);
+                if (caregiver != null && caregiver.getAcceptedUserIds() != null && caregiver.getAcceptedUserIds().contains(userId)) {
+                    caregiver.getAcceptedUserIds().removeIf(uid -> uid.equals(userId));
+                    caregiverService.saveCaregiver(caregiver);
+                }
+
+                // Mark any existing interest request as rejected so the user can send interest again
+                List<InterestRequest> interestRequests = interestRequestRepository.findByCaregiverIdAndUserId(id, userId);
+                if (interestRequests != null && !interestRequests.isEmpty()) {
+                    for (InterestRequest interest : interestRequests) {
+                        interest.setStatus("REJECTED");
+                        interest.setRespondedAt(java.time.LocalDateTime.now().toString());
+                        interestRequestRepository.save(interest);
+                    }
+                }
+
                 return ResponseEntity.ok(Map.of("message", "Connection removed successfully"));
             }
             

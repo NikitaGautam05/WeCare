@@ -12,6 +12,8 @@ const ProfileReceiver = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [caregiver, setCaregiver] = useState(null);
   const [profileAccepted, setProfileAccepted] = useState(false);
+  const [interestRequests, setInterestRequests] = useState([]);
+  const [bookingRequests, setBookingRequests] = useState([]);
 
   const token = localStorage.getItem("jwtToken");
   const caregiverUserId = localStorage.getItem("userId");
@@ -51,6 +53,15 @@ const ProfileReceiver = () => {
           if (isAlreadyConnected) {
             setProfileAccepted(true);
           }
+
+          // Fetch caregiver-related request context for blurred background
+          axios.get(`http://localhost:8080/api/interest/pending-requests/${cgRes.data.id}`, axiosConfig)
+            .then((reqRes) => setInterestRequests(Array.isArray(reqRes.data) ? reqRes.data : []))
+            .catch((err) => console.error("Background interest fetch error:", err.message));
+
+          axios.get(`http://localhost:8080/api/bookings/caregiver/${cgRes.data.id}`, axiosConfig)
+            .then((bookRes) => setBookingRequests(Array.isArray(bookRes.data) ? bookRes.data : []))
+            .catch((err) => console.error("Background booking fetch error:", err.message));
         }
 
       } catch (err) {
@@ -157,252 +168,169 @@ const ProfileReceiver = () => {
     : `https://ui-avatars.com/api/?name=${userProfile?.userName}&background=random`;
 
   return (
-    <div className="min-h-screen w-screen bg-[#F8FAFC] p-4 md:p-10">
-      <div className="max-w-4xl mx-auto">
-        <button 
-          onClick={() => navigate(-1)} 
-          className="mb-6 flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-black transition-colors"
-        >
-          ← Back to Dashboard
-        </button>
+    <div className="min-h-screen w-screen relative bg-slate-950 text-slate-200 overflow-hidden">
+      <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-3xl" />
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute -top-16 left-1/2 h-[420px] w-[720px] -translate-x-1/2 rounded-[56px] bg-sky-500/10 blur-3xl" />
+        <div className="absolute bottom-10 right-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 p-4">
+          {interestRequests.slice(0, 2).map((request) => (
+            <div
+              key={request.id}
+              className="w-72 h-40 rounded-[32px] border border-white/10 bg-white/10 p-5 shadow-2xl shadow-slate-950/30 backdrop-blur-xl"
+            >
+              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-300 mb-3">Interest</p>
+              <p className="text-xl font-semibold text-white">{request.user?.userName || 'Care Receiver'}</p>
+              <p className="text-sm text-slate-300 mt-2">{request.user?.serviceType || 'Care interest request'}</p>
+              <p className="mt-4 text-[11px] text-slate-400">{request.sentAt ? new Date(request.sentAt).toLocaleDateString() : 'Just now'}</p>
+            </div>
+          ))}
+          {bookingRequests.slice(0, 2).map((booking) => (
+            <div
+              key={booking.id}
+              className="w-72 h-40 rounded-[32px] border border-white/10 bg-white/10 p-5 shadow-2xl shadow-slate-950/30 backdrop-blur-xl"
+            >
+              <p className="text-[10px] uppercase tracking-[0.2em] text-slate-300 mb-3">Booking</p>
+              <p className="text-xl font-semibold text-white">{booking.userName || booking.user?.userName || 'Care Receiver'}</p>
+              <p className="text-sm text-slate-300 mt-2">{booking.serviceType || 'Booking request'}</p>
+              <p className="mt-4 text-[11px] text-slate-400">{booking.startTime ? new Date(booking.startTime).toLocaleDateString() : 'No date yet'}</p>
+            </div>
+          ))}
+        </div>
+      </div>
 
-        {profileAccepted ? (
-          /* ACCEPTED VIEW: Show Profile with chat and Remove option */
-          <div className="bg-white rounded-[32px] shadow-sm border border-slate-200 overflow-hidden">
-            {/* Header with Remove button */}
-            <div className="flex items-center justify-between px-8 py-4 bg-slate-50 border-b border-slate-200">
+      <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-10">
+        <div className="w-full max-w-6xl">
+          <div className="relative overflow-hidden rounded-[36px] border border-white/10 bg-white/95 shadow-[0_40px_120px_rgba(15,23,42,0.35)] backdrop-blur-xl">
+            <div className="absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-slate-900/90 via-slate-900/25 to-transparent" />
+            <div className="relative flex items-center justify-between gap-4 border-b border-slate-200/80 bg-white/90 px-6 py-5">
               <div>
-                <p className="text-sm font-bold text-slate-700">Connected</p>
-                <p className="text-xs text-slate-500">You can message and view profile below</p>
+                <p className="text-sm font-semibold text-slate-600">Care Receiver Profile</p>
+                <h1 className="text-2xl font-bold text-slate-900">Request details</h1>
               </div>
               <button
-                onClick={handleRemoveConnection}
-                disabled={actionLoading}
-                className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 disabled:opacity-50 transition-all whitespace-nowrap"
+                onClick={() => navigate(-1)}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-slate-900 text-white shadow-lg shadow-slate-950/20 hover:bg-slate-800 transition"
               >
-                {actionLoading ? "..." : "Remove"}
+                ×
               </button>
             </div>
-
-            {/* Profile Section */}
-            <div className="h-72 bg-slate-200 relative">
-              <img src={photoUrl} alt="User" className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-              <div className="absolute bottom-6 left-8 text-white">
-                <h1 className="text-4xl font-black tracking-tight">{userProfile?.userName}</h1>
-                <p className="text-white/80 font-medium">{userProfile?.address}</p>
-              </div>
-            </div>
-
-            {/* Profile Details */}
-            <div className="p-10 border-b border-slate-200">
-              {userProfile?.accountType === 'ORGANIZATION' ? (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                    <div className="p-6 bg-slate-50 rounded-2xl">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Organization Name</p>
-                      <p className="font-bold text-slate-800">{userProfile.organizationName || "Not specified"}</p>
-                    </div>
-                    <div className="p-6 bg-slate-50 rounded-2xl">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Foundation Date</p>
-                      <p className="font-bold text-slate-800">{userProfile.foundationDate || "Not specified"}</p>
-                    </div>
-                    <div className="p-6 bg-slate-50 rounded-2xl">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Capacity</p>
-                      <p className="font-bold text-slate-800">{userProfile.capacity ? `${userProfile.capacity} beds` : "N/A"}</p>
-                    </div>
-                    <div className="p-6 bg-slate-50 rounded-2xl">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Location</p>
-                      <p className="font-bold text-slate-800">{userProfile.city || userProfile.address || "Not specified"}</p>
+            <div className="p-6 md:p-8">
+              <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+                <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-slate-900/95 shadow-xl">
+                  <div className="relative h-80 overflow-hidden">
+                    <img src={photoUrl} alt="User" className="h-full w-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/10 to-transparent" />
+                    <div className="absolute bottom-6 left-6 text-white">
+                      <h2 className="text-3xl font-black tracking-tight">{userProfile?.userName}</h2>
+                      <p className="mt-1 text-sm text-slate-200/90">{userProfile?.address || 'Location unknown'}</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                    <div className="p-6 bg-slate-50 rounded-2xl">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">License</p>
-                      <p className="font-bold text-slate-800">{userProfile.licenseNumber || "Not specified"}</p>
+                  <div className="space-y-4 p-6 bg-slate-950/95">
+                    <div className="rounded-3xl bg-slate-900/90 p-4">
+                      <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400">Request status</p>
+                      <p className="mt-2 text-sm font-semibold text-white">{profileAccepted ? 'Accepted connection' : 'Pending request'}</p>
                     </div>
-                    <div className="p-6 bg-slate-50 rounded-2xl">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Registration</p>
-                      <p className="font-bold text-slate-800">{userProfile.registrationNumber || "Not specified"}</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                    <div className="p-6 bg-slate-50 rounded-2xl">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Contact Person</p>
-                      <p className="font-bold text-slate-800">{userProfile.contactPersonName || "Not specified"}</p>
-                      <p className="text-sm text-slate-500 mt-1">{userProfile.contactPersonTitle || "Title not specified"}</p>
-                    </div>
-                    <div className="p-6 bg-slate-50 rounded-2xl">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Contact Phone</p>
-                      <p className="font-bold text-slate-800">{userProfile.contactPersonPhone || "Not specified"}</p>
-                    </div>
-                  </div>
-                  {(userProfile.website || userProfile.aboutOrganization) && (
-                    <div className="space-y-4">
-                      {userProfile.website && (
-                        <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Website</p>
-                          <a href={userProfile.website.startsWith('http') ? userProfile.website : `https://${userProfile.website}`} target="_blank" rel="noreferrer" className="text-blue-600 font-bold hover:underline">
-                            {userProfile.website}
-                          </a>
-                        </div>
-                      )}
-                      {userProfile.aboutOrganization && (
-                        <div className="p-6 bg-blue-50/50 rounded-2xl border border-blue-100 text-slate-600 leading-relaxed">
-                          <h3 className="font-bold text-slate-900 mb-2">About Organization</h3>
-                          <p>{userProfile.aboutOrganization}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <>
-                  <div className="grid grid-cols-2 gap-6 mb-10">
-                    <div className="p-6 bg-slate-50 rounded-2xl">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Service Requested</p>
-                      <p className="font-bold text-slate-800">{userProfile?.serviceType || "General Care"}</p>
-                    </div>
-                    <div className="p-6 bg-slate-50 rounded-2xl">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Care For</p>
-                      <p className="font-bold text-slate-800">{userProfile?.receiverType === 'other' ? "Family Member" : "Self"}</p>
-                    </div>
-                  </div>
-                  {userProfile?.additionalInfo && (
-                    <div>
-                      <h3 className="font-bold text-slate-900 mb-3">Additional Information</h3>
-                      <div className="p-6 bg-blue-50/50 rounded-2xl border border-blue-100 text-slate-600 leading-relaxed">
-                        {userProfile.additionalInfo}
+                    <div className="grid gap-3">
+                      <div className="rounded-3xl bg-slate-900/90 p-4">
+                        <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400">Service requested</p>
+                        <p className="mt-2 font-semibold text-white">{userProfile?.serviceType || 'General Care'}</p>
+                      </div>
+                      <div className="rounded-3xl bg-slate-900/90 p-4">
+                        <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400">Care for</p>
+                        <p className="mt-2 font-semibold text-white">{userProfile?.receiverType === 'other' ? 'Someone Else' : 'Myself'}</p>
                       </div>
                     </div>
-                  )}
-                </>
-              )}
-            </div>
+                  </div>
+                </div>
 
-            {/* Chat Section */}
-            <div className="p-8">
-              <h2 className="font-bold text-slate-900 mb-4">Messages</h2>
-              <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
-                <AcceptedConnections userType="caregiver" caregiverId={caregiver?.id} />
+                <div className="space-y-6">
+                  <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
+                    <div className="mb-5 flex flex-wrap items-center gap-4">
+                      <div className="rounded-3xl bg-slate-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-700">
+                        {userProfile?.receiverType === 'other' ? 'Someone Else' : 'Self'}
+                      </div>
+                      <div className={`rounded-3xl px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] ${profileAccepted ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                        {profileAccepted ? 'Connected' : 'Pending'}
+                      </div>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                        <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Location</p>
+                        <p className="font-semibold text-slate-900">{userProfile?.address || 'Not specified'}</p>
+                      </div>
+                      <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                        <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Phone</p>
+                        <p className="font-semibold text-slate-900">{userProfile?.phoneNumber || 'Not specified'}</p>
+                      </div>
+                      {userProfile?.receiverType === 'other' && (
+                        <>
+                          <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Relation</p>
+                            <p className="font-semibold text-slate-900">{userProfile?.recipientRelation || 'Not specified'}</p>
+                          </div>
+                          <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Recipient age</p>
+                            <p className="font-semibold text-slate-900">{userProfile?.recipientAge ? `${userProfile.recipientAge} years` : 'Not specified'}</p>
+                          </div>
+                          <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Contact</p>
+                            <p className="font-semibold text-slate-900">{userProfile?.recipientPhone || 'Not specified'}</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {userProfile?.additionalInfo && (
+                    <div className="rounded-[32px] border border-slate-200 bg-slate-50 p-6">
+                      <h3 className="text-sm font-bold text-slate-900 mb-3">Additional Information</h3>
+                      <p className="text-sm leading-7 text-slate-700 whitespace-pre-wrap">{userProfile.additionalInfo}</p>
+                    </div>
+                  )}
+
+                  <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
+                    <div className="mb-5 flex items-center justify-between gap-4">
+                      <h3 className="text-lg font-bold text-slate-900">Action</h3>
+                      {profileAccepted ? (
+                        <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700 uppercase tracking-[0.2em]">Connected</span>
+                      ) : (
+                        <span className="rounded-full bg-amber-50 px-3 py-1 text-[11px] font-bold text-amber-700 uppercase tracking-[0.2em]">Pending</span>
+                      )}
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {profileAccepted ? (
+                        <button
+                          onClick={handleRemoveConnection}
+                          disabled={actionLoading}
+                          className="w-full rounded-3xl bg-red-600 px-5 py-4 text-sm font-bold text-white transition hover:bg-red-700 disabled:opacity-60"
+                        >
+                          {actionLoading ? 'Removing...' : 'Remove Connection'}
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            onClick={handleAccept}
+                            disabled={actionLoading}
+                            className="w-full rounded-3xl bg-slate-900 px-5 py-4 text-sm font-bold text-white transition hover:bg-slate-800 disabled:opacity-60"
+                          >
+                            {actionLoading ? 'Processing...' : 'Accept & Start Chat'}
+                          </button>
+                          <button
+                            onClick={handleDecline}
+                            disabled={actionLoading}
+                            className="w-full rounded-3xl border border-slate-200 bg-white px-5 py-4 text-sm font-bold text-slate-900 transition hover:bg-slate-50 disabled:opacity-60"
+                          >
+                            Decline Request
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        ) : (
-          /* PENDING VIEW: Show Profile and Action Buttons */
-          <div className="bg-white rounded-[32px] shadow-sm border border-slate-200 overflow-hidden">
-            <div className="h-72 bg-slate-200 relative">
-              <img src={photoUrl} alt="User" className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-              <div className="absolute bottom-6 left-8 text-white">
-                <h1 className="text-4xl font-black tracking-tight">{userProfile?.userName}</h1>
-                <p className="text-white/80 font-medium">{userProfile?.address}</p>
-              </div>
-            </div>
-
-            <div className="p-10">
-              {userProfile?.accountType === 'ORGANIZATION' ? (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                    <div className="p-6 bg-slate-50 rounded-2xl">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Organization Name</p>
-                      <p className="font-bold text-slate-800">{userProfile.organizationName || "Not specified"}</p>
-                    </div>
-                    <div className="p-6 bg-slate-50 rounded-2xl">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Founded</p>
-                      <p className="font-bold text-slate-800">{userProfile.foundationDate || "Not specified"}</p>
-                    </div>
-                    <div className="p-6 bg-slate-50 rounded-2xl">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Capacity</p>
-                      <p className="font-bold text-slate-800">{userProfile.capacity ? `${userProfile.capacity} beds` : "N/A"}</p>
-                    </div>
-                    <div className="p-6 bg-slate-50 rounded-2xl">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Location</p>
-                      <p className="font-bold text-slate-800">{userProfile.city || userProfile.address || "Not specified"}</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                    <div className="p-6 bg-slate-50 rounded-2xl">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">License</p>
-                      <p className="font-bold text-slate-800">{userProfile.licenseNumber || "Not specified"}</p>
-                    </div>
-                    <div className="p-6 bg-slate-50 rounded-2xl">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Registration</p>
-                      <p className="font-bold text-slate-800">{userProfile.registrationNumber || "Not specified"}</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                    <div className="p-6 bg-slate-50 rounded-2xl">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Contact Person</p>
-                      <p className="font-bold text-slate-800">{userProfile.contactPersonName || "Not specified"}</p>
-                      <p className="text-sm text-slate-500 mt-1">{userProfile.contactPersonTitle || "Title not specified"}</p>
-                    </div>
-                    <div className="p-6 bg-slate-50 rounded-2xl">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Contact Phone</p>
-                      <p className="font-bold text-slate-800">{userProfile.contactPersonPhone || "Not specified"}</p>
-                    </div>
-                  </div>
-                  {(userProfile.website || userProfile.aboutOrganization) && (
-                    <div className="space-y-4">
-                      {userProfile.website && (
-                        <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Website</p>
-                          <a href={userProfile.website.startsWith('http') ? userProfile.website : `https://${userProfile.website}`} target="_blank" rel="noreferrer" className="text-blue-600 font-bold hover:underline">
-                            {userProfile.website}
-                          </a>
-                        </div>
-                      )}
-                      {userProfile.aboutOrganization && (
-                        <div className="p-6 bg-blue-50/50 rounded-2xl border border-blue-100 text-slate-600 leading-relaxed">
-                          <h3 className="font-bold text-slate-900 mb-2">About Organization</h3>
-                          <p>{userProfile.aboutOrganization}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <>
-                  <div className="grid grid-cols-2 gap-6 mb-10">
-                    <div className="p-6 bg-slate-50 rounded-2xl">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Service Requested</p>
-                      <p className="font-bold text-slate-800">{userProfile?.serviceType || "General Care"}</p>
-                    </div>
-                    <div className="p-6 bg-slate-50 rounded-2xl">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Care For</p>
-                      <p className="font-bold text-slate-800">{userProfile?.receiverType === 'other' ? "Family Member" : "Self"}</p>
-                    </div>
-                  </div>
-                  {userProfile?.additionalInfo && (
-                    <div className="mb-10">
-                      <h3 className="font-bold text-slate-900 mb-3">Additional Information</h3>
-                      <div className="p-6 bg-blue-50/50 rounded-2xl border border-blue-100 text-slate-600 leading-relaxed">
-                        {userProfile.additionalInfo}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-
-              <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-slate-100">
-                <button
-                  onClick={handleAccept}
-                  disabled={actionLoading}
-                  className="flex-1 bg-black text-white h-16 rounded-2xl font-bold hover:bg-slate-800 disabled:bg-slate-300 transition-all shadow-lg shadow-black/10"
-                >
-                  {actionLoading ? "Processing..." : "Accept & Start Chat"}
-                </button>
-                <button
-                  onClick={handleDecline}
-                  disabled={actionLoading}
-                  className="flex-1 border border-slate-200 h-16 rounded-2xl font-bold hover:bg-slate-50 disabled:opacity-50 transition-all"
-                >
-                  Decline
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

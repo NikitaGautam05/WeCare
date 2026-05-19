@@ -32,7 +32,6 @@ const UserProfileForm = () => {
 
   const serviceTypes = [
     "Elderly Care",
-    "Child Care",
     "Post-Surgery Care",
     "Disability Care",
     "Mental Health Support",
@@ -46,8 +45,31 @@ const UserProfileForm = () => {
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
-    setForm({ ...form, [name]: files ? files[0] : value });
-    setErrors({ ...errors, [name]: "" });
+    let finalValue = files ? files[0] : value;
+    let fieldError = "";
+
+    // Validate capacity field - numbers only
+    if (name === "capacity" && value !== "") {
+      if (!/^\d+$/.test(value)) {
+        fieldError = "Capacity must be a number only";
+        finalValue = value.replace(/[^0-9]/g, "");
+      }
+    }
+
+    // Validate phone number - 10 digits only
+    if ((name === "phoneNumber" || name === "contactPersonPhone") && value !== "") {
+      const digitsOnly = value.replace(/[^0-9]/g, "");
+      if (digitsOnly.length > 10) {
+        fieldError = "Phone number must be 10 digits maximum";
+        finalValue = digitsOnly.slice(0, 10);
+      } else if (value.length > 0 && !/^\d*$/.test(value)) {
+        fieldError = "Phone number must contain only digits";
+        finalValue = digitsOnly;
+      }
+    }
+
+    setForm({ ...form, [name]: finalValue });
+    setErrors({ ...errors, [name]: fieldError });
   };
 
   const validateStep = () => {
@@ -476,7 +498,7 @@ const UserProfileForm = () => {
             </div>
 
             <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>Type of Care Needed</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>Type of Care Need</label>
               <select
                 name="serviceType"
                 value={form.serviceType}
@@ -485,7 +507,7 @@ const UserProfileForm = () => {
                 onFocus={onFocus}
                 onBlur={onBlur("serviceType")}
               >
-                <option value="">Select service type...</option>
+                <option value="">Select service type ...</option>
                 {serviceTypes.map(type => (
                   <option key={type} value={type}>{type}</option>
                 ))}
@@ -572,7 +594,7 @@ const UserProfileForm = () => {
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>Capacity (beds)</label>
                 <input
-                  type="number"
+                  type="text"
                   name="capacity"
                   placeholder="Eg. 10"
                   value={form.capacity}
@@ -581,6 +603,7 @@ const UserProfileForm = () => {
                   onFocus={onFocus}
                   onBlur={onBlur("capacity")}
                 />
+                {errors.capacity && <p style={{ color: "#ef4444", fontSize: 12, marginTop: 5 }}>{errors.capacity}</p>}
               </div>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>City</label>
@@ -598,15 +621,17 @@ const UserProfileForm = () => {
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>Phone Number</label>
                 <input
-                  type="tel"
+                  type="text"
                   name="phoneNumber"
-                  placeholder="Eg. +977-1-1234567"
+                  placeholder="Eg. 9841234567"
                   value={form.phoneNumber}
                   onChange={handleChange}
                   style={fs("phoneNumber")}
                   onFocus={onFocus}
                   onBlur={onBlur("phoneNumber")}
+                  maxLength="10"
                 />
+                {errors.phoneNumber && <p style={{ color: "#ef4444", fontSize: 12, marginTop: 5 }}>{errors.phoneNumber}</p>}
               </div>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>Website</label>
@@ -687,15 +712,17 @@ const UserProfileForm = () => {
             <div style={{ marginBottom: 14 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>Contact Phone</label>
               <input
-                type="tel"
+                type="text"
                 name="contactPersonPhone"
-                placeholder="Eg. +977-9841234567"
+                placeholder="Eg. 9841234567"
                 value={form.contactPersonPhone}
                 onChange={handleChange}
                 style={fs("contactPersonPhone")}
                 onFocus={onFocus}
                 onBlur={onBlur("contactPersonPhone")}
+                maxLength="10"
               />
+              {errors.contactPersonPhone && <p style={{ color: "#ef4444", fontSize: 12, marginTop: 5 }}>{errors.contactPersonPhone}</p>}
             </div>
 
             <div style={{ marginBottom: 14 }}>

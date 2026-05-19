@@ -9,6 +9,7 @@ const Dashboard = () => {
   const [search, setSearch] = useState("");
   const [caregivers, setCaregivers] = useState([]);
   const [dialogue, setDialogue] = useState(null);
+  const [sentIds, setSentIds] = useState([]);
   const [favouriteCaregivers, setFavouriteCaregivers] = useState([]);
   const [showProfileReminder, setShowProfileReminder] = useState(false);
 
@@ -51,13 +52,41 @@ const Dashboard = () => {
         }
       })
       .catch((err) => console.error("Failed to fetch favourites", err));
+
+    if (userId) {
+      axios.get(`http://localhost:8080/api/interest/sent-interests/${userId}`, axiosConfig)
+        .then((res) => {
+          const ids = Array.isArray(res.data)
+            ? res.data.map((interest) => interest.caregiver?.id).filter(Boolean)
+            : [];
+          setSentIds(ids);
+        })
+        .catch((err) => {
+          console.error("Failed to fetch sent interests", err);
+          setSentIds([]);
+        });
+    }
   }, [userId, token]);
 
   const handleInterest = async (caregiver) => {
     try {
-      await axios.post(`http://localhost:8080/api/caregivers/${caregiver.id}/interest`, { userId }, axiosConfig);
+      await axios.post(
+        "http://localhost:8080/api/interest/send",
+        null,
+        {
+          params: {
+            caregiverId: caregiver.id,
+            caregiverName: caregiver.fullName || caregiver.userName || caregiver?.name || "Caregiver",
+            userId,
+            userName: localStorage.getItem("userName") || "Care Receiver",
+          },
+          ...axiosConfig,
+        }
+      );
+      setSentIds((prev) => Array.from(new Set([...prev, caregiver.id])));
       setDialogue({ type: "interest", caregiver });
     } catch (err) {
+      console.error("Interest send failed:", err);
       alert("Could not send interest.");
     }
   };
@@ -72,10 +101,10 @@ const Dashboard = () => {
     <Layout>
       {/* HERO SECTION */}
       <div className="relative w-full bg-slate-900 overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
-        <div className="max-w-7xl mx-auto px-8 py-14 flex flex-col md:flex-row md:items-center justify-between gap-10 relative z-10">
-          <div className="space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-bold uppercase tracking-widest">
+        <div className="absolute top-0 right-80 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+        <div className="max-w-8xl mx-auto px-10 lg:px-14 py-14 flex flex-col lg:flex-row items-start justify-between gap-12 relative z-10">
+          <div className="space-y-3 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-7 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-bold uppercase tracking-widest">
               <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
               Live Portal
             </div>
@@ -88,7 +117,7 @@ const Dashboard = () => {
             </p>
           </div>
 
-          <div className="w-full max-w-md">
+          <div className="w-full lg:max-w-md mt-8 lg:mt-0">
             <div className="bg-white/5 p-1.5 rounded-2xl backdrop-blur-xl border border-white/10 shadow-2xl">
               <div className="relative">
                 <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -105,7 +134,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto w-full px-8 py-10">
+      <div className="max-w-8xl mx-auto w-full px-10 lg:px-14 py-12 overflow-x-hidden">
         <section className="mb-16">
           <div className="flex items-end justify-between mb-8 border-b border-slate-100 pb-6">
             <div>
@@ -114,16 +143,16 @@ const Dashboard = () => {
             </div>
             <button
               onClick={() => navigate("/my-caregivers")}
-              className="group flex items-center gap-2 text-[11px] font-black uppercase tracking-widest bg-slate-400 text-white px-5 py-3 rounded-xl hover:bg-blue-600 transition-all"
+              className="group flex items-center gap-2 text-[11px] font-black uppercase tracking-widest bg-slate-900 text-white px-5 py-3 rounded-xl hover:bg-slate-700 transition-all"
             >
               View All <FaArrowRight size={10} className="group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
             {filteredCaregivers.map((c) => (
-              <div key={c.id} className="group bg-white rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col">
-                <div className="relative h-44 overflow-hidden">
+              <div key={c.id} className="group bg-white rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col min-w-0">
+                <div className="relative h-72 overflow-hidden">
                   <img
                     src={`http://localhost:8080/uploads/${c.profilePhoto?.replace(/\s+/g, "_")}`}
                     alt={c.fullName}
@@ -157,11 +186,15 @@ const Dashboard = () => {
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 mt-5">
-                    <button onClick={() => navigate(`/profile/${c.id}`)} className="py-2.5 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all">
+                    <button onClick={() => navigate(`/profile/${c.id}`)} className="py-2.5 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all">
                       View
                     </button>
-                    <button onClick={() => handleInterest(c)} className="py-2.5 rounded-xl border border-slate-200 text-slate-200 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all">
-                      Interest
+                    <button
+                      onClick={() => handleInterest(c)}
+                      disabled={sentIds.includes(c.id)}
+                      className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${sentIds.includes(c.id) ? 'bg-slate-100 text-slate-400 border border-slate-100 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-700'}`}
+                    >
+                      {sentIds.includes(c.id) ? 'Sent ✓' : 'Interest'}
                     </button>
                   </div>
                 </div>
@@ -175,7 +208,7 @@ const Dashboard = () => {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                <FaHeart className="text-pink-500" size={18} /> Shortlisted
+                <FaHeart className="text-pink-500" size={18} /> Favourites
               </h2>
             </div>
             <button
@@ -187,14 +220,14 @@ const Dashboard = () => {
           </div>
 
           {favouriteCaregivers.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
               {favouriteCaregivers.map((c) => (
                 <div
                   key={c.id}
                   onClick={() => navigate(`/profile/${c.id}`)}
                   className="group relative bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 overflow-hidden cursor-pointer"
                 >
-                  <div className="relative h-32 w-full overflow-hidden">
+                  <div className="relative h-50 w-full overflow-hidden">
                     <img
                       src={`http://localhost:8080/uploads/${c.profilePhoto?.replace(/\s+/g, "_")}`}
                       alt={c.fullName}
@@ -261,14 +294,6 @@ const Dashboard = () => {
               <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/20 rounded-full blur-2xl" />
               <div className="absolute -bottom-6 -left-6 w-32 h-32 bg-blue-600/10 rounded-full blur-xl" />
 
-              {/* Close */}
-              <button
-                onClick={() => setShowProfileReminder(false)}
-                className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-500 hover:text-white hover:bg-slate-700 transition-all"
-              >
-                <FaTimes size={12} />
-              </button>
-
               {/* Icon */}
               <div className="relative z-10 flex flex-col items-center text-center gap-4">
                 <div className="w-16 h-16 rounded-2xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
@@ -322,7 +347,7 @@ const Dashboard = () => {
                     setShowProfileReminder(false);
                     navigate("/my-profile");
                   }}
-                  className="py-3.5 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg shadow-slate-900/20 flex items-center justify-center gap-2"
+                  className="py-3.5 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all shadow-lg shadow-slate-900/20 flex items-center justify-center gap-2"
                 >
                   <FaArrowUp size={9} /> Update Now
                 </button>
@@ -396,7 +421,7 @@ const Dashboard = () => {
 
               <button
                 onClick={() => setDialogue(null)}
-                className="w-full py-3.5 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg shadow-slate-900/20"
+                className="w-full py-3.5 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all shadow-lg shadow-slate-900/20"
               >
                 Back to Dashboard
               </button>

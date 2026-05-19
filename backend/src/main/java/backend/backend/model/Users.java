@@ -58,6 +58,26 @@ public class Users {
     private String serviceType;
     private String additionalInfo;
     private String receiverType; // "self" or "other"
+    private String recipientRelation;
+    private String recipientAge;
+    private String recipientPhone;
+    
+    // Organization fields
+    private String accountType; // "INDIVIDUAL" or "ORGANIZATION"
+    private String organizationName;
+    private String foundationDate;
+    private String capacity;
+    private String city;
+    private String phoneNumber;
+    private String website;
+    private String aboutOrganization;
+    private String licenseNumber;
+    private String registrationNumber;
+    private String logo;
+    private String bannerImage;
+    private String contactPersonName;
+    private String contactPersonTitle;
+    private String contactPersonPhone;
 
     public String getAddress() {
         return address;
@@ -89,6 +109,30 @@ public class Users {
 
     public void setReceiverType(String receiverType) {
         this.receiverType = receiverType;
+    }
+
+    public String getRecipientRelation() {
+        return recipientRelation;
+    }
+
+    public void setRecipientRelation(String recipientRelation) {
+        this.recipientRelation = recipientRelation;
+    }
+
+    public String getRecipientAge() {
+        return recipientAge;
+    }
+
+    public void setRecipientAge(String recipientAge) {
+        this.recipientAge = recipientAge;
+    }
+
+    public String getRecipientPhone() {
+        return recipientPhone;
+    }
+
+    public void setRecipientPhone(String recipientPhone) {
+        this.recipientPhone = recipientPhone;
     }
 
     public String getRole() {
@@ -133,5 +177,51 @@ public class Users {
         this.password = password;
     }
 
+    // Organization fields getters and setters
+    public String getAccountType() { return accountType; }
+    public void setAccountType(String accountType) { this.accountType = accountType; }
+
+    public String getOrganizationName() { return organizationName; }
+    public void setOrganizationName(String organizationName) { this.organizationName = organizationName; }
+
+    public String getFoundationDate() { return foundationDate; }
+    public void setFoundationDate(String foundationDate) { this.foundationDate = foundationDate; }
+
+    public String getCapacity() { return capacity; }
+    public void setCapacity(String capacity) { this.capacity = capacity; }
+
+    public String getCity() { return city; }
+    public void setCity(String city) { this.city = city; }
+
+    public String getPhoneNumber() { return phoneNumber; }
+    public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+
+    public String getWebsite() { return website; }
+    public void setWebsite(String website) { this.website = website; }
+
+    public String getAboutOrganization() { return aboutOrganization; }
+    public void setAboutOrganization(String aboutOrganization) { this.aboutOrganization = aboutOrganization; }
+
+    public String getLicenseNumber() { return licenseNumber; }
+    public void setLicenseNumber(String licenseNumber) { this.licenseNumber = licenseNumber; }
+
+    public String getRegistrationNumber() { return registrationNumber; }
+    public void setRegistrationNumber(String registrationNumber) { this.registrationNumber = registrationNumber; }
+
+    public String getLogo() { return logo; }
+    public void setLogo(String logo) { this.logo = logo; }
+
+    public String getBannerImage() { return bannerImage; }
+    public void setBannerImage(String bannerImage) { this.bannerImage = bannerImage; }
+
+    public String getContactPersonName() { return contactPersonName; }
+    public void setContactPersonName(String contactPersonName) { this.contactPersonName = contactPersonName; }
+
+    public String getContactPersonTitle() { return contactPersonTitle; }
+    public void setContactPersonTitle(String contactPersonTitle) { this.contactPersonTitle = contactPersonTitle; }
+
+    public String getContactPersonPhone() { return contactPersonPhone; }
+    public void setContactPersonPhone(String contactPersonPhone) { this.contactPersonPhone = contactPersonPhone; }
 
 }
+

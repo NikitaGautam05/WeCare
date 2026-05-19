@@ -22,6 +22,8 @@ const [showNotifications, setShowNotifications] = useState(false);
 
 const [unreadCount, setUnreadCount] = useState(0);
 
+const [chatUnreadCount, setChatUnreadCount] = useState(0);
+
 const safeString = (value) => {
   if (typeof value === 'string') return value;
   if (value === undefined || value === null) return '';
@@ -99,29 +101,38 @@ useEffect(() => {
 
 if (userId && token) {
 
-const fetchNotifications = async () => {
+const fetchDashboardCounts = async () => {
 
 try {
 
-const res = await axios.get(`http://localhost:8080/api/notifications/${userId}`, {
+const chatRecipientId = role === 'CAREGIVER' ? localStorage.getItem('caregiverId') : userId;
+const requests = [
+  axios.get(`http://localhost:8080/api/notifications/${userId}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+];
 
-headers: { Authorization: `Bearer ${token}` }
+if (chatRecipientId) {
+  requests.push(
+    axios.get(`http://localhost:8080/api/chat/unread-count/${chatRecipientId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+  );
+}
 
-});
+const [notificationsRes, chatCountRes] = await Promise.all(requests);
 
-
-const userNotifications = res.data || [];
+const userNotifications = notificationsRes.data || [];
 
 setNotifications(userNotifications);
-
-
-// Count unread notifications (those not yet marked as read)
 
 const unread = userNotifications.filter(notif => !notif.read).length;
 
 setUnreadCount(unread);
 
-setUnreadCount(unread);
+const unreadChat = chatCountRes?.data?.unreadCount ?? 0;
+
+setChatUnreadCount(Number(unreadChat));
 
 } catch (err) {
 
@@ -133,12 +144,12 @@ console.error("Failed to fetch notifications:", err);
 
 
 
-fetchNotifications();
+fetchDashboardCounts();
 
 
-// Refresh notifications every 5 seconds
+// Refresh notifications and chat counts every 5 seconds
 
-const interval = setInterval(fetchNotifications, 5000);
+const interval = setInterval(fetchDashboardCounts, 5000);
 
 return () => clearInterval(interval);
 
@@ -195,7 +206,6 @@ return { message: safeString(notif), type: 'general' };
       console.error('Failed to mark notification as read:', err);
     }
 };
-
 
 
 // Get notification icon and color based on type
@@ -619,6 +629,12 @@ className="fixed bottom-8 right-8 w-16 h-16 bg-sky-600 text-white rounded-2xl sh
 >
 
 <FaComments size={24} />
+
+{chatUnreadCount > 0 && (
+  <span className="absolute -top-1 -right-1 min-w-[18px] h-5 px-1.5 bg-red-500 text-[11px] font-bold text-white rounded-full flex items-center justify-center">
+    {chatUnreadCount > 9 ? '9+' : chatUnreadCount}
+  </span>
+)}
 
 </button>
 

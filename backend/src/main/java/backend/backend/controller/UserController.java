@@ -90,33 +90,45 @@ public class UserController {
     @PostMapping("/register")
     public ResponseEntity<Map<String, String>> register(@RequestBody Users user) {
         Map<String, String> resp = new HashMap<>();
+
+        // 1. Validate Password format
         if(user.getPassword() == null || user.getPassword().length() < 8
                 || !user.getPassword().matches(".*[!@#$%^&*].*")) {
             resp.put("error", "Password must be at least 8 characters and include special characters");
             return ResponseEntity.badRequest().body(resp);
         }
+
+        // 2. Validate Email presence
         if(user.getEmail() == null || user.getEmail().isEmpty()){
             resp.put("error", "Email is required");
             return ResponseEntity.badRequest().body(resp);
         }
 
-        boolean exists = userService.getAllUsers()
-                .stream()
-                .anyMatch(u -> u.getUserName().equals(user.getUserName()));
-        if (exists) {
+        // 3. SAFE Username check (Prevents NPE)
+        // Using the repository directly is faster and handles nulls in the DB safely
+        if (userRepository.existsByUserName(user.getUserName())) {
             resp.put("error", "Username already exists");
             return ResponseEntity.badRequest().body(resp);
         }
-        boolean emailExists=userService.getAllUsers().stream().anyMatch(u->u.getEmail().equalsIgnoreCase(user.getEmail()));
-        if (emailExists){
-            resp.put("error","email already regsitered");
+
+        // 4. SAFE Email check (Fixes your NullPointerException)
+        // This replaces the .stream().anyMatch() logic that was crashing
+        if (userRepository.existsByEmail(user.getEmail())) {
+            resp.put("error", "Email already registered");
             return ResponseEntity.badRequest().body(resp);
         }
 
-        user.setRole(user.getRole() == null ? "USER" : user.getRole().toUpperCase().replaceAll("\\s",""));
+        // 5. Set default role and clean whitespace
+        String role = (user.getRole() == null) ? "USER" : user.getRole().toUpperCase().replaceAll("\\s","");
+        user.setRole(role);
+
+        // 6. Secure Password
         user.setPassword(passwordEncoder.encode(user.getPassword()));
+
+        // 7. Save to Database
         userService.saveUser(user);
 
+        // 8. Send Notification (Wrapped in try-catch so registration doesn't fail if email server is down)
         try {
             emailService.signupNotification(user.getEmail(), user.getUserName());
         } catch (Exception e) {
@@ -174,7 +186,7 @@ public class UserController {
     public Map<String, String> login(@RequestBody Users loginRequest) {
         Users user = userService.getAllUsers()
                 .stream()
-                .filter(u -> u.getUserName().equals(loginRequest.getUserName()))
+                .filter(u -> u.getUserName() != null && u.getUserName().equals(loginRequest.getUserName()))
                 .findFirst()
                 .orElse(null);
 
@@ -326,10 +338,27 @@ public class UserController {
     @PostMapping("/profile")
     public ResponseEntity<Users> createUserProfile(
             @RequestParam("userId") String userId,
-            @RequestParam("address") String address,
-            @RequestParam("serviceType") String serviceType,
-            @RequestParam("additionalInfo") String additionalInfo,
-            @RequestParam("receiverType") String receiverType,
+            @RequestParam(value = "address", required = false) String address,
+            @RequestParam(value = "serviceType", required = false) String serviceType,
+            @RequestParam(value = "additionalInfo", required = false) String additionalInfo,
+            @RequestParam(value = "receiverType", required = false) String receiverType,
+            @RequestParam(value = "accountType", required = false) String accountType,
+            @RequestParam(value = "recipientRelation", required = false) String recipientRelation,
+            @RequestParam(value = "recipientAge", required = false) String recipientAge,
+            @RequestParam(value = "recipientPhone", required = false) String recipientPhone,
+            // Organization fields
+            @RequestParam(value = "organizationName", required = false) String organizationName,
+            @RequestParam(value = "foundationDate", required = false) String foundationDate,
+            @RequestParam(value = "capacity", required = false) String capacity,
+            @RequestParam(value = "city", required = false) String city,
+            @RequestParam(value = "phoneNumber", required = false) String phoneNumber,
+            @RequestParam(value = "website", required = false) String website,
+            @RequestParam(value = "aboutOrganization", required = false) String aboutOrganization,
+            @RequestParam(value = "licenseNumber", required = false) String licenseNumber,
+            @RequestParam(value = "registrationNumber", required = false) String registrationNumber,
+            @RequestParam(value = "contactPersonName", required = false) String contactPersonName,
+            @RequestParam(value = "contactPersonTitle", required = false) String contactPersonTitle,
+            @RequestParam(value = "contactPersonPhone", required = false) String contactPersonPhone,
             @RequestParam(value = "photo", required = false) MultipartFile photo) {
 
         try {
@@ -338,10 +367,34 @@ public class UserController {
                 return ResponseEntity.badRequest().build();
             }
 
-            user.setAddress(address);
-            user.setServiceType(serviceType);
-            user.setAdditionalInfo(additionalInfo);
-            user.setReceiverType(receiverType);
+            System.out.println("📤 POST /profile Request - userId: " + userId);
+            System.out.println("📋 Received fields: address=" + address + ", serviceType=" + serviceType + ", additionalInfo=" + additionalInfo);
+
+            // Individual profile fields
+            if (address != null && !address.isEmpty()) user.setAddress(address);
+            if (serviceType != null && !serviceType.isEmpty()) user.setServiceType(serviceType);
+            if (additionalInfo != null && !additionalInfo.isEmpty()) user.setAdditionalInfo(additionalInfo);
+            if (receiverType != null && !receiverType.isEmpty()) user.setReceiverType(receiverType);
+            if (accountType != null && !accountType.isEmpty()) user.setAccountType(accountType);
+            if (recipientRelation != null && !recipientRelation.isEmpty()) user.setRecipientRelation(recipientRelation);
+            if (recipientAge != null && !recipientAge.isEmpty()) user.setRecipientAge(recipientAge);
+            if (recipientPhone != null && !recipientPhone.isEmpty()) user.setRecipientPhone(recipientPhone);
+            
+            // Organization fields
+            if (organizationName != null && !organizationName.isEmpty()) user.setOrganizationName(organizationName);
+            if (foundationDate != null && !foundationDate.isEmpty()) user.setFoundationDate(foundationDate);
+            if (capacity != null && !capacity.isEmpty()) user.setCapacity(capacity);
+            if (city != null && !city.isEmpty()) user.setCity(city);
+            if (phoneNumber != null && !phoneNumber.isEmpty()) user.setPhoneNumber(phoneNumber);
+            if (website != null && !website.isEmpty()) user.setWebsite(website);
+            if (aboutOrganization != null && !aboutOrganization.isEmpty()) user.setAboutOrganization(aboutOrganization);
+            if (licenseNumber != null && !licenseNumber.isEmpty()) user.setLicenseNumber(licenseNumber);
+            if (registrationNumber != null && !registrationNumber.isEmpty()) user.setRegistrationNumber(registrationNumber);
+            if (contactPersonName != null && !contactPersonName.isEmpty()) user.setContactPersonName(contactPersonName);
+            if (contactPersonTitle != null && !contactPersonTitle.isEmpty()) user.setContactPersonTitle(contactPersonTitle);
+            if (contactPersonPhone != null && !contactPersonPhone.isEmpty()) user.setContactPersonPhone(contactPersonPhone);
+
+            System.out.println("✅ POST /profile - After setting fields: serviceType=" + user.getServiceType() + ", additionalInfo=" + user.getAdditionalInfo());
 
             // Handle photo upload if provided
             if (photo != null && !photo.isEmpty()) {
@@ -374,7 +427,23 @@ public class UserController {
             @RequestParam("serviceType") String serviceType,
             @RequestParam("additionalInfo") String additionalInfo,
             @RequestParam("receiverType") String receiverType,
-            @RequestParam(value = "photo", required = false) MultipartFile photo) {
+            @RequestParam(value = "recipientRelation", required = false) String recipientRelation,
+            @RequestParam(value = "recipientAge", required = false) String recipientAge,
+            @RequestParam(value = "recipientPhone", required = false) String recipientPhone,
+            @RequestParam(required = false) String accountType,
+            @RequestParam(value = "photo", required = false) MultipartFile photo,
+            @RequestParam(required = false) String organizationName,
+            @RequestParam(required = false) String foundationDate,
+            @RequestParam(required = false) String capacity,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String phoneNumber,
+            @RequestParam(required = false) String website,
+            @RequestParam(required = false) String aboutOrganization,
+            @RequestParam(required = false) String licenseNumber,
+            @RequestParam(required = false) String registrationNumber,
+            @RequestParam(required = false) String contactPersonName,
+            @RequestParam(required = false) String contactPersonTitle,
+            @RequestParam(required = false) String contactPersonPhone) {
 
         try {
             Users user = userRepository.findById(userId).orElse(null);
@@ -382,10 +451,34 @@ public class UserController {
                 return ResponseEntity.badRequest().build();
             }
 
-            user.setAddress(address);
-            user.setServiceType(serviceType);
-            user.setAdditionalInfo(additionalInfo);
-            user.setReceiverType(receiverType);
+            System.out.println("📝 Update Request - userId: " + userId);
+            System.out.println("📋 Fields: address=" + address + ", serviceType=" + serviceType + ", additionalInfo=" + additionalInfo);
+
+            if (address != null && !address.isEmpty()) user.setAddress(address);
+            if (serviceType != null && !serviceType.isEmpty()) user.setServiceType(serviceType);
+            if (additionalInfo != null && !additionalInfo.isEmpty()) user.setAdditionalInfo(additionalInfo);
+            if (receiverType != null && !receiverType.isEmpty()) user.setReceiverType(receiverType);
+            if (recipientRelation != null && !recipientRelation.isEmpty()) user.setRecipientRelation(recipientRelation);
+            if (recipientAge != null && !recipientAge.isEmpty()) user.setRecipientAge(recipientAge);
+            if (recipientPhone != null && !recipientPhone.isEmpty()) user.setRecipientPhone(recipientPhone);
+            
+            if (accountType != null && !accountType.isEmpty()) {
+                user.setAccountType(accountType);
+            }
+
+            // Set organization fields if provided
+            if (organizationName != null && !organizationName.isEmpty()) user.setOrganizationName(organizationName);
+            if (foundationDate != null && !foundationDate.isEmpty()) user.setFoundationDate(foundationDate);
+            if (capacity != null && !capacity.isEmpty()) user.setCapacity(capacity);
+            if (city != null && !city.isEmpty()) user.setCity(city);
+            if (phoneNumber != null && !phoneNumber.isEmpty()) user.setPhoneNumber(phoneNumber);
+            if (website != null && !website.isEmpty()) user.setWebsite(website);
+            if (aboutOrganization != null && !aboutOrganization.isEmpty()) user.setAboutOrganization(aboutOrganization);
+            if (licenseNumber != null && !licenseNumber.isEmpty()) user.setLicenseNumber(licenseNumber);
+            if (registrationNumber != null && !registrationNumber.isEmpty()) user.setRegistrationNumber(registrationNumber);
+            if (contactPersonName != null && !contactPersonName.isEmpty()) user.setContactPersonName(contactPersonName);
+            if (contactPersonTitle != null && !contactPersonTitle.isEmpty()) user.setContactPersonTitle(contactPersonTitle);
+            if (contactPersonPhone != null && !contactPersonPhone.isEmpty()) user.setContactPersonPhone(contactPersonPhone);
 
             // Handle photo upload if provided
             if (photo != null && !photo.isEmpty()) {

@@ -45,9 +45,10 @@ public class SecurityConfig {
                         // 1. Always allow OPTIONS for CORS pre-flight checks
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // 2. Allow all caregivers endpoints (GET, POST, PUT, DELETE)
+                        // 2. Allow all caregivers, users, and interest endpoints
                         .requestMatchers("/api/caregivers/**").permitAll()
                         .requestMatchers("/api/users/**").permitAll()
+                        .requestMatchers("/api/interest/**").permitAll()
 
                         // 3. Admin endpoints (allowing all for now to fix your AdminDashboard 403s)
                         .requestMatchers("/api/admin/**").permitAll()
@@ -60,6 +61,7 @@ public class SecurityConfig {
                                 "/api/google-signup",
                                 "/api/forgetPassword",
                                 "/api/verify-otp",
+                                "/api/caregivers/add",
                                 "/api/reset-password",
                                 "/uploads/**"
                         ).permitAll()

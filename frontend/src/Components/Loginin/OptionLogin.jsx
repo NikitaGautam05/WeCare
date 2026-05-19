@@ -19,7 +19,8 @@ const OptionLogin = () => {
   };
 
   return (
-    <div style={{ width: "100vw", height: "100vh", background: "#0c0c0c", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Outfit', sans-serif", overflow: "hidden", position: "relative" }}>
+    <div style={{ width: "100vw", height: "100vh", backgroundImage: "url(https://images.unsplash.com/photo-1576765607924-3f7b8410a787?auto=format&fit=crop&w=1800&q=80)", backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Outfit', sans-serif", overflow: "hidden", position: "relative" }}>
+      <div style={{ position: "absolute", inset: 0, background: "rgba(15, 23, 42, 0.48)", backdropFilter: "blur(10px)" }} />
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -40,13 +41,16 @@ const OptionLogin = () => {
           cursor: pointer;
           transition: transform 0.3s cubic-bezier(0.16,1,0.3,1), box-shadow 0.3s;
           overflow: hidden;
-          border: 1px solid rgba(255,255,255,0.06);
-          background: #161616;
+          border: 1px solid rgba(255,255,255,0.18);
+          background: rgba(255,255,255,0.12);
+          backdrop-filter: blur(18px);
           user-select: none;
+          color: #fff;
         }
         .role-card:hover {
           transform: translateY(-6px);
-          box-shadow: 0 24px 48px rgba(0,0,0,0.5);
+          box-shadow: 0 24px 48px rgba(0,0,0,0.28);
+          border-color: rgba(255,255,255,0.28);
         }
 
         .card-btn {
@@ -61,19 +65,26 @@ const OptionLogin = () => {
           cursor: pointer;
           transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
           margin-top: 24px;
+          background: rgba(255,255,255,0.18);
+          color: #fff;
+          border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .card-btn:hover {
+          background: rgba(255,255,255,0.26);
         }
 
         .back-btn {
           background: none; border: none; cursor: pointer;
-          color: rgba(255,255,255,0.35); font-family:'Outfit',sans-serif;
+          color: rgba(255,255,255,0.65); font-family:'Outfit',sans-serif;
           font-size:13px; display:flex; align-items:center; gap:6px;
           transition:color 0.2s; padding:0;
         }
-        .back-btn:hover { color:rgba(255,255,255,0.7); }
+        .back-btn:hover { color:rgba(255,255,255,0.95); }
 
         .geo-ring {
           position: absolute; border-radius: 50%;
-          border: 1px solid rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.06);
           pointer-events: none;
         }
       `}</style>

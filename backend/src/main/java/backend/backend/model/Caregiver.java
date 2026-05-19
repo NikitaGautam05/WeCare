@@ -23,6 +23,8 @@ public class Caregiver {
     private String chargeMax;
     private String profilePhoto;
     private String citizenshipPhoto;
+    private String certification;
+    private String certificatePhoto;
 
     // Status and Reports
     private CaregiverStatus status = CaregiverStatus.PENDING;
@@ -90,6 +92,12 @@ public class Caregiver {
 
     public String getCitizenshipPhoto() { return citizenshipPhoto; }
     public void setCitizenshipPhoto(String citizenshipPhoto) { this.citizenshipPhoto = citizenshipPhoto; }
+
+    public String getCertification() { return certification; }
+    public void setCertification(String certification) { this.certification = certification; }
+
+    public String getCertificatePhoto() { return certificatePhoto; }
+    public void setCertificatePhoto(String certificatePhoto) { this.certificatePhoto = certificatePhoto; }
 
     public List<String> getComments() { return comments; }
     public void setComments(List<String> comments) { this.comments = comments; }

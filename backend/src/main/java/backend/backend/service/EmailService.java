@@ -51,4 +51,49 @@ public class EmailService {
                 "Best regards,\nElderEase Team");
         mailSender.send(message);
     }
+
+    public void sendBookingRequestEmail(String to, String userName, String serviceType, String date){
+        if(to==null || to.isEmpty()){
+            throw new IllegalArgumentException("Email is empty");
+        }
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(to);
+        message.setSubject("New Booking Request - " + serviceType);
+        message.setText("Hello,\n\n" +
+                userName + " has requested a booking for " + serviceType + ".\n" +
+                "Date: " + date + "\n\n" +
+                "Please log in to your ElderEase dashboard to accept or decline this booking.\n\n" +
+                "Best regards,\nElderEase Team");
+        mailSender.send(message);
+    }
+
+    public void sendBookingConfirmedEmail(String to, String caregiverName, String serviceType, String date){
+        if(to==null || to.isEmpty()){
+            throw new IllegalArgumentException("Email is empty");
+        }
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(to);
+        message.setSubject("Booking Confirmed - " + serviceType);
+        message.setText("Hello,\n\n" +
+                caregiverName + " has confirmed your booking request!\n" +
+                "Service: " + serviceType + "\n" +
+                "Date: " + date + "\n\n" +
+                "You can now chat with your caregiver and arrange the final details.\n\n" +
+                "Best regards,\nElderEase Team");
+        mailSender.send(message);
+    }
+
+    public void sendBookingDeclinedEmail(String to, String caregiverName, String serviceType){
+        if(to==null || to.isEmpty()){
+            throw new IllegalArgumentException("Email is empty");
+        }
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(to);
+        message.setSubject("Booking Declined - " + serviceType);
+        message.setText("Hello,\n\n" +
+                "Unfortunately, " + caregiverName + " has declined your booking request for " + serviceType + ".\n\n" +
+                "You can try requesting another caregiver or contact us for assistance.\n\n" +
+                "Best regards,\nElderEase Team");
+        mailSender.send(message);
+    }
 }

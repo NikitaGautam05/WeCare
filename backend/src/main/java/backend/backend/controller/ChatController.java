@@ -8,6 +8,7 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -75,6 +76,36 @@ public class ChatController {
         }
     }
 
+    // ── Get unread message count for a recipient ──
+    @GetMapping("/unread-count/{userId}")
+    public ResponseEntity<Map<String, Object>> getUnreadMessageCount(@PathVariable String userId) {
+        try {
+            long count = messageRepository.countByRecipientIdAndIsReadFalse(userId);
+            return ResponseEntity.ok(Map.of("unreadCount", count));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // ── Mark conversation messages as read for a recipient ──
+    @PutMapping("/read/conversation/{conversationId}/{recipientId}")
+    public ResponseEntity<Map<String, Object>> markConversationAsRead(
+            @PathVariable String conversationId,
+            @PathVariable String recipientId) {
+        try {
+            List<Message> unreadMessages = messageRepository.findByConversationIdAndRecipientIdAndIsReadFalse(conversationId, recipientId);
+            for (Message message : unreadMessages) {
+                message.setRead(true);
+            }
+            messageRepository.saveAll(unreadMessages);
+            return ResponseEntity.ok(Map.of("marked", unreadMessages.size()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     // ── Send a message ──
     @PostMapping("/send")
     public ResponseEntity<Message> sendMessage(
@@ -105,6 +136,40 @@ public class ChatController {
             return ResponseEntity.ok(message);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
+        }
+    }
+
+    // ── Delete a message by its ID ──
+    @DeleteMapping("/message/{messageId}")
+    public ResponseEntity<Map<String, String>> deleteMessage(@PathVariable String messageId) {
+        try {
+            if (!messageRepository.existsById(messageId)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Message not found"));
+            }
+            messageRepository.deleteById(messageId);
+            return ResponseEntity.ok(Map.of("message", "Message deleted"));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // ── Delete a conversation and all associated messages ──
+    @DeleteMapping("/conversation/{conversationId}")
+    public ResponseEntity<Map<String, String>> deleteConversation(@PathVariable String conversationId) {
+        try {
+            AcceptedRequest acceptedRequest = acceptedRequestRepository.findByConversationId(conversationId);
+            if (acceptedRequest != null) {
+                acceptedRequestRepository.delete(acceptedRequest);
+            }
+
+            List<Message> messages = messageRepository.findByConversationIdOrderByTimestampAsc(conversationId);
+            if (!messages.isEmpty()) {
+                messageRepository.deleteAll(messages);
+            }
+
+            return ResponseEntity.ok(Map.of("message", "Conversation deleted"));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -146,6 +211,10 @@ public class ChatController {
                     connection.put("id", request.getId());
                     connection.put("conversationId", request.getConversationId());
                     connection.put("acceptedAt", request.getAcceptedAt());
+                    Message lastMessage = messageRepository.findFirstByConversationIdOrderByTimestampDesc(request.getConversationId());
+                    if (lastMessage != null) {
+                        connection.put("lastMessageTime", lastMessage.getTimestamp());
+                    }
                     
                     // Add caregiver details
                     Map<String, Object> caregiverDetails = new HashMap<>();
@@ -155,6 +224,7 @@ public class ChatController {
                     caregiverDetails.put("photo", caregiver.getProfilePhoto());
                     caregiverDetails.put("experience", caregiver.getExperience());
                     caregiverDetails.put("phone", caregiver.getPhoneNumber());
+                    caregiverDetails.put("address", caregiver.getAddress());
                     caregiverDetails.put("speciality", caregiver.getSpeciality());
                     caregiverDetails.put("chargeMin", caregiver.getChargeMin());
                     caregiverDetails.put("chargeMax", caregiver.getChargeMax());
@@ -197,6 +267,10 @@ public class ChatController {
                     connection.put("id", request.getId());
                     connection.put("conversationId", request.getConversationId());
                     connection.put("acceptedAt", request.getAcceptedAt());
+                    Message lastMessage = messageRepository.findFirstByConversationIdOrderByTimestampDesc(request.getConversationId());
+                    if (lastMessage != null) {
+                        connection.put("lastMessageTime", lastMessage.getTimestamp());
+                    }
                     
                     // Add user (care receiver) details
                     Map<String, Object> userDetails = new HashMap<>();

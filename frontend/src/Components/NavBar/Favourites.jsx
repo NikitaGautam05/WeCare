@@ -19,6 +19,7 @@ export default function Favourites() {
   const [search,       setSearch]       = useState("");
   const [removing,     setRemoving]     = useState(null);
   const [toast,        setToast]        = useState(null);
+  const [sentIds, setSentIds] = useState([]);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -33,14 +34,19 @@ export default function Favourites() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [favRes, cgRes] = await Promise.all([
+      const [favRes, cgRes, interestRes] = await Promise.all([
         axios.get(`${BASE}/users/favorites/${userId}`, axiosConfig),
         axios.get(`${BASE}/caregivers/verified`, axiosConfig),
+        axios.get(`http://localhost:8080/api/interest/sent-interests/${userId}`, axiosConfig)
       ]);
       const ids = Array.isArray(favRes.data) ? favRes.data : [];
       const all = Array.isArray(cgRes.data)  ? cgRes.data  : [];
       setFavouriteIds(ids);
       setCaregivers(all.filter((c) => ids.includes(c.id)));
+      const sentIdsFromBackend = Array.isArray(interestRes.data)
+        ? interestRes.data.map((interest) => interest.caregiver?.id).filter(Boolean)
+        : [];
+      setSentIds(sentIdsFromBackend);
     } catch (err) {
       console.error(err);
       showToast("Failed to load favourites", "error");
@@ -66,8 +72,24 @@ export default function Favourites() {
     }
   };
 
-  const handleInterested = (caregiver) => {
-    showToast(`${caregiver.fullName} has been notified!`);
+  const handleInterested = async (caregiver) => {
+    if (!userId) { navigate('/login'); return; }
+    try {
+      await axios.post(`${BASE}/interest/send`, null, {
+        ...axiosConfig,
+        params: {
+          caregiverId: caregiver.id,
+          caregiverName: caregiver.fullName || caregiver.userName || 'Caregiver',
+          userId,
+          userName: localStorage.getItem('userName') || 'User'
+        }
+      });
+      setSentIds((s) => Array.from(new Set([...s, caregiver.id])));
+      showToast(`${caregiver.fullName} has been notified!`);
+    } catch (err) {
+      console.error('Failed to send interest', err);
+      showToast('Could not send interest.', 'error');
+    }
   };
 
   const filtered = caregivers.filter(
@@ -187,7 +209,7 @@ export default function Favourites() {
                     <button
                       onClick={() => removeFavourite(c.id)}
                       disabled={removing === c.id}
-                      className="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-md rounded-xl flex items-center justify-center text-pink-500 shadow-sm border border-white/50 hover:bg-pink-500 hover:text-white transition-all z-20 disabled:opacity-50"
+                      className="absolute top-3 right-3 w-9 h-9 bg-slate-200 backdrop-blur-md rounded-xl flex items-center justify-center text-slate-900 shadow-sm border border-white/50 hover:bg-pink-500 hover:text-black transition-all z-20 disabled:opacity-50"
                     >
                       {removing === c.id ? (
                         <div className="w-3 h-3 border border-pink-300 border-t-pink-600 rounded-full animate-spin" />
@@ -232,9 +254,10 @@ export default function Favourites() {
                       </button>
                       <button
                         onClick={() => handleInterested(c)}
-                        className="py-2.5 rounded-xl border border-slate-200 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 hover:border-slate-300 transition-all"
+                        disabled={sentIds.includes(c.id)}
+                        className={`py-2.5 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${sentIds.includes(c.id) ? 'bg-slate-100 text-slate-400 border-slate-100 cursor-not-allowed' : 'border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300'}`}
                       >
-                        Interested
+                        {sentIds.includes(c.id) ? 'Sent ✓' : 'Interested'}
                       </button>
                     </div>
                   </div>

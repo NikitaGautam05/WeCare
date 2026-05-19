@@ -13,13 +13,17 @@ const CaregiverRequests = ({ caregiverId }) => {
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      console.log('📥 Fetching pending requests for caregiver:', caregiverId);
+      const resolvedCaregiverId = caregiverId || localStorage.getItem('userId');
+      console.log('📥 Fetching pending requests for caregiver:', resolvedCaregiverId);
+      if (!resolvedCaregiverId) {
+        throw new Error('No caregiver ID available to fetch interest requests.');
+      }
       const response = await axios.get(
-        `http://localhost:8080/api/interest/pending-requests/${caregiverId}`,
+        `http://localhost:8080/api/interest/pending-requests/${resolvedCaregiverId}`,
         axiosConfig
       );
       console.log('✅ Requests fetched:', response.data);
-      setRequests(response.data || []);
+      setRequests(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       console.error('❌ Error fetching requests:', err);
       setRequests([]);

@@ -26,31 +26,256 @@ import axios from "axios";
 const CareGiverDash = () => {
   const [activeTab, setActiveTab]         = useState("profile");
   const [notifications, setNotifications] = useState([]);
+  const [interestRequests, setInterestRequests] = useState([]);
+  const [bookingRequests, setBookingRequests]   = useState([]);
   const [profile, setProfile]             = useState(null);
   const navigate                          = useNavigate();
   const userId                            = localStorage.getItem("userId");
+
+  const resolveCaregiverId = (profileData) => {
+    return profileData?.id || profileData?.caregiverId || profileData?.userId || userId;
+  };
 
   // ── ALL ORIGINAL LOGIC UNCHANGED ──
   useEffect(() => {
     if (!userId) { navigate("/login"); return; }
     const token       = localStorage.getItem("jwtToken");
     const axiosConfig = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    
+    // Fetch profile and notifications
     axios.get(`http://localhost:8080/api/caregivers/user/${userId}`, axiosConfig)
       .then((res) => {
         setProfile(res.data);
-        const parsed = (res.data.notifications || []).map((notif) => {
-          try { return typeof notif === "string" ? JSON.parse(notif) : notif; }
-          catch { return { message: notif, type: "general", userId: null }; }
-        });
-        setNotifications(parsed);
+
+        let rawNotifications = res.data.notifications || [];
+        if (typeof rawNotifications === "string") {
+          try {
+            rawNotifications = JSON.parse(rawNotifications);
+          } catch {
+            rawNotifications = [];
+          }
+        }
+
+        const parsed = Array.isArray(rawNotifications)
+          ? rawNotifications.map((notif) => {
+              try {
+                return typeof notif === "string" ? JSON.parse(notif) : notif;
+              } catch {
+                return { message: notif, type: "general", userId: null };
+              }
+            })
+          : [];
+
+        setSortedNotifications(parsed);
+        setRequestFetchError("");
+
+        axios.get(`http://localhost:8080/api/notifications/${userId}`, axiosConfig)
+          .then((notifRes) => {
+            const remoteNotifs = Array.isArray(notifRes.data) ? notifRes.data : [];
+            const merged = [...remoteNotifs];
+
+            const existingIds = new Set(remoteNotifs.filter((n) => n && n.id).map((n) => n.id));
+            parsed.forEach((notif) => {
+              if (!notif || !notif.id || !existingIds.has(notif.id)) {
+                merged.push(notif);
+              }
+            });
+
+            if (merged.length > 0) {
+              setSortedNotifications(merged);
+            } else {
+              setSortedNotifications(parsed);
+            }
+          })
+          .catch((err) => {
+            console.error("Notification fetch error:", err);
+            setSortedNotifications(parsed);
+          });
+        
+        // Fetch interest and booking requests for caregiver
+        const caregiverId = resolveCaregiverId(res.data);
+        const caregiverName = res.data?.fullName || res.data?.userName || "Caregiver";
+
+        if (caregiverId) {
+          axios.get(`http://localhost:8080/api/interest/pending-requests/${caregiverId}`, axiosConfig)
+            .then((intRes) => {
+              const interestData = Array.isArray(intRes.data) ? intRes.data : [];
+              if (interestData.length > 0) {
+                setInterestRequests(interestData);
+                return;
+              }
+
+              const fallbackFromNotifications = parsed
+                .filter((notif) => {
+                  const type = (notif?.type || "").toString().toLowerCase();
+                  return type.includes("interest") || type.includes("interest_sent");
+                })
+                .map((notif, index) => ({
+                  id: notif.actionId || notif.id || `interest-fallback-${index}`,
+                  status: "PENDING",
+                  sentAt: notif.createdAt || new Date().toISOString(),
+                  caregiverId,
+                  caregiverName,
+                  userId: notif.senderId || notif.userId || "",
+                  userName: notif.senderName || notif.userName || notif.message?.split(" is interested")[0] || "Care receiver",
+                  user: {
+                    id: notif.senderId || notif.userId || "",
+                    userName: notif.senderName || notif.userName || notif.message?.split(" is interested")[0] || "Care receiver",
+                    email: "",
+                    photo: "",
+                    address: "",
+                    serviceType: "Interest request",
+                    accountType: "INDIVIDUAL",
+                  },
+                }));
+
+              setInterestRequests(fallbackFromNotifications);
+            })
+            .catch((err) => {
+              console.error("Interest fetch error:", err);
+              const message = err.response?.status === 403
+                ? "Interest request endpoint blocked (403)."
+                : err.response?.data?.message || err.message || "Failed to fetch interest requests.";
+              setRequestFetchError(message);
+              setInterestRequests([]);
+            });
+          
+          axios.get(`http://localhost:8080/api/bookings/caregiver/${caregiverId}`, axiosConfig)
+              .then((bookRes) => {
+                const list = Array.isArray(bookRes.data) ? bookRes.data : [];
+                // sort newest first by createdAt or startTime
+                list.sort((a, b) => {
+                  const ad = Date.parse(a?.createdAt || a?.startTime || "");
+                  const bd = Date.parse(b?.createdAt || b?.startTime || "");
+                  if (Number.isFinite(ad) && Number.isFinite(bd)) return bd - ad;
+                  return 0;
+                });
+                setBookingRequests(list);
+              })
+            .catch((err) => {
+              console.error("Booking fetch error:", err);
+              const message = err.response?.status === 403
+                ? "Booking request endpoint blocked (403)."
+                : err.response?.data?.message || err.message || "Failed to fetch booking requests.";
+              setRequestFetchError((prev) => prev || message);
+              setBookingRequests([]);
+            });
+        }
       })
-      .catch((err) => console.error("Sync Error:", err.message));
+      .catch((err) => {
+        console.error("Sync Error:", err);
+        setRequestFetchError("Failed to load caregiver profile.");
+      });
   }, [userId, navigate]);
+
+  // Refresh booking/interest requests when accepted connections change (e.g., booking completed)
+  useEffect(() => {
+    const handler = async () => {
+      try {
+        const token = localStorage.getItem("jwtToken");
+        const axiosConfig = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+        const caregiverId = resolveCaregiverId(profile);
+        if (!caregiverId) return;
+
+        const intRes = await axios.get(`http://localhost:8080/api/interest/pending-requests/${caregiverId}`, axiosConfig).catch(() => ({ data: [] }));
+        setInterestRequests(Array.isArray(intRes.data) ? intRes.data : []);
+
+        const bookRes = await axios.get(`http://localhost:8080/api/bookings/caregiver/${caregiverId}`, axiosConfig).catch(() => ({ data: [] }));
+        const list = Array.isArray(bookRes.data) ? bookRes.data : [];
+        list.sort((a, b) => {
+          const ad = Date.parse(a?.createdAt || a?.startTime || "");
+          const bd = Date.parse(b?.createdAt || b?.startTime || "");
+          if (Number.isFinite(ad) && Number.isFinite(bd)) return bd - ad;
+          return 0;
+        });
+        setBookingRequests(list);
+      } catch (e) {
+        console.warn('Failed to refresh requests after acceptedConnectionsChanged', e);
+      }
+    };
+    window.addEventListener('acceptedConnectionsChanged', handler);
+    return () => window.removeEventListener('acceptedConnectionsChanged', handler);
+  }, [profile]);
+
+  const [requestFilter, setRequestFilter] = useState("all");
+  const [requestSearch, setRequestSearch] = useState("");
+  const [requestFetchError, setRequestFetchError] = useState("");
+
+  const getNotificationTimestamp = (notif) => {
+    const rawTimestamp = notif?.createdAt || notif?.sentAt || notif?.timestamp || notif?.date || "";
+    const parsedDate = Date.parse(rawTimestamp);
+    return Number.isFinite(parsedDate) ? parsedDate : 0;
+  };
+
+  const sortNotificationsNewestFirst = (notificationList) => {
+    return [...notificationList].sort((a, b) => {
+      return getNotificationTimestamp(b) - getNotificationTimestamp(a);
+    });
+  };
+
+  const setSortedNotifications = (notificationList) => {
+    setNotifications(sortNotificationsNewestFirst(notificationList));
+  };
+
+  const isInterestNotification = (type) => {
+    if (!type) return false;
+    return type.toString().toLowerCase().includes("interest");
+  };
+
+  const handleNotificationClick = (notif) => {
+    setNotifications((current) => current.filter((item) => {
+      if (notif.id) return item.id !== notif.id;
+      return item !== notif;
+    }));
+
+    const targetUserId = notif.senderId || notif.userId;
+    if (isInterestNotification(notif.type) && targetUserId) {
+      navigate(`/profileReciever/${targetUserId}`);
+    }
+  };
 
   const handleLogout = () => { localStorage.clear(); navigate("/"); };
 
   const displayName = profile?.fullName || "Caregiver";
   const initials    = displayName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+  const totalRequestCount = (Array.isArray(interestRequests) ? interestRequests.length : 0) +
+                            (Array.isArray(bookingRequests) ? bookingRequests.length : 0);
+  const notificationCount = (Array.isArray(notifications) ? notifications.length : 0) + totalRequestCount;
+
+  const parseRequestDate = (request) => {
+    const dateString = request.date || request.sentAt || request.createdAt || request.startTime;
+    const date = new Date(dateString);
+    return isNaN(date.getTime()) ? new Date(0) : date;
+  };
+
+  const allRequests = [
+    ...(Array.isArray(interestRequests) ? interestRequests : []).map((request) => ({
+      ...request,
+      type: "interest",
+      title: request.user?.userName || request.userName || "Care Receiver",
+      subtitle: request.user?.serviceType || "Interest request",
+      date: request.sentAt,
+      profileId: request.user?.id,
+      statusLabel: request.status || "PENDING",
+    })),
+    ...(Array.isArray(bookingRequests) ? bookingRequests : []).map((request) => ({
+      ...request,
+      type: "booking",
+      title: request.userName || request.user?.userName || "Care Receiver",
+      subtitle: request.serviceType || "Booking request",
+      date: request.startTime || request.createdAt || request.sentAt,
+      profileId: request.userId || request.user?.id,
+      statusLabel: request.status || "PENDING",
+    })),
+  ].sort((a, b) => parseRequestDate(b).getTime() - parseRequestDate(a).getTime());
+
+  const filteredRequests = allRequests.filter((request) => {
+    const matchesFilter = requestFilter === "all" || request.type === requestFilter;
+    const matchesSearch = request.title.toLowerCase().includes(requestSearch.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
+
+  const visibleRequests = requestFilter === "all" ? filteredRequests.slice(0, 6) : filteredRequests;
 
   const completedSteps =
     (profile?.profilePhoto ? 1 : 0) +
@@ -60,8 +285,9 @@ const CareGiverDash = () => {
 
   const navTabs = [
     { key: "profile",       label: "My Profile",    icon: <FaUserCircle size={14} /> },
-    { key: "chats",         label: "Connections",   icon: <FaCheckDouble size={13} /> },
+    { key: "chats",         label: "Chat",   icon: <FaCheckDouble size={13} /> },
     { key: "bookings",      label: "Bookings",      icon: <FaCalendarAlt size={13} /> },
+    { key: "requests",      label: "Requests",      icon: <FaFileAlt size={13} /> },
     { key: "notifications", label: "Notifications", icon: <FaBell size={13} /> },
   ];
 
@@ -69,7 +295,8 @@ const CareGiverDash = () => {
     profile:       "Manage your caregiver profile and documents",
     chats:         "Chat with care receivers who accepted your profile",
     bookings:      "View and manage your care booking requests",
-    notifications: "Interest notifications from care receivers",
+    requests:      "Review interest and booking requests from care receivers",
+    notifications: "System notifications and updates",
   };
 
   const statusCfg = {
@@ -80,58 +307,62 @@ const CareGiverDash = () => {
   const sc = statusCfg[profile?.status] || statusCfg.PENDING;
 
   return (
-    <div className="min-h-screen w-screen bg-[#f8f8f6] font-sans text-gray-900 antialiased">
+    <div className="min-h-screen w-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50 font-sans text-gray-900 antialiased">
 
       {/* ═══════════════════ HEADER ═══════════════════ */}
-      <header className="fixed top-0 inset-x-0 z-50 h-14 bg-white border-b border-gray-100 flex items-center justify-between px-6">
+      <header className="fixed top-0 inset-x-0 z-50 h-21 bg-gradient-to-r from-slate-900 via-blue-900 to-teal-900 border-b border-teal-700/30 flex items-center justify-between px-7 shadow-lg">
 
         {/* Brand */}
         <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-lg bg-gray-900 flex items-center justify-center">
-            <span className="text-white text-[10px] font-black tracking-tight">EE</span>
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center shadow-lg">
+            <span className="text-white text-[11px] font-black tracking-tight">EE</span>
           </div>
-          <span className="text-[15px] font-semibold text-gray-900 tracking-tight">
-            Elder<span className="text-gray-400 font-normal">Ease</span>
+          <span className="text-[16px] font-semibold bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent tracking-tight">
+            Elder<span className="font-normal text-blue-300">Ease</span>
           </span>
-          <span className="hidden sm:inline-flex items-center text-[11px] text-gray-400 font-medium bg-gray-50 border border-gray-200 px-2.5 py-0.5 rounded-full">
+          <span className="hidden sm:inline-flex items-center text-[12px] text-blue-200 font-medium bg-blue-800/40 border border-blue-500/40 px-3 py-0.5 rounded-full">
             Caregiver Portal
           </span>
         </div>
 
         {/* Right actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-9 text-blue-100">
           {/* Bell */}
-          <button
+          <div
             onClick={() => setActiveTab("notifications")}
-            className="relative w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition-all"
+            className="relative cursor-pointer text-3xl leading-none text-white hover:text-white transition-colors"
+            role="button"
+            aria-label="Notifications"
           >
-            <FaBell size={14} />
-            {notifications.length > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full border border-white" />
+            <span role="img" aria-hidden="false">🔔</span>
+            {notificationCount > 0 && (
+              <span className="absolute -top-2 -right-2 min-w-[18px] h-5 px-1.5 bg-orange-400 text-[10px] font-bold text-white rounded-full flex items-center justify-center">
+                {notificationCount > 9 ? '9+' : notificationCount}
+              </span>
             )}
-          </button>
+          </div>
 
-          {/* Avatar pill */}
-          <button
+          {/* Avatar */}
+          <div
             onClick={() => setActiveTab("profile")}
-            className="flex items-center gap-2.5 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full hover:border-gray-300 transition-all"
+            className="flex items-center gap-2.5 cursor-pointer"
           >
-            <div className="w-5 h-5 rounded-full bg-gray-900 flex items-center justify-center text-white text-[9px] font-bold">
+            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center text-white text-[10px] font-bold">
               {initials}
             </div>
-            <span className="text-[13px] font-medium text-gray-700 hidden sm:block max-w-[120px] truncate">
+            <span className="text-[14px] font-medium text-blue-100 hidden sm:block max-w-[130px] truncate">
               {displayName}
             </span>
-          </button>
+          </div>
 
           {/* Sign out */}
-          <button
+          <div
             onClick={handleLogout}
-            className="flex items-center gap-1.5 text-[12px] font-medium text-gray-400 hover:text-rose-500 transition-colors ml-1"
+            className="flex items-center gap-3 text-[16px] font-medium text-blue-200 hover:text-orange-300 transition-colors cursor-pointer ml-1"
           >
             <FaSignOutAlt size={11} />
             <span className="hidden sm:block">Sign out</span>
-          </button>
+          </div>
         </div>
       </header>
 
@@ -139,23 +370,23 @@ const CareGiverDash = () => {
       <div className="flex pt-14 min-h-screen">
 
         {/* ═══════════════════ SIDEBAR ═══════════════════ */}
-        <aside className="hidden lg:flex flex-col w-[220px] flex-shrink-0 bg-white border-r border-gray-100 sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto">
+        <aside className="hidden lg:flex flex-col w-[220px] flex-shrink-0 bg-gradient-to-b from-white via-blue-50 to-slate-50 border-r border-blue-100/50 sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto shadow-sm">
 
           {/* Identity */}
-          <div className="px-5 py-6 border-b border-gray-100">
+          <div className="px-5 py-9 border-b border-blue-100/50 bg-gradient-to-b from-slate-50 to-transparent">
             {/* Avatar block */}
-            <div className="relative w-fit mb-4">
-              <div className="w-[54px] h-[54px] rounded-2xl bg-gray-900 text-white flex items-center justify-center text-xl font-bold shadow-[0_4px_16px_rgba(0,0,0,0.15)]">
+            <div className="relative w-fit mb-7">
+              <div className="w-[54px] h-[54px] rounded-2xl bg-gradient-to-br from-teal-400 to-blue-600 text-white flex items-center justify-center text-xl font-bold shadow-lg">
                 {initials}
               </div>
               {/* Online dot */}
               <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white ${sc.dot}`} />
             </div>
 
-            <p className="text-[13.5px] font-semibold text-gray-900 leading-tight truncate">
+            <p className="text-[13.5px] font-semibold text-slate-900 leading-tight truncate">
               {displayName}
             </p>
-            <p className="text-[11.5px] text-gray-400 mt-0.5 truncate">
+            <p className="text-[11.5px] text-teal-600 font-medium mt-0.5 truncate">
               {profile?.speciality || "Care Professional"}
             </p>
 
@@ -169,24 +400,24 @@ const CareGiverDash = () => {
             {/* Profile completion bar */}
             <div className="mt-4">
               <div className="flex justify-between mb-1.5">
-                <span className="text-[11px] text-gray-400">Completion</span>
-                <span className="text-[11px] font-bold text-gray-600">{completedSteps * 25}%</span>
+                <span className="text-[11px] text-slate-500 font-medium">Completion</span>
+                <span className="text-[11px] font-bold bg-gradient-to-r from-teal-600 to-blue-600 bg-clip-text text-transparent">{completedSteps * 25}%</span>
               </div>
-              <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-2 bg-slate-200 rounded-full overflow-hidden shadow-inner">
                 <div
-                  className={`h-full rounded-full transition-all duration-700 ${completedSteps === 4 ? "bg-emerald-500" : "bg-gray-800"}`}
+                  className={`h-full rounded-full transition-all duration-700 ${completedSteps === 4 ? "bg-gradient-to-r from-emerald-400 to-teal-500" : "bg-gradient-to-r from-blue-500 to-teal-500"}`}
                   style={{ width: `${completedSteps * 25}%` }}
                 />
               </div>
-              <p className="text-[10px] text-gray-300 mt-1.5">
-                {4 - completedSteps > 0 ? `${4 - completedSteps} step${4-completedSteps>1?"s":""} remaining` : "Profile complete"}
+              <p className="text-[10px] text-slate-400 mt-1.5">
+                {4 - completedSteps > 0 ? `${4 - completedSteps} step${4-completedSteps>1?"s":""} remaining` : "✓ Profile complete"}
               </p>
             </div>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-3 py-3 flex flex-col gap-0.5">
-            <p className="text-[10px] font-bold text-gray-300 uppercase tracking-[0.1em] px-3 mb-2 mt-1">Navigation</p>
+          <nav className="flex-1 px-3 py-3 flex flex-col gap-3">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em] px-3 mb-2 mt-1">Navigation</p>
             {navTabs.map((tab) => {
               const isAct = activeTab === tab.key;
               return (
@@ -195,32 +426,32 @@ const CareGiverDash = () => {
                   onClick={() => setActiveTab(tab.key)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-150 text-left group ${
                     isAct
-                      ? "bg-gray-900 text-white shadow-sm"
-                      : "text-gray-500 hover:bg-gray-50 hover:text-gray-800"
+                      ? "bg-slate-300 text-slate-800 shadow-md"
+                      : "text-slate-500 hover:bg-transparent hover:text-slate-500"
                   }`}
                 >
                   <span className={`flex-shrink-0 transition-transform duration-150 ${isAct ? "scale-110" : "group-hover:scale-110"}`}>
                     {tab.icon}
                   </span>
                   <span className="flex-1">{tab.label}</span>
-                  {tab.key === "notifications" && notifications.length > 0 && (
+                  {tab.key === "notifications" && notificationCount > 0 && (
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                      isAct ? "bg-white/20 text-white" : "bg-rose-100 text-rose-600"
+                      isAct ? "bg-white/20 text-white" : "bg-orange-200 text-orange-700 font-bold"
                     }`}>
-                      {notifications.length}
+                      {notificationCount > 9 ? '9+' : notificationCount}
                     </span>
                   )}
-                  {isAct && <FaChevronRight size={9} className="opacity-40" />}
+                  {isAct && <FaChevronRight size={9} className="opacity-60" />}
                 </button>
               );
             })}
           </nav>
 
           {/* Footer */}
-          <div className="px-3 pb-4 border-t border-gray-100 pt-3">
+          <div className="px-3 pb-4 border-t border-blue-100/50 pt-3">
             <button
               onClick={() => navigate("/terms")}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-slate-500 hover:text-teal-700 hover:bg-teal-50/60 transition-all"
             >
               <FaFileAlt size={12} /> Terms & Service
             </button>
@@ -231,63 +462,66 @@ const CareGiverDash = () => {
         <main className="flex-1 min-w-0 p-6 lg:p-8">
 
           {/* ── Stats row ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-7">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
             {[
               {
-                icon: <FaShieldAlt size={14} />,
+                icon: <FaShieldAlt size={16} />,
                 label: "Profile Status",
                 value: profile?.status || "Pending",
                 valueClass: profile?.status === "VERIFIED" ? "text-emerald-600" : "text-amber-600",
-                iconBg: "bg-gray-50",
+                iconBg: "from-blue-500 to-blue-600",
+                iconColor: "text-blue-600",
               },
               {
-                icon: <FaWallet size={14} />,
+                icon: <FaWallet size={16} />,
                 label: "Daily Rate",
                 value: profile?.chargeMin ? `Rs ${profile.chargeMin} – ${profile.chargeMax}` : "Not set",
-                valueClass: "text-gray-900",
-                iconBg: "bg-gray-50",
+                valueClass: "text-teal-700 font-bold",
+                iconBg: "from-teal-500 to-emerald-600",
+                iconColor: "text-teal-600",
               },
               {
-                icon: <FaStar size={14} />,
+                icon: <FaStar size={16} />,
                 label: "Experience",
                 value: profile?.experience ? `${profile.experience} years` : "New joiner",
-                valueClass: "text-gray-900",
-                iconBg: "bg-gray-50",
+                valueClass: "text-slate-900",
+                iconBg: "from-orange-500 to-rose-600",
+                iconColor: "text-orange-600",
               },
             ].map((s, i) => (
               <div
                 key={i}
-                className="bg-white rounded-2xl border border-gray-100 px-5 py-4 flex items-center gap-4 shadow-[0_1px_4px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] transition-shadow"
+                className="bg-white rounded-2xl border border-blue-100/50 px-6 py-5 flex items-center gap-4 shadow-sm hover:shadow-xl transition-all duration-300 hover:border-blue-300 group"
               >
-                <div className={`w-10 h-10 rounded-xl ${s.iconBg} border border-gray-100 flex items-center justify-center text-gray-500 flex-shrink-0`}>
+                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${s.iconBg} flex items-center justify-center text-white flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform`}>
                   {s.icon}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10.5px] text-gray-400 font-medium uppercase tracking-wide mb-0.5">{s.label}</p>
-                  <p className={`text-[13.5px] font-bold truncate ${s.valueClass}`}>{s.value}</p>
+                  <p className="text-[10.5px] text-slate-500 font-bold uppercase tracking-wide mb-1">{s.label}</p>
+                  <p className={`text-[14px] font-bold truncate ${s.valueClass}`}>{s.value}</p>
                 </div>
               </div>
             ))}
           </div>
 
           {/* ── Tab panel ── */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden">
+          <div className="bg-white rounded-2xl border border-blue-100/50 shadow-lg overflow-hidden">
 
             {/* Panel header bar */}
-            <div className="flex items-center justify-between px-7 py-5 border-b border-gray-100">
+            <div className="flex items-center justify-between px-7 py-6 border-b border-blue-100/50 bg-gradient-to-r from-slate-50 via-blue-50 to-teal-50">
               <div>
-                <h2 className="text-[16px] font-semibold text-gray-900 tracking-tight">
+                <h2 className="text-[18px] font-bold text-slate-900 tracking-tight">
                   {navTabs.find((t) => t.key === activeTab)?.label}
                 </h2>
-                <p className="text-[12px] text-gray-400 mt-0.5">{tabSubtitle[activeTab]}</p>
+                <p className="text-[12px] text-slate-500 mt-1">{tabSubtitle[activeTab]}</p>
               </div>
 
               {/* Profile quick-info strip */}
               {activeTab === "profile" && profile && (
-                <div className="hidden md:flex items-center gap-4 text-[11.5px] text-gray-400">
-                  {profile.address    && <span className="flex items-center gap-1.5"><FaMapMarkerAlt size={9} /> {profile.address}</span>}
-                  {profile.email      && <span className="flex items-center gap-1.5"><FaEnvelope size={9} /> {profile.email}</span>}
-                  {profile.phoneNumber && <span className="flex items-center gap-1.5"><FaPhone size={9} /> {profile.phoneNumber}</span>}
+                <div className="hidden md:flex items-center gap-5 text-[11.5px] text-slate-600">
+                  {profile.address    && <span className="flex items-center gap-2 px-3 py-2 bg-slate-100/60 rounded-lg"><FaMapMarkerAlt size={11} className="text-teal-600" /> {profile.address}</span>}
+                  {profile.email      && <span className="flex items-center gap-2 px-3 py-2 bg-blue-100/60 rounded-lg"><FaEnvelope size={11} className="text-blue-600" /> {profile.email}</span>}
+                  {profile.phoneNumber && <span className="flex items-center gap-2 px-3 py-2 bg-orange-100/60 rounded-lg"><FaPhone size={11} className="text-orange-600" /> {profile.phoneNumber}</span>}
                 </div>
               )}
             </div>
@@ -304,53 +538,171 @@ const CareGiverDash = () => {
               {/* BOOKINGS TAB */}
               {activeTab === "bookings" && <BookingsList userType="caregiver" userId={profile?.id} />}
 
+              {/* REQUESTS TAB */}
+              {activeTab === "requests" && (
+                <div className="space-y-6">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.24em] text-slate-400 mb-2">Requests</p>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <select
+                          value={requestFilter}
+                          onChange={(e) => setRequestFilter(e.target.value)}
+                          className="h-11 w-full sm:w-auto rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-blue-400"
+                        >
+                          <option value="all">All requests</option>
+                          <option value="interest">Interest requests</option>
+                          <option value="booking">Booking requests</option>
+                        </select>
+                        <div className="relative flex-1">
+                          <input
+                            type="text"
+                            value={requestSearch}
+                            onChange={(e) => setRequestSearch(e.target.value)}
+                            placeholder="Search by name"
+                            className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-blue-400"
+                          />
+                          <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">Search</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 border border-slate-200 px-4 py-3 text-sm text-slate-600">
+                      Showing <span className="font-semibold text-slate-900">{visibleRequests.length}</span> of <span className="font-semibold text-slate-900">{filteredRequests.length}</span> request{filteredRequests.length !== 1 ? "s" : ""}
+                    </div>
+                  </div>
+
+                  {requestFetchError && (
+                    <div className="rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+                      <strong>Request fetch issue:</strong> {requestFetchError}
+                    </div>
+                  )}
+
+                  {allRequests.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-24 gap-4 rounded-3xl border border-dashed border-slate-200 bg-slate-50">
+                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-100 to-teal-100 border-2 border-blue-200/50 flex items-center justify-center">
+                        <FaFileAlt size={24} className="text-teal-600" />
+                      </div>
+                      <p className="text-[14.5px] font-semibold text-slate-900">No requests yet</p>
+                      <p className="text-[13px] text-slate-500 text-center max-w-xs">
+                        Care receivers will send interest or booking requests here once they reach out.
+                      </p>
+                    </div>
+                  ) : filteredRequests.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-14 gap-3 rounded-3xl border border-dashed border-slate-200 bg-slate-50">
+                      <p className="text-[14px] font-semibold text-slate-900">No matching requests</p>
+                      <p className="text-sm text-slate-500 text-center max-w-md">
+                        Try a different filter or search term to find the request by name.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                      {visibleRequests.map((request, i) => (
+                        <div
+                          key={request.id || i}
+                          className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-lg"
+                        >
+                          <div className="flex items-start justify-between gap-4 mb-4">
+                            <div>
+                              <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400 mb-2">
+                                {request.type === "interest" ? "Interest request" : "Booking request"}
+                              </p>
+                              <h3 className="text-lg font-bold text-slate-900">{request.title}</h3>
+                              <p className="text-sm text-slate-500 mt-1">{request.subtitle}</p>
+                            </div>
+                            <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${request.type === "interest" ? "bg-blue-50 text-blue-700" : "bg-emerald-50 text-emerald-700"}`}>
+                              {request.type === "interest" ? "Interest" : "Booking"}
+                            </span>
+                          </div>
+
+                          <div className="grid gap-3 sm:grid-cols-2 mb-4 text-sm text-slate-600">
+                            <div className="rounded-2xl bg-slate-50 p-3">
+                              <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Name</p>
+                              <p className="mt-2 font-semibold text-slate-900">{request.title}</p>
+                            </div>
+                            <div className="rounded-2xl bg-slate-50 p-3">
+                              <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Status</p>
+                              <p className="mt-2 font-semibold text-slate-900">{request.statusLabel}</p>
+                            </div>
+                          </div>
+
+                          <div className="grid gap-3 sm:grid-cols-2 mb-5 text-sm text-slate-600">
+                            <div className="rounded-2xl bg-slate-50 p-3">
+                              <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Requested service</p>
+                              <p className="mt-2 font-semibold text-slate-900">{request.subtitle}</p>
+                            </div>
+                            <div className="rounded-2xl bg-slate-50 p-3">
+                              <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Requested date</p>
+                              <p className="mt-2 font-semibold text-slate-900">{request.date ? new Date(request.date).toLocaleDateString() : "Not specified"}</p>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => navigate(`/profileReciever/${request.profileId}`)}
+                            className={`w-full rounded-2xl px-4 py-3 text-sm font-semibold text-white transition ${request.type === "interest" ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"}`}
+                          >
+                            View {request.type === "interest" ? "Interest" : "Booking"} profile
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* NOTIFICATIONS TAB */}
               {activeTab === "notifications" && (
-                notifications.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-20 gap-3">
-                    <div className="w-14 h-14 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center">
-                      <FaBell size={20} className="text-gray-300" />
+                <div className="space-y-6">
+                  <div className="mb-4 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white shadow-md">
+                      <FaBell size={16} />
                     </div>
-                    <p className="text-[13.5px] font-semibold text-gray-500">No notifications yet</p>
-                    <p className="text-[12px] text-gray-400 text-center max-w-xs">
-                      When someone shows interest in your profile, you will see it here.
-                    </p>
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-[15px]">Notifications</h3>
+                      <p className="text-[11px] text-slate-500">System notifications and updates</p>
+                    </div>
+                    <span className="ml-auto px-3 py-1 bg-blue-100 text-blue-700 text-[11px] font-bold rounded-full">
+                      {notifications.length}
+                    </span>
                   </div>
-                ) : (
-                  <div className="flex flex-col gap-2.5">
-                    {notifications.map((notif, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center gap-4 p-4 bg-gray-50 border border-gray-100 rounded-xl hover:border-gray-200 transition-colors"
-                      >
-                        {/* Icon */}
-                        <div className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center flex-shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
-                          <FaBell size={12} className="text-gray-400" />
-                        </div>
-
-                        {/* Message */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[13px] text-gray-700 font-medium leading-snug">{notif.message}</p>
-                          {notif.type && (
-                            <span className="inline-block mt-1 text-[10.5px] font-bold text-gray-400 uppercase tracking-wide">
-                              {notif.type}
-                            </span>
+                  {notifications.length === 0 ? (
+                    <div className="p-6 bg-slate-50/50 border border-dashed border-slate-200 rounded-xl text-center">
+                      <p className="text-[13px] text-slate-500">No notifications yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {notifications.map((notif) => (
+                        <div
+                          key={notif.id || notif.message}
+                          className="flex items-center gap-4 p-5 bg-gradient-to-r from-blue-50/50 to-blue-100/50 border border-blue-200/50 rounded-xl hover:border-blue-300 hover:shadow-md transition-all group cursor-pointer"
+                          onClick={() => handleNotificationClick(notif)}
+                        >
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center flex-shrink-0 shadow-md text-white group-hover:scale-110 transition-transform">
+                            <FaBell size={14} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13.5px] text-slate-800 font-semibold leading-snug">{notif.message}</p>
+                            {notif.type && (
+                              <span className="inline-block mt-2 text-[10px] font-bold text-blue-700 uppercase tracking-wide bg-blue-100/60 px-2.5 py-1 rounded-md">
+                                {notif.type}
+                              </span>
+                            )}
+                          </div>
+                          {isInterestNotification(notif.type) && (notif.senderId || notif.userId) && (
+                            <button
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleNotificationClick(notif);
+                              }}
+                              className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 bg-white text-blue-600 text-[12px] font-bold rounded-lg border-2 border-blue-200 hover:bg-blue-50 hover:border-blue-400 transition-all shadow-sm hover:shadow-md"
+                            >
+                              View Profile <FaChevronRight size={9} />
+                            </button>
                           )}
                         </div>
-
-                        {/* View profile button — only when type === 'interest' */}
-                        {notif.type === "interest" && notif.userId && (
-                          <button
-                            onClick={() => navigate(`/profileReciever/${notif.userId}`)}
-                            className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white text-[11.5px] font-semibold rounded-lg hover:bg-gray-700 transition-colors"
-                          >
-                            View Profile <FaChevronRight size={9} />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
 
             </div>

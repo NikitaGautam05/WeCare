@@ -112,13 +112,13 @@ export default function History() {
         <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32" />
         <div className="max-w-7xl mx-auto px-8 py-14 flex flex-col md:flex-row md:items-center justify-between gap-10 relative z-10">
           <div className="space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-bold uppercase tracking-widest">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-orange-400 text-[10px] font-bold uppercase tracking-widest">
               <FaClock size={9} />
               Activity Timeline
             </div>
             <h2 className="text-4xl font-black text-white tracking-tight leading-tight">
               Activity<br />
-              <span className="text-blue-500">History</span>
+              <span className="text-orange-500">History</span>
             </h2>
             <p className="text-slate-400 text-base max-w-sm font-medium opacity-80">
               Keep track of everyone you've interacted with.
@@ -165,13 +165,13 @@ export default function History() {
                 >
                   <span
                     className={`text-xs font-black uppercase tracking-widest transition-colors whitespace-nowrap ${
-                      filter === cat.id ? "text-blue-600" : "text-slate-400 hover:text-slate-600"
+                      filter === cat.id ? "text-orange-600" : "text-slate-400 hover:text-slate-600"
                     }`}
                   >
                     {cat.label}
                   </span>
                   {filter === cat.id && (
-                    <span className="absolute bottom-0 left-0 w-full h-0.5 bg-blue-600 rounded-full block" />
+                    <span className="absolute bottom-0 left-0 w-full h-0.5 bg-orange-600 rounded-full block" />
                   )}
                 </div>
               ))}
@@ -236,14 +236,14 @@ export default function History() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1.5">
                             <span className={`inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${meta.badge}`}>
-                              <span className={`w-1 h-1 rounded-full ${meta.dot}`} />
+                              <span className={`w-1 h-1 rounded-full  ${meta.dot}`} />
                               {meta.label}
                             </span>
                             <span className="text-[10px] font-bold text-slate-300 tabular-nums">
                               {formatTime(item.timestamp)}
                             </span>
                           </div>
-                          <h4 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+                          <h4 className="text-sm font-bold text-slate-900 group-hover:text-orange-600 transition-colors truncate">
                             {cg?.fullName || "Caregiver"}
                           </h4>
                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight truncate mt-0.5">

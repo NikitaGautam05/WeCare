@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { FaPaperPlane, FaTimes, FaMinus, FaEye } from 'react-icons/fa';
+import { FaPaperPlane, FaTimes, FaExpand, FaCompress, FaEye, FaEllipsisV } from 'react-icons/fa';
 
 const Chat = ({ conversationId, conversationWith, onClose, userType = 'user', isFullPage = false }) => {
   const navigate = useNavigate();
@@ -10,6 +10,9 @@ const Chat = ({ conversationId, conversationWith, onClose, userType = 'user', is
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [minimized, setMinimized] = useState(false);
+  const [maximized, setMaximized] = useState(false);
+  const [openMenuMessageId, setOpenMenuMessageId] = useState(null);
+  const [pendingDeleteMessageId, setPendingDeleteMessageId] = useState(null);
   const [userIdReady, setUserIdReady] = useState(false);
   const [tokenReady, setTokenReady] = useState(false);
   const [canChat, setCanChat] = useState(true); // NEW: Check if interest is accepted
@@ -169,11 +172,38 @@ const Chat = ({ conversationId, conversationWith, onClose, userType = 'user', is
         `http://localhost:8080/api/chat/messages/${conversationId}`,
         { headers: { Authorization: `Bearer ${freshToken}` } }
       );
-      setMessages(res.data);
+      const updatedMessages = res.data || [];
+      setMessages(updatedMessages);
       setLoading(false);
+      await markConversationRead(updatedMessages);
     } catch (err) {
       console.error('Failed to fetch messages:', err);
       setLoading(false);
+    }
+  };
+
+  const markConversationRead = async (messagesToCheck) => {
+    try {
+      const freshToken = getToken();
+      const role = localStorage.getItem('role');
+      const recipientId = role === 'CAREGIVER'
+        ? localStorage.getItem('caregiverId')?.trim() || ''
+        : localStorage.getItem('userId')?.trim() || '';
+      if (!freshToken || !recipientId || !conversationId) return;
+
+      const unread = (messagesToCheck || []).filter(
+        (message) => !message.isRead && message.recipientId === recipientId
+      );
+
+      if (unread.length === 0) return;
+
+      await axios.put(
+        `http://localhost:8080/api/chat/read/conversation/${conversationId}/${recipientId}`,
+        null,
+        { headers: { Authorization: `Bearer ${freshToken}` } }
+      );
+    } catch (err) {
+      console.error('Failed to mark conversation messages read:', err);
     }
   };
 
@@ -238,6 +268,34 @@ const Chat = ({ conversationId, conversationWith, onClose, userType = 'user', is
     }
   };
 
+  const handleDeleteMessage = async (messageId) => {
+    if (!messageId) return;
+
+    try {
+      const freshToken = getToken();
+      await axios.delete(
+        `http://localhost:8080/api/chat/message/${messageId}`,
+        { headers: { Authorization: `Bearer ${freshToken}` } }
+      );
+      setMessages((prevMessages) => prevMessages.filter((message) => message.id !== messageId));
+      setOpenMenuMessageId(null);
+      setPendingDeleteMessageId(null);
+    } catch (err) {
+      console.error('Failed to delete message:', err);
+      alert('Unable to delete message.');
+    }
+  };
+
+  const handleRequestDelete = (messageId) => {
+    setPendingDeleteMessageId(messageId);
+    setOpenMenuMessageId(null);
+  };
+
+  const handleCancelDelete = () => {
+    setPendingDeleteMessageId(null);
+  };
+
+
   const displayName = conversationWith.userName || conversationWith.caregiverName || 'User';
   const theirAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=e8e8e8&color=333&bold=true`;
   const myAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=111827&color=fff&bold=true`;
@@ -246,7 +304,29 @@ if (isFullPage) {
     return (
       <div className="h-full w-full flex flex-col bg-gray-50">
         {/* Messages area */}
-        <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-6 py-6 space-y-4 custom-scrollbar">
+        <div ref={messagesContainerRef} className="relative flex-1 overflow-y-auto overflow-x-hidden px-6 py-6 space-y-4 custom-scrollbar">
+          {pendingDeleteMessageId && (
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/20 p-4">
+              <div className="w-full max-w-sm rounded-[28px] bg-white border border-slate-200 p-5 shadow-2xl">
+                <p className="text-sm font-semibold text-slate-900">Delete this message?</p>
+                <p className="mt-2 text-xs text-slate-500">This cannot be undone.</p>
+                <div className="mt-4 flex gap-3">
+                  <button
+                    onClick={handleCancelDelete}
+                    className="flex-1 rounded-2xl border border-slate-200 bg-slate-100 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleDeleteMessage(pendingDeleteMessageId)}
+                    className="flex-1 rounded-2xl border border-red-200 bg-transparent py-2 text-xs font-semibold text-red-700 hover:bg-red-50"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <div className="w-8 h-8 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin" />
@@ -272,14 +352,60 @@ if (isFullPage) {
 
               return (
                 <div key={message.id || idx} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[70%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                  <div className={`relative max-w-[70%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                     <div className={`px-4 py-2.5 rounded-2xl shadow-sm text-sm ${
-                      isMe 
-                        ? 'bg-blue-600 text-white rounded-tr-none' 
-                        : 'bg-white text-slate-800 border border-slate-100 rounded-tl-none'
-                    }`}>
-                      <p className="leading-relaxed">{message.text}</p>
+                          isMe 
+                            ? 'bg-blue-600 text-white rounded-tr-none' 
+                            : 'bg-white text-slate-800 border border-slate-100 rounded-tl-none'
+                        }`}>
+                      <p className="leading-relaxed break-words">{message.text}</p>
                     </div>
+
+                    {isMe && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuMessageId((prev) => prev === message.id ? null : message.id);
+                        }}
+                        className="absolute -right-9 top-3 p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+                        title="Message options"
+                      >
+                        <FaEllipsisV size={14} />
+                      </button>
+                    )}
+
+                    {isMe && openMenuMessageId === message.id && (
+                      <div className="absolute right-0 top-full mt-2 w-28 rounded-2xl border border-slate-200 bg-white shadow-lg z-20">
+                        {!pendingDeleteMessageId ? (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleRequestDelete(message.id); }}
+                            className="w-full px-2 py-1 text-left text-xs font-semibold text-red-700 hover:bg-slate-50"
+                          >
+                            Delete
+                          </button>
+                        ) : (
+                          <div className="p-3 text-sm text-slate-700">
+                            <p className="mb-2 font-semibold">Delete this message?</p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleCancelDelete(); }}
+                                className="flex-1 rounded-xl border border-slate-200 bg-slate-50 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDeleteMessage(message.id); }}
+                                className="flex-1 rounded-xl border border-red-200 bg-transparent py-2 text-xs font-semibold text-red-700 hover:bg-red-50"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <p className={`text-[10px] font-bold mt-1 uppercase tracking-tighter ${isMe ? 'text-blue-400' : 'text-slate-400'}`}>
                       {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
@@ -317,9 +443,10 @@ if (isFullPage) {
               <button
                 type="submit"
                 disabled={sending || !newMessage.trim() || !userIdReady || !tokenReady}
-                className="w-12 h-12 flex items-center justify-center bg-blue-600 text-white rounded-2xl hover:bg-blue-700 disabled:opacity-30 disabled:grayscale transition-all shadow-lg shadow-blue-100 active:scale-95"
+                style={{ backgroundColor: '#0f172a', color: '#ffffff', borderColor: '#334155', opacity: 1 }}
+                className="w-12 h-12 flex items-center justify-center rounded-2xl border hover:bg-slate-800 disabled:bg-slate-900 disabled:opacity-70 disabled:cursor-not-allowed text-white transition-all shadow-lg shadow-slate-200/50 active:scale-95"
               >
-                <FaPaperPlane size={18} />
+                <FaPaperPlane size={18} style={{ color: '#ffffff' }} />
               </button>
             </form>
           )}
@@ -329,12 +456,18 @@ if (isFullPage) {
   }
     
   return (
-    <div className="fixed bottom-5 right-5 z-50 w-[340px] flex flex-col rounded-2xl overflow-hidden shadow-2xl border border-gray-200 bg-white">
+    <div className={`fixed z-50 flex flex-col rounded-2xl overflow-hidden shadow-2xl border border-gray-200 bg-white ${maximized ? 'bottom-4 right-4 w-[min(92vw,820px)] h-[calc(100vh-3rem)]' : 'bottom-5 right-5 w-[340px]'}`}>
 
      {/* ── HEADER ── */}
       <div
         className="flex items-center justify-between px-4 py-3 bg-gray-700 border-b border-gray-500 cursor-pointer select-none"
-        onClick={() => setMinimized(!minimized)}
+        onClick={() => {
+          if (maximized) {
+            setMaximized(false);
+          } else {
+            setMinimized((prev) => !prev);
+          }
+        }}
       >
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -356,27 +489,30 @@ if (isFullPage) {
               const route = userType === 'caregiver' ? `/profileReciever/${profileId}` : `/profile/${profileId}`;
               navigate(route);
             }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white hover:bg-slate-600 text-slate-200 hover:text-white rounded-lg transition-all text-xs font-medium"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-600 hover:bg-slate-600 text-slate-100 hover:text-slate-300  rounded-lg transition-all text-xs font-medium"
             title="View Profile"
           >
             <FaEye size={10} />
             {/* <span>Profile</span> */}
           </button>
 
-          {/* Minimize Button */}
+          {/* Maximize / Restore Button */}
           <button
-            onClick={(e) => { e.stopPropagation(); setMinimized(!minimized); }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 hover:text-white rounded-lg transition-all text-xs font-medium"
-            title="Minimize"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMinimized(false);
+              setMaximized((prev) => !prev);
+            }}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-600 hover:bg-slate-600 text-slate-100 hover:text-slate-300 rounded-lg transition-all text-xs font-medium"
+            title={maximized ? 'Restore' : 'Maximize'}
           >
-            <FaMinus size={10} />
-            {/* <span>−</span> */}
+            {maximized ? <FaCompress size={10} /> : <FaExpand size={10} />}
           </button>
 
           {/* Close Button */}
           <button
             onClick={(e) => { e.stopPropagation(); onClose(); }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all text-xs font-medium"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-600 hover:bg-red-700 text-slate-100 hover:text-slate-300  rounded-lg transition-all text-xs font-medium"
             title="Close"
           >
             <FaTimes size={12} />
@@ -387,7 +523,29 @@ if (isFullPage) {
       {/* ── BODY ── */}
       {!minimized && (
         <>
-          <div className="h-72 overflow-y-auto px-4 py-3 bg-white space-y-1">
+          <div className={`relative overflow-y-auto overflow-x-hidden px-4 py-3 bg-white space-y-1 ${maximized ? 'flex-1 min-h-0' : 'h-72'}`}>
+            {pendingDeleteMessageId && (
+              <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/20 p-4">
+                <div className="w-full max-w-sm rounded-[28px] bg-white border border-slate-200 p-5 shadow-2xl">
+                  <p className="text-sm font-semibold text-slate-900">Delete this message?</p>
+                  <p className="mt-2 text-xs text-slate-500">This cannot be undone.</p>
+                  <div className="mt-4 flex gap-3">
+                    <button
+                      onClick={handleCancelDelete}
+                      className="flex-1 rounded-2xl border border-slate-200 bg-slate-100 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => handleDeleteMessage(pendingDeleteMessageId)}
+                      className="flex-1 rounded-2xl border border-red-200 bg-transparent py-2 text-xs font-semibold text-red-700 hover:bg-red-50"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             {loading ? (
               <div className="flex items-center justify-center h-full">
                 <div className="w-5 h-5 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
@@ -426,8 +584,55 @@ if (isFullPage) {
                       </div>
                     )}
                     <div className={`max-w-[65%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                      <div className={`px-3.5 py-2 text-sm leading-relaxed break-words ${isMe ? 'bg-gray-900 text-white rounded-t-2xl rounded-l-2xl rounded-br-sm' : 'bg-gray-100 text-gray-900 rounded-t-2xl rounded-r-2xl rounded-bl-sm'}`}>
-                        {message.text}
+                      <div className="relative">
+                        <div className={`px-3.5 py-2 text-sm leading-relaxed break-words ${isMe ? 'bg-gray-900 text-white rounded-t-2xl rounded-l-2xl rounded-br-sm' : 'bg-gray-100 text-gray-900 rounded-t-2xl rounded-r-2xl rounded-bl-sm'}`}>
+                          <span>{message.text}</span>
+                        </div>
+
+                        {isMe && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenuMessageId((prev) => prev === message.id ? null : message.id);
+                            }}
+                            className="absolute -right-10 top-2 p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+                            title="Message options"
+                          >
+                            <FaEllipsisV size={14} />
+                          </button>
+                        )}
+
+                        {isMe && openMenuMessageId === message.id && (
+                          <div className="absolute right-0 top-full mt-2 w-28 rounded-2xl border border-slate-200 bg-white shadow-lg z-20">
+                            {!pendingDeleteMessageId ? (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleRequestDelete(message.id); }}
+                                className="w-full px-2 py-1 text-left text-xs font-semibold text-red-700 hover:bg-slate-50"
+                              >
+                                Delete
+                              </button>
+                            ) : (
+                              <div className="p-3 text-sm text-slate-700">
+                                <p className="mb-2 font-semibold">Delete this message?</p>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleCancelDelete(); }}
+                                    className="flex-1 rounded-xl border border-slate-200 bg-slate-50 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteMessage(message.id); }}
+                                    className="flex-1 rounded-xl border border-red-200 bg-transparent py-2 text-xs font-semibold text-red-700 hover:bg-red-50"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                       {isLast && (
                         <p className="text-[10px] text-gray-400 mt-1 px-1">
@@ -462,16 +667,10 @@ if (isFullPage) {
  <button
   type="submit"
   disabled={sending || !newMessage.trim()}
-  /* 1. Changed bg-red to bg-red-600 (valid Tailwind class)
-    2. Kept flex-shrink-0 to prevent the box from squishing
-    3. Added text-white to the button to ensure the icon inherits white
-  */
-  className="w-10 h-10 flex items-center justify-center bg-red-600 text-white rounded-full hover:bg-red-700 active:scale-95 disabled:opacity-20 disabled:cursor-not-allowed shadow-md transition-all flex-shrink-0"
+  style={{ backgroundColor: '#0f172a', color: '#ffffff', borderColor: '#334155', opacity: 1 }}
+  className="w-10 h-10 flex items-center justify-center rounded-full border hover:bg-slate-800 disabled:bg-slate-900 disabled:opacity-70 disabled:cursor-not-allowed text-white active:scale-95 shadow-md shadow-slate-200/50 transition-all flex-shrink-0"
 >
-  {/* Using size 16 and a slight margin-left to perfectly center 
-    the 'tip' of the plane visually inside the circle.
-  */}
-  <FaPaperPlane size={16} className="ml-0.5" />
+  <FaPaperPlane size={16} style={{ color: '#ffffff' }} className="ml-0.5" />
 </button>
   </form>
 </div>

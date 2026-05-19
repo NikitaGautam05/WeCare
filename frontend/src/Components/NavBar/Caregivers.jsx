@@ -16,6 +16,7 @@ const Caregivers = () => {
   const [caregivers, setCaregivers] = useState([]);
   const [loading, setLoading]     = useState(true);
   const [dialogue, setDialogue]   = useState(null);
+  const [sentIds, setSentIds] = useState([]);
 
   const navigate = useNavigate();
   const token  = localStorage.getItem("jwtToken");
@@ -28,8 +29,16 @@ const Caregivers = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const cgRes = await axios.get("http://localhost:8080/api/caregivers/verified", axiosConfig);
+        const [cgRes, interestRes] = await Promise.all([
+          axios.get("http://localhost:8080/api/caregivers/verified", axiosConfig),
+          axios.get(`http://localhost:8080/api/interest/sent-interests/${userId}`, axiosConfig)
+        ]);
+
         setCaregivers(cgRes.data);
+        const ids = Array.isArray(interestRes.data)
+          ? interestRes.data.map((interest) => interest.caregiver?.id).filter(Boolean)
+          : [];
+        setSentIds(ids);
       } catch (err) {
         console.error("Data fetch failed", err);
       } finally {
@@ -47,11 +56,24 @@ const Caregivers = () => {
       c.address?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleInterested = (caregiver) => {
-    setDialogue({
-      caregiver,
-      message: `We've sent your profile to ${caregiver.fullName}. They will review your request and get back to you shortly.`,
-    });
+  const handleInterested = async (caregiver) => {
+    if (!userId) { navigate('/login'); return; }
+    try {
+      await axios.post(`http://localhost:8080/api/interest/send`, null, {
+        ...axiosConfig,
+        params: {
+          caregiverId: caregiver.id,
+          caregiverName: caregiver.fullName || caregiver.userName || 'Caregiver',
+          userId,
+          userName: localStorage.getItem('userName') || 'User'
+        }
+      });
+      setSentIds((s) => Array.from(new Set([...s, caregiver.id])));
+      setDialogue({ caregiver, message: `We've sent your profile to ${caregiver.fullName}.` });
+    } catch (err) {
+      console.error('Failed to send interest', err);
+      alert('Could not send interest. Please try again.');
+    }
   };
 
   return (
@@ -185,9 +207,10 @@ const Caregivers = () => {
                       </button>
                       <button
                         onClick={() => handleInterested(c)}
-                        className="py-2.5 rounded-xl border border-slate-200 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 hover:border-slate-300 transition-all"
+                        disabled={sentIds.includes(c.id)}
+                        className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${sentIds.includes(c.id) ? 'bg-slate-100 text-slate-400 border border-slate-100 cursor-not-allowed' : 'border border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300'}`}
                       >
-                        Interested
+                        {sentIds.includes(c.id) ? 'Sent ✓' : 'Interested'}
                       </button>
                     </div>
                   </div>

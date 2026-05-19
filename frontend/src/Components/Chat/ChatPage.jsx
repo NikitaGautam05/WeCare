@@ -1,12 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FaComments, FaArrowRight, FaSearch, FaCircle } from 'react-icons/fa';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { FaComments, FaArrowRight, FaSearch, FaCircle, FaTrash } from 'react-icons/fa';
 import Chat from './Chat';
 import axios from 'axios';
 import Layout from '../Layout/Layout';
 
+const getConversationActivityTime = (conversation) => {
+  if (!conversation) return 0;
+  if (conversation.lastMessageTime) return new Date(conversation.lastMessageTime).getTime();
+  if (conversation.messages?.length) return new Date(conversation.messages[conversation.messages.length - 1].timestamp).getTime();
+  if (conversation.updatedAt) return new Date(conversation.updatedAt).getTime();
+  return 0;
+};
+
 // ─── CONVERSATIONS LIST ───────────────────────────────────────────────────────
-const ChatConversationsList = ({ userType, userId, caregiverId, selectedChat, onSelectChat, axiosConfig }) => {
+const ChatConversationsList = ({ userType, userId, caregiverId, selectedChat, onSelectChat, onRequestHideConversation, hiddenConversations = {}, onRestoreHiddenConversations, axiosConfig, initialConversationId }) => {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -35,6 +43,22 @@ const ChatConversationsList = ({ userType, userId, caregiverId, selectedChat, on
           return bTime - aTime;
         });
 
+        if (onRestoreHiddenConversations && Object.keys(hiddenConversations).length > 0) {
+          const hiddenIdsToRestore = [];
+          Object.entries(hiddenConversations).forEach(([convId, hiddenAt]) => {
+            const found = sorted.find((conv) => String(conv.conversationId || conv.id) === String(convId));
+            if (found) {
+              const latest = getConversationActivityTime(found);
+              if (latest > hiddenAt) {
+                hiddenIdsToRestore.push(convId);
+              }
+            }
+          });
+          if (hiddenIdsToRestore.length > 0) {
+            onRestoreHiddenConversations(hiddenIdsToRestore);
+          }
+        }
+
         setConversations(sorted);
       } catch (err) {
         console.error('Failed to fetch connections:', err);
@@ -42,13 +66,35 @@ const ChatConversationsList = ({ userType, userId, caregiverId, selectedChat, on
         setLoading(false);
       }
     };
-    fetchConversations();
-  }, [userType, userId, caregiverId]);
 
-  const filtered = conversations.filter(conv => {
-    const target = userType === 'caregiver' ? conv.user : conv.caregiver;
-    return !search || target?.userName?.toLowerCase().includes(search.toLowerCase());
-  });
+    fetchConversations();
+    const interval = setInterval(fetchConversations, 5000);
+    return () => clearInterval(interval);
+  }, [userType, userId, caregiverId, axiosConfig, hiddenConversations, onRestoreHiddenConversations]);
+
+  useEffect(() => {
+    if (!loading && initialConversationId && !selectedChat && conversations.length > 0) {
+      const found = conversations.find((conv) => {
+        const convId = String(conv.conversationId || conv.id || '');
+        return convId === String(initialConversationId);
+      });
+      if (found) {
+        onSelectChat(found);
+      }
+    }
+  }, [loading, initialConversationId, selectedChat, conversations, onSelectChat]);
+
+  const handleDeleteConversation = (conversation) => {
+    if (!conversation?.conversationId) return;
+    if (onRequestHideConversation) onRequestHideConversation(conversation);
+  };
+
+  const filtered = conversations
+    .filter(conv => !Object.prototype.hasOwnProperty.call(hiddenConversations, String(conv.conversationId || conv.id)))
+    .filter(conv => {
+      const target = userType === 'caregiver' ? conv.user : conv.caregiver;
+      return !search || target?.userName?.toLowerCase().includes(search.toLowerCase());
+    });
 
   if (loading) {
     return (
@@ -67,9 +113,9 @@ const ChatConversationsList = ({ userType, userId, caregiverId, selectedChat, on
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
       {/* Search bar */}
-      <div className="px-4 pt-4 pb-3 border-b border-slate-100">
+      <div className="px-4 pt-4 pb-3 border-b border-slate-100 bg-slate-50">
         <div className="relative">
           <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={11} />
           <input
@@ -83,7 +129,7 @@ const ChatConversationsList = ({ userType, userId, caregiverId, selectedChat, on
       </div>
 
       {/* Conversation items */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 bg-white">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
             <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mb-3">
@@ -105,16 +151,18 @@ const ChatConversationsList = ({ userType, userId, caregiverId, selectedChat, on
               : `https://ui-avatars.com/api/?name=${encodeURIComponent(target?.userName || "U")}&background=e0f2fe&color=0369a1`;
 
             return (
-              <button
+              <div
                 key={conv.id}
                 onClick={() => onSelectChat(conv)}
-                className={`w-full text-left rounded-2xl px-3 py-3 flex items-center gap-3 transition-all duration-200 group ${
+                role="button"
+                tabIndex={0}
+                className={`w-full text-left rounded-3xl px-3 py-3 flex items-center gap-3 transition-all duration-200 border cursor-pointer ${
                   isSelected
-                    ? 'bg-sky-600 shadow-md shadow-sky-200/60'
-                    : 'hover:bg-slate-50 border border-transparent hover:border-slate-200'
+                    ? 'bg-sky-50 border-sky-200 shadow-sm'
+                    : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300'
                 }`}
               >
-                {/* Avatar with online dot */}
+                {/* Avatar */}
                 <div className="relative flex-shrink-0">
                   <img
                     src={photo}
@@ -122,21 +170,28 @@ const ChatConversationsList = ({ userType, userId, caregiverId, selectedChat, on
                     alt={target?.userName}
                     onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(target?.userName || "U")}&background=e0f2fe&color=0369a1`; }}
                   />
-                  <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 bg-emerald-400 ${isSelected ? 'border-sky-600' : 'border-white'}`}></span>
                 </div>
 
                 {/* Text */}
                 <div className="flex-1 min-w-0">
-                  <p className={`font-bold text-sm truncate leading-tight ${isSelected ? 'text-white' : 'text-slate-800'}`}>
+                  <p className={`font-bold text-sm truncate leading-tight ${isSelected ? 'text-slate-900' : 'text-slate-900'}`}>
                     {target?.userName || "Unknown"}
                   </p>
-                  <p className={`text-xs mt-0.5 truncate ${isSelected ? 'text-sky-100' : 'text-slate-400'}`}>
+                  <p className={`text-xs mt-0.5 truncate ${isSelected ? 'text-slate-500' : 'text-slate-500'}`}>
                     Accepted · Tap to chat
                   </p>
                 </div>
 
-                <FaArrowRight size={10} className={`flex-shrink-0 transition-colors ${isSelected ? 'text-sky-200' : 'text-slate-300 group-hover:text-slate-400'}`} />
-              </button>
+                <FaArrowRight size={10} className={`flex-shrink-0 transition-colors ${isSelected ? 'text-sky-500' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); handleDeleteConversation(conv); }}
+                  className="p-2 rounded-full text-slate-400 hover:text-red-600 hover:bg-slate-100 transition-all"
+                  title="Hide conversation"
+                >
+                  <FaTrash size={14} />
+                </button>
+              </div>
             );
           })
         )}
@@ -146,7 +201,7 @@ const ChatConversationsList = ({ userType, userId, caregiverId, selectedChat, on
 };
 
 // ─── CHAT INTERFACE (right panel) ─────────────────────────────────────────────
-const ChatInterface = ({ selectedChat, userType, onClose }) => {
+const ChatInterface = ({ selectedChat, userType, onClose, onDeleteConversation }) => {
   const target = userType === 'caregiver' ? selectedChat.user : selectedChat.caregiver;
   const photo = target?.photo
     ? `http://localhost:8080/uploads/${target.photo}`
@@ -174,13 +229,22 @@ const ChatInterface = ({ selectedChat, userType, onClose }) => {
           </div>
         </div>
 
-        {/* Mobile back — only visible on small screens */}
-        <button
-          onClick={onClose}
-          className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-slate-700 transition-colors md:hidden"
-        >
-          ← Back
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onDeleteConversation(selectedChat)}
+            className="hidden md:inline-flex items-center gap-1.5 text-xs font-bold text-red-600 hover:text-red-800 hover:bg-red-50 rounded-xl px-3 py-2 transition-all"
+            title="Hide conversation"
+          >
+            <FaTrash size={12} />
+            Hide
+          </button>
+          <button
+            onClick={onClose}
+            className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-slate-700 transition-colors md:hidden"
+          >
+            ← Back
+          </button>
+        </div>
       </div>
 
       {/* Chat messages — all original logic untouched */}
@@ -233,14 +297,16 @@ const EmptyState = () => (
 
 // ─── CHAT PAGE (main export) ──────────────────────────────────────────────────
 const ChatPage = () => {
+  const location = useLocation();
   const [selectedChat, setSelectedChat] = useState(null);
   const [resolvedCaregiverId, setResolvedCaregiverId] = useState(localStorage.getItem('caregiverId'));
   const [mobileView, setMobileView] = useState('list'); // 'list' | 'chat'
 
   const userType = localStorage.getItem('role') === 'CAREGIVER' ? 'caregiver' : 'user';
   const userId = localStorage.getItem('userId');
+  const initialConversationId = location.state?.conversationId || localStorage.getItem('chatConversationId');
   const token = localStorage.getItem("jwtToken");
-  const axiosConfig = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+  const axiosConfig = useMemo(() => token ? { headers: { Authorization: `Bearer ${token}` } } : {}, [token]);
 
   // Resolve caregiver ID — original logic untouched
   useEffect(() => {
@@ -258,6 +324,53 @@ const ChatPage = () => {
   const handleSelectChat = (conv) => {
     setSelectedChat(conv);
     setMobileView('chat');
+  };
+
+  useEffect(() => {
+    if (initialConversationId) {
+      localStorage.removeItem('chatConversationId');
+    }
+  }, [initialConversationId]);
+
+  const [hiddenConversations, setHiddenConversations] = useState({});
+  const [pendingHideConversation, setPendingHideConversation] = useState(null);
+  const [showHideConfirm, setShowHideConfirm] = useState(false);
+
+  const handleDeleteConversation = (conversation) => {
+    if (!conversation?.conversationId) return;
+    setPendingHideConversation(conversation);
+    setShowHideConfirm(true);
+  };
+
+  const handleRestoreHiddenConversations = (conversationIds) => {
+    setHiddenConversations((prev) => {
+      const next = { ...prev };
+      conversationIds.forEach((id) => delete next[id]);
+      return next;
+    });
+  };
+
+  const confirmHideConversation = () => {
+    if (!pendingHideConversation?.conversationId) {
+      setPendingHideConversation(null);
+      setShowHideConfirm(false);
+      return;
+    }
+
+    const convId = String(pendingHideConversation.conversationId);
+    const hiddenAt = getConversationActivityTime(pendingHideConversation) || Date.now();
+    setHiddenConversations((prev) => ({ ...prev, [convId]: hiddenAt }));
+    if (selectedChat?.conversationId === convId) {
+      setSelectedChat(null);
+      setMobileView('list');
+    }
+    setPendingHideConversation(null);
+    setShowHideConfirm(false);
+  };
+
+  const cancelHideConversation = () => {
+    setPendingHideConversation(null);
+    setShowHideConfirm(false);
   };
 
   const handleBack = () => {
@@ -318,7 +431,14 @@ const ChatPage = () => {
                 caregiverId={resolvedCaregiverId}
                 selectedChat={selectedChat}
                 onSelectChat={handleSelectChat}
+                onRequestHideConversation={(conversation) => {
+                  setPendingHideConversation(conversation);
+                  setShowHideConfirm(true);
+                }}
+                hiddenConversations={hiddenConversations}
+                onRestoreHiddenConversations={handleRestoreHiddenConversations}
                 axiosConfig={axiosConfig}
+                initialConversationId={initialConversationId}
               />
             </div>
           </div>
@@ -333,6 +453,7 @@ const ChatPage = () => {
                 selectedChat={selectedChat}
                 userType={userType}
                 onClose={handleBack}
+                onDeleteConversation={handleDeleteConversation}
               />
             ) : (
               <EmptyState />
@@ -341,6 +462,38 @@ const ChatPage = () => {
         </div>
       </div>
 
+      {showHideConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 px-4 py-6">
+          <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="bg-slate-900 px-5 py-4">
+              <h2 className="text-lg font-black text-white">Hide Conversation</h2>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-slate-600">
+                This will hide the selected chat from your inbox for now. It will return once new activity arrives.
+              </p>
+              <div className="rounded-3xl bg-slate-50 p-4 border border-slate-200">
+                <p className="text-xs uppercase tracking-[0.25em] text-slate-400 mb-2">Conversation</p>
+                <p className="font-semibold text-slate-900 truncate">{pendingHideConversation?.caregiver?.userName || pendingHideConversation?.user?.userName || 'Unknown'}</p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={cancelHideConversation}
+                  className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmHideConversation}
+                  className="flex-1 py-3 rounded-2xl bg-red-600 text-white font-bold hover:bg-red-700 transition"
+                >
+                  Hide Conversation
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Hide the Layout's default floating chat button on this page */}
       <style>{`
         .fixed.bottom-8.right-8.bg-sky-600 { display: none !important; }

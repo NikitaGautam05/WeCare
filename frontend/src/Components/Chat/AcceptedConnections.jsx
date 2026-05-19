@@ -16,11 +16,8 @@ const AcceptedConnections = ({ userType = 'user', caregiverId: providedCaregiver
 
   useEffect(() => {
     if (userType === 'caregiver') {
-      if (providedCaregiverId) {
-        fetchConversations(providedCaregiverId);
-      } else {
-        fetchCaregiverIdThenConversations();
-      }
+      if (providedCaregiverId) fetchConversations(providedCaregiverId);
+      else fetchCaregiverIdThenConversations();
     } else {
       fetchConversations(userId);
     }
@@ -32,14 +29,10 @@ const AcceptedConnections = ({ userType = 'user', caregiverId: providedCaregiver
       if (cgRes.data && cgRes.data.id) {
         setCaregiverId(cgRes.data.id);
         fetchConversations(cgRes.data.id);
-      } else {
-        setConversations([]);
-        setLoading(false);
-      }
+      } else { setConversations([]); setLoading(false); }
     } catch (err) {
       console.error('Failed to fetch caregiver ID:', err);
-      setConversations([]);
-      setLoading(false);
+      setConversations([]); setLoading(false);
     }
   };
 
@@ -62,19 +55,17 @@ const AcceptedConnections = ({ userType = 'user', caregiverId: providedCaregiver
     } catch (err) {
       console.error('Failed to fetch conversations:', err);
       setConversations([]);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
-  const getDisplayName = (conv) => {
-    if (userType === 'caregiver') return conv.user?.userName || 'Unknown User';
-    return conv.caregiver?.userName || 'Unknown Caregiver';
-  };
+  const getDisplayName = (conv) =>
+    userType === 'caregiver'
+      ? conv.user?.userName || 'Unknown User'
+      : conv.caregiver?.userName || 'Unknown Caregiver';
 
   const getPhoto = (conv) => {
     const f = userType === 'caregiver' ? conv.user?.photo : conv.caregiver?.photo;
-    if (!f) return `https://ui-avatars.com/api/?name=${encodeURIComponent(getDisplayName(conv))}&background=e8e8e8&color=333&bold=true`;
+    if (!f) return `https://ui-avatars.com/api/?name=${encodeURIComponent(getDisplayName(conv))}&background=e2e8f0&color=64748b&bold=true&size=128`;
     if (f.startsWith('http')) return f;
     return `http://localhost:8080/uploads/${f.replace(/\s+/g, '_').trim()}`;
   };
@@ -83,10 +74,7 @@ const AcceptedConnections = ({ userType = 'user', caregiverId: providedCaregiver
     if (userType === 'caregiver') {
       return { sub: conv.user?.serviceType || conv.user?.address || 'Care Receiver' };
     }
-    return {
-      sub:        conv.caregiver?.speciality || 'Caregiver',
-      experience: conv.caregiver?.experience,
-    };
+    return { sub: conv.caregiver?.speciality || 'Caregiver', experience: conv.caregiver?.experience };
   };
 
   const filtered = conversations.filter(conv =>
@@ -95,134 +83,143 @@ const AcceptedConnections = ({ userType = 'user', caregiverId: providedCaregiver
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 gap-3">
-        <div className="w-7 h-7 border-2 border-gray-200 border-t-gray-700 rounded-full animate-spin" />
-        <p className="text-sm text-gray-400">Loading conversations...</p>
+      <div className="w-full flex flex-col items-center justify-center py-24 gap-3">
+        <div className="w-8 h-8 rounded-full border-[3px] border-gray-100 border-t-gray-400 animate-spin" />
+        <p className="text-sm text-gray-400">Loading conversations…</p>
       </div>
     );
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full bg-gray-200 border border-gray-300 rounded-3xl p-5 shadow-sm">
 
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Messages</h2>
+          <h2 className="text-xl font-semibold text-gray-900 tracking-tight">Messages</h2>
           <p className="text-xs text-gray-400 mt-0.5">
             {conversations.length} active connection{conversations.length !== 1 ? 's' : ''}
           </p>
         </div>
+
         <button
           onClick={handleRefresh}
           disabled={loading}
-          className="flex items-center gap-1.5 text-xs font-medium text-gray-300 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-2 text-xs font-medium text-gray-500 bg-gray-50 border border-gray-200 px-3.5 py-2 rounded-lg hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40 transition-all shadow-sm"
         >
-          <FaSync size={10} className={loading ? 'animate-spin' : ''} />
+          <FaSync size={9} className={loading ? 'animate-spin' : ''} />
           Refresh
         </button>
       </div>
 
-      {/* Search */}
-      <div className="relative mb-4">
-        <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs" />
+      {/* ── Search ── */}
+      <div className="relative mb-6">
+        <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" size={12} />
         <input
           type="text"
-          placeholder="Search here..."
+          placeholder="Search conversations…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-8 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-all placeholder-gray-300"
+          className="w-full pl-9 pr-4 py-2.5 text-sm bg-gray-100 border border-gray-300 rounded-xl text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-gray-300 focus:border-gray-300 transition-all"
         />
       </div>
 
-      {/* Empty state */}
+      {/* ── Empty state ── */}
       {conversations.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-14 rounded-2xl border border-dashed border-gray-200 bg-gray-50">
+        <div className="flex flex-col items-center justify-center py-16 rounded-2xl bg-gray-50 border border-gray-100">
           <div className="w-12 h-12 rounded-full bg-white border border-gray-100 shadow-sm flex items-center justify-center mb-3">
             <FaComments size={18} className="text-gray-300" />
           </div>
           <p className="text-sm font-semibold text-gray-700 mb-1">No conversations yet</p>
-          <p className="text-xs text-gray-400 text-center max-w-[200px]">
+          <p className="text-xs text-gray-400 text-center max-w-[200px] leading-relaxed">
             {userType === 'caregiver'
               ? 'Connections appear once care receivers accept your profile.'
               : 'Accept a caregiver to start chatting.'}
           </p>
           <button
             onClick={handleRefresh}
-            className="mt-4 flex items-center gap-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+            className="mt-5 flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-100 border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-200 transition-all shadow-sm"
           >
-            <FaSync size={10} /> Refresh
+            <FaSync size={9} /> Refresh
           </button>
         </div>
+
       ) : filtered.length === 0 ? (
-        <p className="text-center py-8 text-sm text-gray-400">No conversations match your search.</p>
+        <p className="text-center py-10 text-sm text-gray-400">
+          No results for <span className="font-semibold text-gray-600">"{search}"</span>
+        </p>
+
       ) : (
-        <div className="flex flex-col gap-1">
-          {filtered.map((conv) => {
-            const displayName = getDisplayName(conv);
-            const photo       = getPhoto(conv);
-            const details     = getDetails(conv);
-            const isActive    = selectedChat?.id === conv.id;
+        <>
+          {/* Section label */}
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2 px-1">
+            Active &middot; {filtered.length}
+          </p>
 
-            return (
-              <button
-                key={conv.id}
-                onClick={() => setSelectedChat(isActive ? null : conv)}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all duration-200 ${
-                  isActive ? 'bg-gray-200' : 'hover:bg-gray-50'
-                }`}
-              >
-                {/* Avatar */}
-                <div className="relative flex-shrink-0">
-                  <img
-                    src={photo}
-                    alt={displayName}
-                    className="w-10 h-10 rounded-full object-cover bg-gray-100"
-                    onError={(e) => {
-                      e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=e8e8e8&color=333&bold=true`;
-                    }}
-                  />
-                  <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 bg-green-400 ${isActive ? 'border-gray-200' : 'border-white'}`} />
-                </div>
+          {/* ── Unified list container ── */}
+          <div className="bg-gray-200 border border-gray-300 rounded-3xl overflow-hidden shadow-sm">
+            {filtered.map((conv, index) => {
+              const displayName = getDisplayName(conv);
+              const photo       = getPhoto(conv);
+              const details     = getDetails(conv);
+              const isActive    = selectedChat?.id === conv.id;
 
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className={`text-sm font-semibold truncate ${isActive ? 'text-gray-300' : 'text-gray-300'}`}>
-                      {displayName}
-                    </p>
-                    <span className={`text-xs flex-shrink-0 ${isActive ? 'text-gray-700' : 'text-gray-400'}`}>
-                      {new Date(conv.acceptedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </span>
-                  </div>
-                  <p className={`text-xs truncate mt-0.5 ${isActive ? 'text-gray-700' : 'text-gray-400'}`}>
-                    {details.sub}{details.experience ? ` · ${details.experience} yrs` : ''}
-                  </p>
-                </div>
+              return (
+                <React.Fragment key={conv.id}>
+                  <button
+                    onClick={() => setSelectedChat(isActive ? null : conv)}
+                    className="w-full relative flex items-center gap-4 px-5 py-4 text-left transition-all duration-200 border border-gray-300 bg-gray-100 hover:bg-gray-200 text-gray-900"
+                  >
+                    {/* Avatar */}
+                    <div className="relative flex-shrink-0">
+                      <img
+                        src={photo}
+                        alt={displayName}
+                        className="w-11 h-11 rounded-full object-cover bg-gray-100"
+                        onError={(e) => {
+                          e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=e2e8f0&color=64748b&bold=true&size=128`;
+                        }}
+                      />
+                    </div>
 
-                {/* Badge */}
-                <span className={`flex-shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full ${
-                  isActive ? 'bg-green-100 text-green-700' : 'bg-green-50 text-green-600'
-                }`}>
-                  Active
-                </span>
-              </button>
-            );
-          })}
-        </div>
+                    {/* Name & subtitle */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 truncate leading-snug">
+                        {displayName}
+                      </p>
+                      <p className="text-xs text-gray-400 truncate mt-0.5">
+                        {details.sub || '—'}
+                        {details.experience
+                          ? <span className="text-gray-300"> &middot; {details.experience} yrs</span>
+                          : null}
+                      </p>
+                    </div>
+
+                    {/* Date */}
+                    <div className="flex-shrink-0 ml-2">
+                      <span className="text-[11px] text-gray-400 tabular-nums">
+                        {new Date(conv.acceptedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
+                  </button>
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </>
       )}
 
-      {/* Floating chat */}
+      {/* ── Floating chat ── */}
       {selectedChat && (
         <Chat
           conversationId={selectedChat.conversationId}
           userType={userType}
           conversationWith={{
             ...selectedChat,
-            userId:       selectedChat.user?.id,
-            caregiverId:  selectedChat.caregiver?.id,
-            userName:     userType === 'caregiver' ? selectedChat.user?.userName : selectedChat.caregiver?.userName,
-            photo:        userType === 'caregiver' ? selectedChat.user?.photo    : selectedChat.caregiver?.photo,
+            userId:      selectedChat.user?.id,
+            caregiverId: selectedChat.caregiver?.id,
+            userName:    userType === 'caregiver' ? selectedChat.user?.userName : selectedChat.caregiver?.userName,
+            photo:       userType === 'caregiver' ? selectedChat.user?.photo    : selectedChat.caregiver?.photo,
           }}
           onClose={() => setSelectedChat(null)}
         />

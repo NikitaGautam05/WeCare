@@ -35,6 +35,12 @@ const Notifications = () => {
         return 'booking_rejected';
       case 'BOOKING_REQUEST':
         return 'booking';
+      case 'INTEREST_ACCEPTED':
+        return 'interest_accepted';
+      case 'INTEREST_REJECTED':
+        return 'interest_rejected';
+      case 'INTEREST_SENT':
+        return 'interest_sent';
       default:
         return raw.toLowerCase();
     }
@@ -128,6 +134,7 @@ const Notifications = () => {
   const getNotificationStyle = (type) => {
     switch (type) {
       case 'booking_accepted':
+      case 'interest_accepted':
         return {
           icon: FaCheckCircle,
           color: 'text-green-500',
@@ -136,6 +143,7 @@ const Notifications = () => {
           label: 'Accepted',
         };
       case 'booking_rejected':
+      case 'interest_rejected':
         return {
           icon: FaTimesCircle,
           color: 'text-red-500',
@@ -157,8 +165,8 @@ const Notifications = () => {
   const filteredNotifications = notifications.filter((notif) => {
     if (notif.type === 'booking') return false;
     if (filter === 'all') return true;
-    if (filter === 'accepted') return notif.type === 'booking_accepted';
-    if (filter === 'rejected') return notif.type === 'booking_rejected';
+    if (filter === 'accepted') return notif.type === 'booking_accepted' || notif.type === 'interest_accepted';
+    if (filter === 'rejected') return notif.type === 'booking_rejected' || notif.type === 'interest_rejected';
     return true;
   });
 
@@ -191,8 +199,8 @@ const Notifications = () => {
             onClick={() => setDropdownOpen(!dropdownOpen)}
             className="flex items-center gap-3 px-0 py-2 transition-all text-sm group"
           >
-            <span className="text-gray-200  text-xs font-semibold uppercase tracking-wide">Filter:</span>
-            <span className="text-gray-200 font-medium group-hover:text-gray-400">
+            <span className="text-gray-400  text-xs font-semibold uppercase tracking-wide">Filter:</span>
+            <span className="text-gray-400 font-medium group-hover:text-gray-400">
               {filter === 'all' ? 'All Notifications' : filter === 'accepted' ? 'Accepted' : 'Rejected'}
             </span>
             <FaChevronDown 
@@ -219,7 +227,7 @@ const Notifications = () => {
                   className={`w-full text-left px-4 py-2.5 transition-colors text-sm border-b border-gray-100 last:border-b-0 ${
                     filter === option.value
                       ? 'bg-blue-50 text-blue-700 font-medium'
-                      : 'text-gray-300 hover:bg-gray-50'
+                      : 'text-gray-400 hover:bg-gray-50'
                   }`}
                 >
                   {option.label}

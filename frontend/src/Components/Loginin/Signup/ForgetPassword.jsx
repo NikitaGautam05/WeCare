@@ -71,68 +71,103 @@ const ForgetPassword = () => {
   };
 
   return (
-    <div className="flex items-center justify-center h-screen w-screen bg-gray-100">
-      <div className="bg-white p-6 rounded-lg shadow-md w-80 text-center">
-        {step === "username" && (
-          <>
-            <p className="mb-4 font-bold text-black">Enter your username</p>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Username"
-              className="border p-2 mb-4 w-full rounded bg-gray-200 text-gray-700"
-            />
-            <button
-              onClick={sendOtp}
-              disabled={loading}
-              className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800 disabled:opacity-50"
-            >
-              {loading ? "Sending..." : "Send OTP"}
-            </button>
-          </>
-        )}
+    <div className="w-screen h-screen relative overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-emerald-50">
+      <div 
+        className="absolute inset-0 z-0"
+        style={{
+          backgroundImage: 'url(https://images.unsplash.com/photo-1576765607924-3f7b8410a787?auto=format&fit=crop&w=1800&q=80)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          filter: 'blur(8px)',
+          opacity: '0.55'
+        }}
+      ></div>
 
-        {step === "otp" && (
-          <>
-            <p className="mb-4 font-bold">Enter OTP sent to your email</p>
-            <input
-              type="text"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-              placeholder="OTP"
-              className="border p-2 mb-4 w-full rounded bg-gray-200"
-            />
-            <button
-              onClick={verifyOtp}
-              disabled={loading}
-              className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800 disabled:opacity-50"
-            >
-              {loading ? "Verifying..." : "Verify OTP"}
-            </button>
-          </>
-        )}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-blue-100/40 to-emerald-100/40 rounded-full blur-3xl opacity-60" style={{animation: 'float 25s infinite ease-in-out'}}></div>
+        <div className="absolute bottom-0 left-0 w-[360px] h-[360px] bg-gradient-to-tr from-blue-100/30 to-cyan-100/30 rounded-full blur-3xl opacity-50" style={{animation: 'float 30s infinite ease-in-out 2s'}}></div>
+      </div>
 
-        {step === "resetPassword" && (
-          <>
-            <p className="mb-4 font-bold">Enter your new password</p>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="New Password"
-              className="border p-2 mb-4 w-full rounded bg-gray-200"
-            />
-            <button
-              onClick={resetPassword}
-              className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800"
-            >
-              Reset Password
-            </button>
-          </>
-        )}
+      <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-6">
+        <div className="w-full max-w-sm">
+          <div className="bg-slate-90 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/60 p-6 relative overflow-hidden max-h-[95vh] overflow-y-auto">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent"></div>
 
-        {message && <p className="mt-3 text-sm text-red-600">{message}</p>}
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight">Forgot Password</h2>
+              <p className="text-xs text-slate-500 font-medium mt-2">Reset your account password securely</p>
+            </div>
+
+            <div className="space-y-5">
+              {step === "username" && (
+                <div className="space-y-4">
+                  <div className="space-y-1 text-left">
+                    <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Username</label>
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      placeholder="Enter your username"
+                      className="w-full px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 rounded-xl border border-slate-200 bg-white/90 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-300"
+                    />
+                  </div>
+                  <button
+                    onClick={sendOtp}
+                    disabled={loading}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-500 via-blue-600 to-emerald-500 text-white font-semibold text-sm shadow-lg shadow-blue-500/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50"
+                  >
+                    {loading ? "Sending..." : "Send OTP"}
+                  </button>
+                </div>
+              )}
+
+              {step === "otp" && (
+                <div className="space-y-4">
+                  <div className="space-y-1 text-left">
+                    <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">OTP</label>
+                    <input
+                      type="text"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      placeholder="Enter OTP"
+                      className="w-full px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 rounded-xl border border-slate-200 bg-white/90 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-300"
+                    />
+                  </div>
+                  <button
+                    onClick={verifyOtp}
+                    disabled={loading}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-500 via-blue-600 to-emerald-500 text-white font-semibold text-sm shadow-lg shadow-blue-500/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50"
+                  >
+                    {loading ? "Verifying..." : "Verify OTP"}
+                  </button>
+                </div>
+              )}
+
+              {step === "resetPassword" && (
+                <div className="space-y-4">
+                  <div className="space-y-1 text-left">
+                    <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">New Password</label>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Enter your new password"
+                      className="w-full px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 rounded-xl border border-slate-200 bg-white/90 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-300"
+                    />
+                  </div>
+                  <button
+                    onClick={resetPassword}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-500 via-blue-600 to-emerald-500 text-white font-semibold text-sm shadow-lg shadow-blue-500/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
+                  >
+                    Reset Password
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {message && <p className="mt-4 text-sm text-red-600 text-center">{message}</p>}
+          </div>
+        </div>
       </div>
     </div>
   );

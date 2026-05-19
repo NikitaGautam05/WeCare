@@ -48,6 +48,7 @@ const Profile = () => {
   const [toast,               setToast]               = useState(null);
   const [dialogue,            setDialogue]            = useState(null);
   const [acceptedConnection,  setAcceptedConnection]  = useState(null);
+  const [isBooked,            setIsBooked]            = useState(false);
   const [showBookingModal,    setShowBookingModal]    = useState(false);
   const [bookingForm,         setBookingForm]         = useState({
     serviceType: '',
@@ -60,6 +61,7 @@ const Profile = () => {
   });
   const [bookingLoading,      setBookingLoading]      = useState(false);
   const [isFavourited,        setIsFavourited]        = useState(false);
+  const [interestSent,        setInterestSent]        = useState(false);
   const [comment,             setComment]             = useState("");
   const [isSubmitting,        setIsSubmitting]        = useState(false);
   const [isReported,          setIsReported]          = useState(false);
@@ -102,9 +104,30 @@ const Profile = () => {
           );
           if (matched) {
             setAcceptedConnection(matched);
+            setInterestSent(true);
           }
         } catch (err) {
           console.warn("Failed to fetch accepted connections:", err);
+        }
+
+        try {
+          const bookingRes = await axios.get(`${BASE}/bookings/user/${userId}`, axiosConfig);
+          const confirmedBooking = (Array.isArray(bookingRes.data) ? bookingRes.data : [])
+            .find((booking) => booking?.caregiverId?.toString() === id?.toString()
+              && ["CONFIRMED"].includes((booking?.status || "").toUpperCase()));
+          setIsBooked(Boolean(confirmedBooking));
+        } catch (err) {
+          console.warn("Failed to fetch user bookings:", err);
+        }
+
+        try {
+          const sentRes = await axios.get(`${BASE}/interest/sent-interests/${userId}`, axiosConfig);
+          const alreadySent = Array.isArray(sentRes.data) && sentRes.data.some(
+            (interest) => String(interest.caregiver?.id) === String(id)
+          );
+          setInterestSent(alreadySent);
+        } catch (err) {
+          console.warn("Failed to fetch sent interests:", err);
         }
       }
     } catch (err) { console.error("Failed to fetch caregiver:", err); }
@@ -124,6 +147,15 @@ const Profile = () => {
     fetchProfileData();
   }, [id, userId, token, navigate]);
 
+  // Refresh profile data when accepted connections change (e.g., booking completed)
+  useEffect(() => {
+    const handler = () => {
+      fetchProfileData();
+    };
+    window.addEventListener('acceptedConnectionsChanged', handler);
+    return () => window.removeEventListener('acceptedConnectionsChanged', handler);
+  }, []);
+
   /* ── actions ──────────────────────────────────────────────── */
   const handleFavourite = async () => {
     if (!userId) return showToast("Please login to save");
@@ -140,9 +172,25 @@ const Profile = () => {
     }
   };
 
-  const handleInterestClick = () => {
+  const handleInterestClick = async () => {
+    if (!userId) return showToast("Please login to send interest");
     logHistory("CONTACTED");
-    setDialogue({ caregiver: profile });
+    try {
+      await axios.post(`${BASE}/interest/send`, null, {
+        ...axiosConfig,
+        params: {
+          caregiverId: id,
+          caregiverName: profile.fullName || profile.userName || "Caregiver",
+          userId,
+          userName: localStorage.getItem("userName") || "User",
+        },
+      });
+      setInterestSent(true);
+      setDialogue({ caregiver: profile });
+    } catch (err) {
+      console.error("Failed to send interest:", err);
+      showToast("Failed to send interest. Please try again.");
+    }
   };
 
   const handleReport = async () => {
@@ -223,9 +271,11 @@ const Profile = () => {
     </Layout>
   );
 
-  const photo            = profile.profilePhoto?.replace(/\s+/g, "_");
-  const citizenshipPhoto = profile.citizenshipPhoto?.replace(/\s+/g, "_");
-  const photoUrl         = photo ? `http://localhost:8080/uploads/${photo}` : null;
+  const photo             = profile.profilePhoto?.replace(/\s+/g, "_");
+  const citizenshipPhoto  = profile.citizenshipPhoto?.replace(/\s+/g, "_");
+  const certificatePhoto  = profile.certificatePhoto?.replace(/\s+/g, "_");
+  const photoUrl          = photo ? `http://localhost:8080/uploads/${photo}` : null;
+  const certificateUrl    = certificatePhoto ? `http://localhost:8080/uploads/${certificatePhoto}` : null;
 
   return (
     <Layout>
@@ -472,23 +522,33 @@ const Profile = () => {
                   <span className="text-slate-500 font-medium text-sm"> – {profile.chargeMax}</span>
                 </p>
               </div>
-              {acceptedConnection ? (
+              {isBooked ? (
+                <button disabled
+                  className="flex items-center gap-2 px-6 py-2.5 bg-slate-300 text-slate-700 text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-none cursor-not-allowed">
+                  <FaCheckCircle size={11} /> Booked
+                </button>
+              ) : acceptedConnection ? (
                 <button onClick={() => setShowBookingModal(true)}
                   className="flex items-center gap-2 px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-emerald-900/30 active:scale-95">
                   <FaPaperPlane size={11} /> Book Service
                 </button>
               ) : (
                 <button onClick={handleInterestClick}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-blue-900/30 active:scale-95">
-                  <FaPaperPlane size={11} /> Send Interest
+                  disabled={interestSent}
+                  className={`flex items-center gap-2 px-6 py-2.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-lg active:scale-95 ${interestSent ? 'bg-slate-100 text-slate-400 border border-slate-100 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white shadow-blue-900/30'}`}>
+                  <FaPaperPlane size={11} /> {interestSent ? 'Sent ✓' : 'Send Interest'}
                 </button>
               )}
             </div>
-            {acceptedConnection && (
+            {isBooked ? (
+              <div className="mt-2 text-sm text-emerald-200 font-semibold">
+                You already have a confirmed booking with this caregiver.
+              </div>
+            ) : acceptedConnection ? (
               <div className="mt-2 text-sm text-emerald-200 font-semibold">
                 This caregiver has accepted your interest. You can now book a service.
               </div>
-            )}
+            ) : null}
           </div>
         </div>
 
@@ -626,6 +686,23 @@ const Profile = () => {
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pending Verification</p>
                 </div>
               )}
+
+              {certificateUrl && (
+                <div className="mt-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-1 h-5 bg-slate-400 rounded-full"></div>
+                    <h3 className="text-xs font-black text-slate-700 uppercase tracking-widest">Certification Proof</h3>
+                  </div>
+                  <div className="rounded-xl overflow-hidden border border-slate-200 shadow-inner group">
+                    <img
+                      src={certificateUrl}
+                      alt="Certification Proof"
+                      className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  </div>
+                  <p className="mt-3 text-xs text-slate-500">Uploaded certificate / training proof for this caregiver.</p>
+                </div>
+              )}
             </div>
 
             {/* CTA card */}
@@ -637,8 +714,9 @@ const Profile = () => {
                   Work with {profile.fullName?.split(" ")[0]}
                 </h3>
                 <button onClick={handleInterestClick}
-                  className="w-full py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-md shadow-blue-900/40 flex items-center justify-center gap-2 active:scale-95">
-                  <FaPaperPlane size={11} /> Send Interest
+                  disabled={interestSent}
+                  className={`w-full py-2.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-md flex items-center justify-center gap-2 active:scale-95 ${interestSent ? 'bg-slate-100 text-slate-400 border border-slate-100 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white shadow-blue-900/40'}`}>
+                  <FaPaperPlane size={11} /> {interestSent ? 'Sent ✓' : 'Send Interest'}
                 </button>
               </div>
             </div>
