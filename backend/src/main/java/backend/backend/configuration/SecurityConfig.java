@@ -70,7 +70,8 @@ public class SecurityConfig {
                                 "/api/verify-otp",
                                 "/api/caregivers/add",
                                 "/api/reset-password",
-                                "/uploads/**"
+                            "/uploads/**",
+                            "/"
                         ).permitAll()
 
                         // 5. Secure all other actions (e.g., booking, reporting, hiring)
