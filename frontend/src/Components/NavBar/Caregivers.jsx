@@ -30,11 +30,14 @@ const Caregivers = () => {
       setLoading(true);
       try {
         const [cgRes, interestRes] = await Promise.all([
-          axios.get("${import.meta.env.VITE_API_URL}/api/caregivers/verified", axiosConfig),
+          axios.get(`${import.meta.env.VITE_API_URL}/api/caregivers/verified`, axiosConfig),
           axios.get(`${import.meta.env.VITE_API_URL}/api/interest/sent-interests/${userId}`, axiosConfig)
         ]);
 
-        setCaregivers(cgRes.data);
+        const cgData = cgRes.data;
+        console.log('Caregivers response:', cgData, 'Type:', typeof cgData, 'IsArray:', Array.isArray(cgData));
+        const caregiversList = Array.isArray(cgData) ? cgData : (cgData?.data && Array.isArray(cgData.data) ? cgData.data : []);
+        setCaregivers(caregiversList);
         const ids = Array.isArray(interestRes.data)
           ? interestRes.data.map((interest) => interest.caregiver?.id).filter(Boolean)
           : [];
@@ -49,12 +52,12 @@ const Caregivers = () => {
     fetchData();
   }, [navigate, token, userId]);
 
-  const filteredCaregivers = caregivers.filter(
+  const filteredCaregivers = Array.isArray(caregivers) ? caregivers.filter(
     (c) =>
       c.fullName?.toLowerCase().includes(search.toLowerCase()) ||
       c.speciality?.toLowerCase().includes(search.toLowerCase()) ||
       c.address?.toLowerCase().includes(search.toLowerCase())
-  );
+  ) : [];
 
   const handleInterested = async (caregiver) => {
     if (!userId) { navigate('/login'); return; }
@@ -98,9 +101,9 @@ const Caregivers = () => {
               Discover verified professionals available across your region.
             </p>
             {!loading && (
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm font-black">
+      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm font-black">
                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                {caregivers.length} professionals available
+                {Array.isArray(caregivers) ? caregivers.length : 0} professionals available
               </div>
             )}
           </div>

@@ -8,7 +8,7 @@ import {
 } from "react-icons/fa";
 import Layout from "../Layout/Layout";
 
-const BASE = "${import.meta.env.VITE_API_URL}/api";
+const BASE = `${import.meta.env.VITE_API_URL}/api`;
 
 const ACTION_META = {
   VIEWED:    { label: "Viewed Profile",  dot: "bg-blue-500",   badge: "bg-blue-50 text-blue-600 border-blue-100" },
@@ -65,7 +65,10 @@ export default function History() {
         }
         const cRes = await axios.get(`${BASE}/caregivers/verified`, axiosConfig);
         const map  = {};
-        (cRes.data || []).forEach((c) => (map[c.id] = c));
+        console.log('History caregivers response:', cRes.data, 'Type:', typeof cRes.data, 'IsArray:', Array.isArray(cRes.data));
+        const caregiverData = cRes.data;
+        const caregiverList = Array.isArray(caregiverData) ? caregiverData : (caregiverData?.data && Array.isArray(caregiverData.data) ? caregiverData.data : []);
+        caregiverList.forEach((c) => (map[c.id] = c));
         setCaregivers(map);
       } catch (err) {
         console.error(err);

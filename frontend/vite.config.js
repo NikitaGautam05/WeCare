@@ -30,11 +30,10 @@ export default defineConfig({
       "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
     },
     proxy: {
-      '/login': {
-        target: '${import.meta.env.VITE_API_URL}',
+      '/api': {
+        target: process.env.VITE_API_URL || 'http://localhost:8080',
         changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path.replace(/^\/login/, '')
+        secure: false
       }
     }
   }

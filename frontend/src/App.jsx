@@ -31,6 +31,7 @@ import Chat from './Components/Chat/Chat';
 import ChatPage from './Components/Chat/ChatPage';
 import { Navigate } from 'react-router-dom';
 import Notifications from './Components/Dashboard/Notifications'
+import ErrorBoundary from './Components/ErrorBoundary'
 function App() {
   // Protection for standard Users & Caregivers
   const ProtectedRoute = ({ children }) => {
@@ -46,7 +47,8 @@ function App() {
   };
 
   return (
-    <Router>
+    <ErrorBoundary>
+      <Router>
       {/* <Routes>
         <Route path='/' element={<Splash/>}></Route>
         <Route path='/login' element={<Login/>}></Route>
@@ -110,6 +112,7 @@ function App() {
         <Route path="/admin/reports" element={<AdminRoute><Reports /></AdminRoute>} />
       </Routes>
     </Router>
+    </ErrorBoundary>
   )
 }
 

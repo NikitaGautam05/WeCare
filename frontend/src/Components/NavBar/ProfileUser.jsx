@@ -81,7 +81,7 @@ const ProfileUser = () => {
     formData.append("file", file);
     setUploading(true);
     try {
-      const res = await axios.post("${import.meta.env.VITE_API_URL}/api/users/change-photo", formData, {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/users/change-photo`, formData, {
         ...axiosConfig, headers: { ...axiosConfig.headers, "Content-Type": "multipart/form-data" },
       });
       setProfileData({ ...profileData, photo: res.data.photoUrl });

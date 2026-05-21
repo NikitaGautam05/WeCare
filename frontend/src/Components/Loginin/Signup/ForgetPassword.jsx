@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 const ForgetPassword = () => {
   const navigate = useNavigate();
-  const BASE_URL = "${import.meta.env.VITE_API_URL}/api";
+  const BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
 
   const [username, setUsername] = useState("");
   const [otp, setOtp] = useState("");

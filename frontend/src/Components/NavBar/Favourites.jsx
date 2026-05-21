@@ -4,7 +4,7 @@ import axios from "axios";
 import { FaSearch, FaHeart } from "react-icons/fa";
 import Layout from "../Layout/Layout";
 
-const BASE = "${import.meta.env.VITE_API_URL}/api";
+const BASE = `${import.meta.env.VITE_API_URL}/api`;
 
 export default function Favourites() {
   const navigate = useNavigate();

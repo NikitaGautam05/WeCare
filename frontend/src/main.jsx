@@ -4,6 +4,8 @@ import App from "./App.jsx";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import "./index.css";
 
+console.log('API URL:', import.meta.env.VITE_API_URL);
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <GoogleOAuthProvider clientId="666312206626-bp4glho27euf5tr9041vq247fr707fi5.apps.googleusercontent.com">

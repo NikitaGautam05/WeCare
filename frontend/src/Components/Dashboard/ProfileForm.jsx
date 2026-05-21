@@ -157,7 +157,7 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
       setLoading(true);
       const res = submittedProfile
         ? await axios.put(`${import.meta.env.VITE_API_URL}/api/caregivers/update/${uid}`, formData, config)
-        : await axios.post("${import.meta.env.VITE_API_URL}/api/caregivers/add", formData, config);
+        : await axios.post(`${import.meta.env.VITE_API_URL}/api/caregivers/add`, formData, config);
 
       setSubmittedProfile(res.data);
       setEditMode(false);
@@ -220,7 +220,7 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
   const onFocus = e => { e.target.style.borderColor = "#0ea5e9"; e.target.style.background = "#fff"; };
   const onBlur  = (name) => e => { e.target.style.borderColor = errors[name] ? "#ef4444" : "#e2e8f0"; };
 
-  const getUploadUrl = (filename) => filename ? "${import.meta.env.VITE_API_URL}/uploads/" + filename : "";
+  const getUploadUrl = (filename) => filename ? `${import.meta.env.VITE_API_URL}/uploads/` + filename : "";
   const certificatePreviewStyle = { width:120, minWidth:120, height:120, borderRadius:12, overflow:"hidden", background:"#f8fafc", border:"1.5px solid #cbd5e1" };
   const certificateWrapperStyle = { display:"flex", gap:14, flexWrap:"wrap" };
 

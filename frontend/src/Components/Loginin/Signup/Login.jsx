@@ -15,7 +15,7 @@ const Login = () => {
     e.preventDefault();
 
     try {
-      const response = await axios.post("${import.meta.env.VITE_API_URL}/api/users/login", {
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/users/login`, {
         userName: userName.trim(),
         password: password.trim()
       });
@@ -60,7 +60,7 @@ const Login = () => {
       const token = credentialResponse.credential;
       
       // We tell the backend we are trying to login
-      const res = await axios.post("${import.meta.env.VITE_API_URL}/api/google-signup", {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/google-signup`, {
         token: token,
         mode: "LOGIN" 
       });

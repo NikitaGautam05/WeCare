@@ -34,8 +34,14 @@ const Dashboard = () => {
       localStorage.setItem(`profileReminder_${userId}`, 0);
     }
 
-    axios.get("${import.meta.env.VITE_API_URL}/api/caregivers/verified", axiosConfig)
-      .then((res) => setCaregivers(res.data))
+    const normalizeArray = (data) => {
+      if (Array.isArray(data)) return data;
+      if (data?.data && Array.isArray(data.data)) return data.data;
+      return [];
+    };
+
+    axios.get(`${import.meta.env.VITE_API_URL}/api/caregivers/verified`, axiosConfig)
+      .then((res) => setCaregivers(normalizeArray(res.data)))
       .catch((err) => {
         if (err.response?.status === 401) navigate("/");
       });
@@ -44,9 +50,10 @@ const Dashboard = () => {
       .then((res) => {
         const favIds = res.data;
         if (Array.isArray(favIds) && favIds.length > 0) {
-          axios.get("${import.meta.env.VITE_API_URL}/api/caregivers/verified", axiosConfig)
+          axios.get(`${import.meta.env.VITE_API_URL}/api/caregivers/verified`, axiosConfig)
             .then((res) => {
-              const favCaregivers = res.data.filter((c) => favIds.includes(c.id));
+              const data = normalizeArray(res.data);
+              const favCaregivers = data.filter((c) => favIds.includes(c.id));
               setFavouriteCaregivers(favCaregivers);
             });
         }
@@ -71,7 +78,7 @@ const Dashboard = () => {
   const handleInterest = async (caregiver) => {
     try {
       await axios.post(
-        "${import.meta.env.VITE_API_URL}/api/interest/send",
+        `${import.meta.env.VITE_API_URL}/api/interest/send`,
         null,
         {
           params: {
