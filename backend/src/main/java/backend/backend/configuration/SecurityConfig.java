@@ -45,6 +45,10 @@ public class SecurityConfig {
                 }))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // ADD THIS (IMPORTANT FIX FOR GOOGLE LOGIN)
+                        .requestMatchers("/oauth2/**", "/login/**").permitAll()
                         // 1. Always allow OPTIONS for CORS pre-flight checks
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
 
