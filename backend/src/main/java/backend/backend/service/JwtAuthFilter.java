@@ -1,9 +1,7 @@
 package backend.backend.service;
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -11,7 +9,10 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -46,13 +47,26 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+
     }
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
-        return path.equals("/api/users/complete-google-profile")
-                || path.equals("/api/google-signup")
-                || path.equals("/api/users/login")
-                || path.equals("/api/users/register");
+
+        return path.startsWith("/api/users/")
+                || path.startsWith("/api/caregivers/")
+                || path.startsWith("/api/interest/")
+                || path.startsWith("/api/google-signup")
+                || path.startsWith("/api/forgetPassword")
+                || path.startsWith("/api/verify-otp")
+                || path.startsWith("/uploads/");
     }
+//    @Override
+//    protected boolean shouldNotFilter(HttpServletRequest request) {
+//        String path = request.getServletPath();
+//        return path.equals("/api/users/complete-google-profile")
+//                || path.equals("/api/google-signup")
+//                || path.equals("/api/users/login")
+//                || path.equals("/api/users/register");
+//    }
 }

@@ -1,5 +1,8 @@
 package backend.backend.controller;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -10,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,7 +32,10 @@ import backend.backend.service.EmailService;
 
 @RestController
 @RequestMapping("/api/bookings")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = {
+    "http://localhost:5173",
+    "https://elderease-6cuj.onrender.com"
+})
 public class BookingController {
 
     @Autowired
@@ -154,6 +161,49 @@ public class BookingController {
             }
 
             System.out.println("✅ Booking confirmed: " + booking.getId());
+            return ResponseEntity.ok(updated);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // ── Add daily work note for confirmed booking ──
+    @PutMapping("/{bookingId}/notes")
+    public ResponseEntity<?> addBookingNote(@PathVariable String bookingId, @RequestBody Map<String, String> payload) {
+        try {
+            Booking booking = bookingRepository.findById(bookingId).orElse(null);
+            if (booking == null) {
+                return ResponseEntity.status(404).body(Map.of("error", "Booking not found"));
+            }
+            String status = booking.getStatus();
+            if (!"CONFIRMED".equals(status)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Notes may only be added after the booking is accepted."));
+            }
+            String note = payload.get("note");
+            if (note == null || note.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Note text is required."));
+            }
+            List<String> dailyNotes = booking.getDailyNotes();
+            if (dailyNotes == null) {
+                dailyNotes = new ArrayList<>();
+            }
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+            dailyNotes.add(timestamp + " — " + note.trim());
+            booking.setDailyNotes(dailyNotes);
+            Booking updated = bookingRepository.save(booking);
+
+            Notification logNotification = new Notification(
+                booking.getUserId(),
+                booking.getCaregiverId(),
+                booking.getCaregiverName(),
+                "booking_log",
+                booking.getCaregiverName() + " added a new care update",
+                "Care log update: " + timestamp + " — " + note.trim()
+            );
+            logNotification.setActionId(booking.getId());
+            notificationRepository.save(logNotification);
+
             return ResponseEntity.ok(updated);
         } catch (Exception e) {
             e.printStackTrace();

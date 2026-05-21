@@ -26,7 +26,10 @@ import backend.backend.service.JwtService;
 
 @RestController
 @RequestMapping("/api/admin")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = {
+    "http://localhost:5173",
+    "https://elderease-6cuj.onrender.com"
+})
 public class AdminController {
 
     @Autowired private AdminRepo adminRepo;

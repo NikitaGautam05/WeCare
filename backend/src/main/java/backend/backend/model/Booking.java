@@ -1,5 +1,7 @@
 package backend.backend.model;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -19,11 +21,14 @@ public class Booking {
     private Double hourlyRate;
     private String location;
     private String notes;
+    private List<String> dailyNotes;
     private String createdAt;
     private String confirmedAt;
     private String completedAt;
 
-    public Booking() {}
+    public Booking() {
+        this.dailyNotes = new ArrayList<>();
+    }
 
     public Booking(String caregiverId, String caregiverName, String userId, String userName, 
                    String serviceType, String startTime, String endTime, Double hourlyRate) {
@@ -37,6 +42,7 @@ public class Booking {
         this.hourlyRate = hourlyRate;
         this.status = "PENDING";
         this.createdAt = java.time.LocalDateTime.now().toString();
+        this.dailyNotes = new ArrayList<>();
     }
 
     // Getters and Setters
@@ -78,6 +84,9 @@ public class Booking {
 
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+
+    public List<String> getDailyNotes() { return dailyNotes; }
+    public void setDailyNotes(List<String> dailyNotes) { this.dailyNotes = dailyNotes; }
 
     public String getCreatedAt() { return createdAt; }
     public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }

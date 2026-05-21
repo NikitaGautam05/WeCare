@@ -17,10 +17,10 @@ import io.jsonwebtoken.security.Keys;
 @Service
 public class JwtService {
 
-    @Value("${security.jwt.secret-key}")
+    @Value("${security.jwt.secret-key:mysupersecretkey1234567890123456}")
     private String secretKey; // now 32+ chars
 
-    @Value("${security.jwt.expiration-time}")
+    @Value("${security.jwt.expiration-time:100000000}")
     private long expirationTime; // e.g., 86400000 for 1 day
 
     // Helper to get a proper Key object

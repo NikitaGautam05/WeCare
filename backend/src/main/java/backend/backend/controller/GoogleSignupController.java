@@ -19,7 +19,10 @@
 //import com.google.api.client.json.jackson2.JacksonFactory;
 //
 //@RestController
-//@CrossOrigin(origins = "http://localhost:5173")
+//@CrossOrigin(origins = {
+    "http://localhost:5173",
+    "https://elderease-6cuj.onrender.com"
+})
 //@RequestMapping("/api")
 //public class GoogleSignupController {
 //
@@ -145,7 +148,10 @@ import backend.backend.service.JwtService;
 import backend.backend.service.MyUserDetailService;
 
 @RestController
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = {
+    "http://localhost:5173",
+    "https://elderease-6cuj.onrender.com"
+})
 @RequestMapping("/api")
 public class GoogleSignupController {
 

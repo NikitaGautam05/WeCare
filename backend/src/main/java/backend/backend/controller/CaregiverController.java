@@ -30,7 +30,10 @@ import backend.backend.service.EmailService;
 
 @RestController
 @RequestMapping("/api/caregivers")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = {
+    "http://localhost:5173",
+    "https://elderease-6cuj.onrender.com"
+})
 public class CaregiverController {
     @Autowired
     private CaregiverService caregiverService;

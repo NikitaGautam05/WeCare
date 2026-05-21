@@ -28,7 +28,10 @@ import backend.backend.service.CaregiverService;
 
 @RestController
 @RequestMapping("/api/chat")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = {
+    "http://localhost:5173",
+    "https://elderease-6cuj.onrender.com"
+})
 public class ChatController {
 
     @Autowired

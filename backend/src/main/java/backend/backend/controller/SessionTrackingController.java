@@ -20,7 +20,10 @@ import backend.backend.repository.SessionTrackingRepository;
 
 @RestController
 @RequestMapping("/api/sessions")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = {
+    "http://localhost:5173",
+    "https://elderease-6cuj.onrender.com"
+})
 public class SessionTrackingController {
 
     @Autowired
