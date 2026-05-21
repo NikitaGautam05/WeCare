@@ -5,7 +5,7 @@ const GoogleButton = () => {
 
   const handleLogin = () => {
     window.location.href =
-      "https://elderease-1-u3gn.onrender.com/oauth2/authorization/google";
+  "https://elderease-6cuj.onrender.com/oauth2/authorization/google";
   };
 
   return (
