@@ -16,6 +16,8 @@ const BookingsList = ({ userType, userId: propUserId }) => {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [openBookingMenu, setOpenBookingMenu] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [noteInputs, setNoteInputs] = useState({});
+  const [savingNoteId, setSavingNoteId] = useState(null);
 
   const localUserId = localStorage.getItem("userId");
   const token = localStorage.getItem("jwtToken");
@@ -34,8 +36,8 @@ const BookingsList = ({ userType, userId: propUserId }) => {
       setLoading(true);
       let url =
         userType === "caregiver"
-          ? `http://localhost:8080/api/bookings/caregiver/${userId}`
-          : `http://localhost:8080/api/bookings/user/${userId}`;
+          ? `${import.meta.env.VITE_API_URL}/api/bookings/caregiver/${userId}`
+          : `${import.meta.env.VITE_API_URL}/api/bookings/user/${userId}`;
 
       const res = await axios.get(url, axiosConfig);
       setBookings(sortBookingsNewestFirst(res.data || []));
@@ -66,8 +68,8 @@ const BookingsList = ({ userType, userId: propUserId }) => {
       setActionLoading(true);
       const endpoint =
         action === "CONFIRMED"
-          ? `http://localhost:8080/api/bookings/${bookingId}/confirm`
-          : `http://localhost:8080/api/bookings/${bookingId}/cancel`;
+          ? `${import.meta.env.VITE_API_URL}/api/bookings/${bookingId}/confirm`
+          : `${import.meta.env.VITE_API_URL}/api/bookings/${bookingId}/cancel`;
       const res = await axios.put(endpoint, {}, axiosConfig);
       setBookings((prev) =>
         prev.map((booking) => (booking.id === bookingId ? res.data : booking))
@@ -89,7 +91,7 @@ const BookingsList = ({ userType, userId: propUserId }) => {
   const completeBooking = async (bookingId) => {
     try {
       setActionLoading(true);
-      const res = await axios.put(`http://localhost:8080/api/bookings/${bookingId}/complete`, {}, axiosConfig);
+      const res = await axios.put(`${import.meta.env.VITE_API_URL}/api/bookings/${bookingId}/complete`, {}, axiosConfig);
       setBookings((prev) =>
         prev.map((booking) => (booking.id === bookingId ? res.data : booking))
       );
@@ -105,6 +107,36 @@ const BookingsList = ({ userType, userId: propUserId }) => {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const saveBookingNote = async (bookingId) => {
+    const note = (noteInputs[bookingId] || "").trim();
+    if (!note) {
+      alert("Please enter the work update before saving.");
+      return;
+    }
+
+    try {
+      setSavingNoteId(bookingId);
+      const res = await axios.put(
+        `${import.meta.env.VITE_API_URL}/api/bookings/${bookingId}/notes`,
+        { note },
+        axiosConfig
+      );
+      setBookings((prev) =>
+        prev.map((booking) => (booking.id === bookingId ? res.data : booking))
+      );
+      setNoteInputs((prev) => ({ ...prev, [bookingId]: "" }));
+    } catch (err) {
+      console.error("Failed to save booking note:", err);
+      alert("Unable to save the work note. Please try again.");
+    } finally {
+      setSavingNoteId(null);
+    }
+  };
+
+  const handleNoteChange = (bookingId, value) => {
+    setNoteInputs((prev) => ({ ...prev, [bookingId]: value }));
   };
 
   const getStatus = (status) => {
@@ -242,6 +274,42 @@ const BookingsList = ({ userType, userId: propUserId }) => {
               <div className="mt-5 rounded-3xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-700">
                 <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400 mb-2">Notes</p>
                 <p>{b.notes}</p>
+              </div>
+            )}
+
+            {(b.status === "CONFIRMED" || b.status === "COMPLETED") && (
+              <div className="mt-5 rounded-3xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-700">
+                <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400 mb-2">Daily care log</p>
+                {Array.isArray(b.dailyNotes) && b.dailyNotes.length > 0 ? (
+                  <ul className="space-y-2">
+                    {b.dailyNotes.map((entry, index) => (
+                      <li key={index} className="rounded-2xl bg-white p-3 border border-slate-200 text-slate-700">
+                        {entry}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-slate-500">No daily work log has been added yet.</p>
+                )}
+                {userType === "caregiver" && b.status === "CONFIRMED" && (
+                  <div className="mt-4 space-y-3">
+                    <textarea
+                      rows={3}
+                      value={noteInputs[b.id] || ""}
+                      onChange={(e) => handleNoteChange(b.id, e.target.value)}
+                      placeholder="Write what work you completed today..."
+                      className="w-full rounded-3xl border border-slate-200 bg-white p-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                    />
+                    <button
+                      type="button"
+                      disabled={savingNoteId === b.id}
+                      onClick={() => saveBookingNote(b.id)}
+                      className="inline-flex items-center justify-center rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70 transition"
+                    >
+                      {savingNoteId === b.id ? "Saving..." : "Save work log"}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

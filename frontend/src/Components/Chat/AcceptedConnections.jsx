@@ -25,7 +25,7 @@ const AcceptedConnections = ({ userType = 'user', caregiverId: providedCaregiver
 
   const fetchCaregiverIdThenConversations = async () => {
     try {
-      const cgRes = await axios.get(`http://localhost:8080/api/caregivers/user/${userId}`, axiosConfig);
+      const cgRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/caregivers/user/${userId}`, axiosConfig);
       if (cgRes.data && cgRes.data.id) {
         setCaregiverId(cgRes.data.id);
         fetchConversations(cgRes.data.id);
@@ -48,8 +48,8 @@ const AcceptedConnections = ({ userType = 'user', caregiverId: providedCaregiver
     try {
       setLoading(true);
       const endpoint = userType === 'caregiver'
-        ? `http://localhost:8080/api/chat/accepted-for-caregiver/${idToUse}`
-        : `http://localhost:8080/api/chat/accepted-for-receiver/${idToUse}`;
+        ? `${import.meta.env.VITE_API_URL}/api/chat/accepted-for-caregiver/${idToUse}`
+        : `${import.meta.env.VITE_API_URL}/api/chat/accepted-for-receiver/${idToUse}`;
       const res = await axios.get(endpoint, axiosConfig);
       setConversations(res.data || []);
     } catch (err) {
@@ -67,7 +67,7 @@ const AcceptedConnections = ({ userType = 'user', caregiverId: providedCaregiver
     const f = userType === 'caregiver' ? conv.user?.photo : conv.caregiver?.photo;
     if (!f) return `https://ui-avatars.com/api/?name=${encodeURIComponent(getDisplayName(conv))}&background=e2e8f0&color=64748b&bold=true&size=128`;
     if (f.startsWith('http')) return f;
-    return `http://localhost:8080/uploads/${f.replace(/\s+/g, '_').trim()}`;
+    return `${import.meta.env.VITE_API_URL}/uploads/${f.replace(/\s+/g, '_').trim()}`;
   };
 
   const getDetails = (conv) => {

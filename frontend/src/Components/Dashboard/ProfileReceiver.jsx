@@ -30,18 +30,18 @@ const ProfileReceiver = () => {
         setLoading(true);
 
         // 1. Get User Profile Data
-        const userRes = await axios.get(`http://localhost:8080/api/users/${userId}`, axiosConfig);
+        const userRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/users/${userId}`, axiosConfig);
         console.log("👤 User Profile Data:", userRes.data);
         setUserProfile(userRes.data);
 
         // 2. Get Caregiver Profile Data (to get the internal caregiver.id)
-        const cgRes = await axios.get(`http://localhost:8080/api/caregivers/user/${caregiverUserId}`, axiosConfig);
+        const cgRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/caregivers/user/${caregiverUserId}`, axiosConfig);
         setCaregiver(cgRes.data);
 
         // 3. PERSISTENCE CHECK: Verify if this user is already in your accepted list
         if (cgRes.data && cgRes.data.id) {
           const connectionsRes = await axios.get(
-            `http://localhost:8080/api/chat/accepted-for-caregiver/${cgRes.data.id}`,
+            `${import.meta.env.VITE_API_URL}/api/chat/accepted-for-caregiver/${cgRes.data.id}`,
             axiosConfig
           );
           
@@ -55,11 +55,11 @@ const ProfileReceiver = () => {
           }
 
           // Fetch caregiver-related request context for blurred background
-          axios.get(`http://localhost:8080/api/interest/pending-requests/${cgRes.data.id}`, axiosConfig)
+          axios.get(`${import.meta.env.VITE_API_URL}/api/interest/pending-requests/${cgRes.data.id}`, axiosConfig)
             .then((reqRes) => setInterestRequests(Array.isArray(reqRes.data) ? reqRes.data : []))
             .catch((err) => console.error("Background interest fetch error:", err.message));
 
-          axios.get(`http://localhost:8080/api/bookings/caregiver/${cgRes.data.id}`, axiosConfig)
+          axios.get(`${import.meta.env.VITE_API_URL}/api/bookings/caregiver/${cgRes.data.id}`, axiosConfig)
             .then((bookRes) => setBookingRequests(Array.isArray(bookRes.data) ? bookRes.data : []))
             .catch((err) => console.error("Background booking fetch error:", err.message));
         }
@@ -81,7 +81,7 @@ const ProfileReceiver = () => {
     try {
       // Endpoint that updates connection status to ACCEPTED
       await axios.post(
-        `http://localhost:8080/api/caregivers/${caregiver.id}/accept-request`, 
+        `${import.meta.env.VITE_API_URL}/api/caregivers/${caregiver.id}/accept-request`, 
         { userId }, 
         axiosConfig
       );
@@ -100,7 +100,7 @@ const ProfileReceiver = () => {
     try {
       // Use the same decline endpoint for both pending and accepted requests
       await axios.post(
-        `http://localhost:8080/api/caregivers/${caregiver.id}/decline-request`, 
+        `${import.meta.env.VITE_API_URL}/api/caregivers/${caregiver.id}/decline-request`, 
         { userId }, 
         axiosConfig
       );
@@ -127,7 +127,7 @@ const ProfileReceiver = () => {
       
       // Remove the accepted connection
       const response = await axios.post(
-        `http://localhost:8080/api/caregivers/${caregiver.id}/remove-connection`, 
+        `${import.meta.env.VITE_API_URL}/api/caregivers/${caregiver.id}/remove-connection`, 
         { userId }, 
         axiosConfig
       );
@@ -164,7 +164,7 @@ const ProfileReceiver = () => {
   const photoUrl = userProfile?.photo 
     ? userProfile.photo.startsWith('http') 
       ? userProfile.photo  // Already a full URL
-      : `http://localhost:8080/uploads/${userProfile.photo.replace(/\s+/g, "_")}`  // Just a filename
+      : `${import.meta.env.VITE_API_URL}/uploads/${userProfile.photo.replace(/\s+/g, "_")}`  // Just a filename
     : `https://ui-avatars.com/api/?name=${userProfile?.userName}&background=random`;
 
   return (

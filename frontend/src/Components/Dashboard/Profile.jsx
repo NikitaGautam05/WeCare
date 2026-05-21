@@ -8,7 +8,7 @@ import {
 } from "react-icons/fa";
 import Layout from "../Layout/Layout";
 
-const BASE = "http://localhost:8080/api";
+const BASE = "${import.meta.env.VITE_API_URL}/api";
 
 // ── Stat tile ─────────────────────────────────────────────────────────────────
 const StatTile = ({ label, value, accent = "blue" }) => {
@@ -48,6 +48,7 @@ const Profile = () => {
   const [toast,               setToast]               = useState(null);
   const [dialogue,            setDialogue]            = useState(null);
   const [acceptedConnection,  setAcceptedConnection]  = useState(null);
+  const [currentBooking,      setCurrentBooking]      = useState(null);
   const [isBooked,            setIsBooked]            = useState(false);
   const [showBookingModal,    setShowBookingModal]    = useState(false);
   const [bookingForm,         setBookingForm]         = useState({
@@ -114,7 +115,8 @@ const Profile = () => {
           const bookingRes = await axios.get(`${BASE}/bookings/user/${userId}`, axiosConfig);
           const confirmedBooking = (Array.isArray(bookingRes.data) ? bookingRes.data : [])
             .find((booking) => booking?.caregiverId?.toString() === id?.toString()
-              && ["CONFIRMED"].includes((booking?.status || "").toUpperCase()));
+              && ["CONFIRMED", "COMPLETED"].includes((booking?.status || "").toUpperCase()));
+          setCurrentBooking(confirmedBooking || null);
           setIsBooked(Boolean(confirmedBooking));
         } catch (err) {
           console.warn("Failed to fetch user bookings:", err);
@@ -274,8 +276,8 @@ const Profile = () => {
   const photo             = profile.profilePhoto?.replace(/\s+/g, "_");
   const citizenshipPhoto  = profile.citizenshipPhoto?.replace(/\s+/g, "_");
   const certificatePhoto  = profile.certificatePhoto?.replace(/\s+/g, "_");
-  const photoUrl          = photo ? `http://localhost:8080/uploads/${photo}` : null;
-  const certificateUrl    = certificatePhoto ? `http://localhost:8080/uploads/${certificatePhoto}` : null;
+  const photoUrl          = photo ? `${import.meta.env.VITE_API_URL}/uploads/${photo}` : null;
+  const certificateUrl    = certificatePhoto ? `${import.meta.env.VITE_API_URL}/uploads/${certificatePhoto}` : null;
 
   return (
     <Layout>
@@ -569,6 +571,26 @@ const Profile = () => {
               </p>
             </div>
 
+            {currentBooking && (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-7">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-1 h-5 bg-emerald-500 rounded-full"></div>
+                  <h2 className="text-sm font-black text-slate-700 uppercase tracking-widest">Daily Care Log</h2>
+                </div>
+                {Array.isArray(currentBooking.dailyNotes) && currentBooking.dailyNotes.length > 0 ? (
+                  <ul className="space-y-3">
+                    {currentBooking.dailyNotes.map((note, index) => (
+                      <li key={index} className="rounded-3xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-700">
+                        {note}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-slate-500 text-sm">Your caregiver has not added a daily update yet. Updates will appear here after the booking is accepted.</p>
+                )}
+              </div>
+            )}
+
             {/* Quick stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <StatTile label="Min Rate"   value={`Rs ${profile.chargeMin}`} accent="blue" />
@@ -669,7 +691,7 @@ const Profile = () => {
                 <>
                   <div className="rounded-xl overflow-hidden border border-slate-200 shadow-inner group">
                     <img
-                      src={`http://localhost:8080/uploads/${citizenshipPhoto}`}
+                      src={`${import.meta.env.VITE_API_URL}/uploads/${citizenshipPhoto}`}
                       alt="Verified ID"
                       className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-105"
                     />

@@ -14,7 +14,7 @@ const SentInterests = ({ userId }) => {
       setLoading(true);
       console.log('📤 Fetching sent interests for user:', userId);
       const response = await axios.get(
-        `http://localhost:8080/api/interest/sent-interests/${userId}`,
+        `${import.meta.env.VITE_API_URL}/api/interest/sent-interests/${userId}`,
         axiosConfig
       );
       console.log('✅ Sent interests fetched:', response.data);
@@ -80,7 +80,7 @@ const SentInterests = ({ userId }) => {
         <div className="space-y-3">
           {interests.map((interest) => {
             const photoUrl = interest.caregiver?.photo
-              ? `http://localhost:8080/uploads/${interest.caregiver.photo.replace(/\s+/g, '_').trim()}`
+              ? `${import.meta.env.VITE_API_URL}/uploads/${interest.caregiver.photo.replace(/\s+/g, '_').trim()}`
               : `https://ui-avatars.com/api/?name=${encodeURIComponent(interest.caregiver?.userName || 'Unknown')}&background=e8e8e8&color=333&bold=true`;
 
             const statusColor =

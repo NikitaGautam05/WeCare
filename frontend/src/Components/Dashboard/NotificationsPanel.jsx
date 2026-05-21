@@ -48,7 +48,7 @@ const NotificationsPanel = () => {
     try {
       setLoading(true);
       const response = await axios.get(
-        `http://localhost:8080/api/notifications/${userId}`,
+        `${import.meta.env.VITE_API_URL}/api/notifications/${userId}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -69,7 +69,7 @@ const NotificationsPanel = () => {
   const markAsRead = async (notificationId) => {
     try {
       await axios.put(
-        `http://localhost:8080/api/notifications/${notificationId}/read`,
+        `${import.meta.env.VITE_API_URL}/api/notifications/${notificationId}/read`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -84,7 +84,7 @@ const NotificationsPanel = () => {
   const markAllAsRead = async () => {
     try {
       await axios.put(
-        `http://localhost:8080/api/notifications/${userId}/read-all`,
+        `${import.meta.env.VITE_API_URL}/api/notifications/${userId}/read-all`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` }

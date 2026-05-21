@@ -120,7 +120,7 @@ const Chat = ({ conversationId, conversationWith, onClose, userType = 'user', is
 
         // Check if interest is accepted or if AcceptedRequest exists
         const response = await axios.get(
-          `http://localhost:8080/api/interest/can-chat/${checkCaregiverId}/${checkUserId}`,
+          `${import.meta.env.VITE_API_URL}/api/interest/can-chat/${checkCaregiverId}/${checkUserId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
@@ -169,7 +169,7 @@ const Chat = ({ conversationId, conversationWith, onClose, userType = 'user', is
       const freshToken = getToken();
       if (!freshToken) { setLoading(false); return; }
       const res = await axios.get(
-        `http://localhost:8080/api/chat/messages/${conversationId}`,
+        `${import.meta.env.VITE_API_URL}/api/chat/messages/${conversationId}`,
         { headers: { Authorization: `Bearer ${freshToken}` } }
       );
       const updatedMessages = res.data || [];
@@ -198,7 +198,7 @@ const Chat = ({ conversationId, conversationWith, onClose, userType = 'user', is
       if (unread.length === 0) return;
 
       await axios.put(
-        `http://localhost:8080/api/chat/read/conversation/${conversationId}/${recipientId}`,
+        `${import.meta.env.VITE_API_URL}/api/chat/read/conversation/${conversationId}/${recipientId}`,
         null,
         { headers: { Authorization: `Bearer ${freshToken}` } }
       );
@@ -252,7 +252,7 @@ const Chat = ({ conversationId, conversationWith, onClose, userType = 'user', is
       params.append('recipientId', recipientId);
       params.append('text', newMessage);
       const res = await axios.post(
-        'http://localhost:8080/api/chat/send',
+        '${import.meta.env.VITE_API_URL}/api/chat/send',
         params,
         { headers: { Authorization: `Bearer ${freshToken}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
       );
@@ -274,7 +274,7 @@ const Chat = ({ conversationId, conversationWith, onClose, userType = 'user', is
     try {
       const freshToken = getToken();
       await axios.delete(
-        `http://localhost:8080/api/chat/message/${messageId}`,
+        `${import.meta.env.VITE_API_URL}/api/chat/message/${messageId}`,
         { headers: { Authorization: `Bearer ${freshToken}` } }
       );
       setMessages((prevMessages) => prevMessages.filter((message) => message.id !== messageId));

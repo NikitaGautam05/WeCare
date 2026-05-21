@@ -19,7 +19,7 @@ const CaregiverRequests = ({ caregiverId }) => {
         throw new Error('No caregiver ID available to fetch interest requests.');
       }
       const response = await axios.get(
-        `http://localhost:8080/api/interest/pending-requests/${resolvedCaregiverId}`,
+        `${import.meta.env.VITE_API_URL}/api/interest/pending-requests/${resolvedCaregiverId}`,
         axiosConfig
       );
       console.log('✅ Requests fetched:', response.data);
@@ -42,7 +42,7 @@ const CaregiverRequests = ({ caregiverId }) => {
     try {
       setActingOn(requestId);
       const response = await axios.put(
-        `http://localhost:8080/api/interest/accept/${requestId}`,
+        `${import.meta.env.VITE_API_URL}/api/interest/accept/${requestId}`,
         {},
         axiosConfig
       );
@@ -60,7 +60,7 @@ const CaregiverRequests = ({ caregiverId }) => {
     try {
       setActingOn(requestId);
       const response = await axios.put(
-        `http://localhost:8080/api/interest/reject/${requestId}`,
+        `${import.meta.env.VITE_API_URL}/api/interest/reject/${requestId}`,
         {},
         axiosConfig
       );
@@ -121,7 +121,7 @@ const CaregiverRequests = ({ caregiverId }) => {
         <div className="space-y-3">
           {requests.map((request) => {
             const photoUrl = request.user?.photo
-              ? `http://localhost:8080/uploads/${request.user.photo.replace(/\s+/g, '_').trim()}`
+              ? `${import.meta.env.VITE_API_URL}/uploads/${request.user.photo.replace(/\s+/g, '_').trim()}`
               : `https://ui-avatars.com/api/?name=${encodeURIComponent(request.user?.userName || 'Unknown')}&background=e8e8e8&color=333&bold=true`;
 
             return (

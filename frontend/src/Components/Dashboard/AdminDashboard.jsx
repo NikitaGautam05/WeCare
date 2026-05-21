@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import logo from "../../assets/logo.jpg";
 
-const BASE_URL = "http://localhost:8080/api";
+const BASE_URL = "${import.meta.env.VITE_API_URL}/api";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -210,7 +210,7 @@ export default function AdminDashboard() {
             }`} />
             <div className="relative w-24 h-24 rounded-full ring-4 ring-white shadow-lg overflow-hidden bg-gray-200">
               <img
-                src={`http://localhost:8080/uploads/${photo}`}
+                src={`${import.meta.env.VITE_API_URL}/uploads/${photo}`}
                 alt={c.fullName}
                 className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-400"
                 onError={(e) => {
@@ -465,7 +465,7 @@ export default function AdminDashboard() {
                     (selected.status || "PENDING") === "BLOCKED"  ? "bg-red-400"     : "bg-amber-300"
                   }`} />
                   <img
-                    src={`http://localhost:8080/uploads/${selected.profilePhoto?.replace(/\s+/g, "_")}`}
+                    src={`${import.meta.env.VITE_API_URL}/uploads/${selected.profilePhoto?.replace(/\s+/g, "_")}`}
                     alt={selected.fullName}
                     className="relative w-20 h-20 rounded-2xl object-cover border-2 border-white shadow-md"
                     onError={(e) => {
@@ -507,7 +507,7 @@ export default function AdminDashboard() {
                 <div>
                   <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">📄 Citizenship Document</p>
                   <img
-                    src={`http://localhost:8080/uploads/${selected.citizenshipPhoto?.replace(/\s+/g, "_")}`}
+                    src={`${import.meta.env.VITE_API_URL}/uploads/${selected.citizenshipPhoto?.replace(/\s+/g, "_")}`}
                     alt="Citizenship"
                     className="w-full rounded-xl border border-gray-200 object-cover max-h-52"
                     onError={(e) => { e.target.style.display = "none"; }}

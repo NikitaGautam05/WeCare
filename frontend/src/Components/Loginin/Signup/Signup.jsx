@@ -131,7 +131,7 @@ const Signup = () => {
         payload.accountType = user.accountType;
       }
 
-      const res = await axios.post("http://localhost:8080/api/users/register", payload);
+      const res = await axios.post("${import.meta.env.VITE_API_URL}/api/users/register", payload);
       alert(res.data.message || "Registration successful");
       navigate("/login", { state: { role: selectedRole, registeredUser: user } });
     } catch (err) {
@@ -152,7 +152,7 @@ const Signup = () => {
         onSuccess={async (credentialResponse) => {
           try {
             const googleToken = credentialResponse.credential;
-            const res = await axios.post("http://localhost:8080/api/google-signup", {
+            const res = await axios.post("${import.meta.env.VITE_API_URL}/api/google-signup", {
               token: googleToken,
               role: selectedRole,
               mode: "SIGNUP",
@@ -219,7 +219,7 @@ const Signup = () => {
         payload.accountType = setupForm.accountType;
       }
 
-      const response = await axios.post("http://localhost:8080/api/users/complete-google-profile", payload);
+      const response = await axios.post("${import.meta.env.VITE_API_URL}/api/users/complete-google-profile", payload);
 
       localStorage.setItem("userName", setupForm.userName.trim());
       localStorage.setItem("role", selectedRole);

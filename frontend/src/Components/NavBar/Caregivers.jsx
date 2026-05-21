@@ -30,8 +30,8 @@ const Caregivers = () => {
       setLoading(true);
       try {
         const [cgRes, interestRes] = await Promise.all([
-          axios.get("http://localhost:8080/api/caregivers/verified", axiosConfig),
-          axios.get(`http://localhost:8080/api/interest/sent-interests/${userId}`, axiosConfig)
+          axios.get("${import.meta.env.VITE_API_URL}/api/caregivers/verified", axiosConfig),
+          axios.get(`${import.meta.env.VITE_API_URL}/api/interest/sent-interests/${userId}`, axiosConfig)
         ]);
 
         setCaregivers(cgRes.data);
@@ -59,7 +59,7 @@ const Caregivers = () => {
   const handleInterested = async (caregiver) => {
     if (!userId) { navigate('/login'); return; }
     try {
-      await axios.post(`http://localhost:8080/api/interest/send`, null, {
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/interest/send`, null, {
         ...axiosConfig,
         params: {
           caregiverId: caregiver.id,
@@ -155,7 +155,7 @@ const Caregivers = () => {
                   {/* Photo panel */}
                   <div className="sm:w-52 h-56 sm:h-auto relative overflow-hidden bg-slate-100 flex-shrink-0">
                     <img
-                      src={`http://localhost:8080/uploads/${cleanPhoto}`}
+                      src={`${import.meta.env.VITE_API_URL}/uploads/${cleanPhoto}`}
                       alt={c.fullName}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       onError={(e) =>

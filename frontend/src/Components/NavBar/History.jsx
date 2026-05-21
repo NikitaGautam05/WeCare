@@ -8,7 +8,7 @@ import {
 } from "react-icons/fa";
 import Layout from "../Layout/Layout";
 
-const BASE = "http://localhost:8080/api";
+const BASE = "${import.meta.env.VITE_API_URL}/api";
 
 const ACTION_META = {
   VIEWED:    { label: "Viewed Profile",  dot: "bg-blue-500",   badge: "bg-blue-50 text-blue-600 border-blue-100" },
@@ -224,7 +224,7 @@ export default function History() {
                       >
                         <div className="w-16 h-16 rounded-2xl overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-100">
                           <img
-                            src={`http://localhost:8080/uploads/${cg?.profilePhoto?.replace(/\s+/g, "_")}`}
+                            src={`${import.meta.env.VITE_API_URL}/uploads/${cg?.profilePhoto?.replace(/\s+/g, "_")}`}
                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                             alt=""
                             onError={(e) =>

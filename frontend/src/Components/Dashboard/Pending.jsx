@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import logo from "../../assets/logo.jpg";
 
-const BASE_URL = "http://localhost:8080/api";
+const BASE_URL = "${import.meta.env.VITE_API_URL}/api";
 
 export default function Pending() {
   const navigate = useNavigate();
@@ -249,7 +249,7 @@ const fetchPending = async () => {
                     {/* Photo */}
                     <div className="relative h-44 bg-amber-50 overflow-hidden">
                       <img
-                        src={`http://localhost:8080/uploads/${photo}`}
+                        src={`${import.meta.env.VITE_API_URL}/uploads/${photo}`}
                         alt={c.fullName}
                         className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
                         onError={(e) => {
@@ -363,7 +363,7 @@ const fetchPending = async () => {
               {/* Avatar + name */}
               <div className="flex items-center gap-4">
                 <img
-                  src={selected.profilePhoto?.startsWith('http') ? selected.profilePhoto : `http://localhost:8080/uploads/${selected.profilePhoto?.replace(/\s+/g, "_")}`}
+                  src={selected.profilePhoto?.startsWith('http') ? selected.profilePhoto : `${import.meta.env.VITE_API_URL}/uploads/${selected.profilePhoto?.replace(/\s+/g, "_")}`}
                   alt={selected.fullName}
                   className="w-20 h-20 rounded-2xl object-cover border-2 border-amber-100 shadow-sm"
                   onError={(e) => {
@@ -406,7 +406,7 @@ const fetchPending = async () => {
                 <div>
                   <p className="text-xs text-amber-500 uppercase tracking-wider mb-2">📄 Citizenship Document</p>
                   <img
-                    src={`http://localhost:8080/uploads/${selected.citizenshipPhoto?.replace(/\s+/g, "_")}`}
+                    src={`${import.meta.env.VITE_API_URL}/uploads/${selected.citizenshipPhoto?.replace(/\s+/g, "_")}`}
                     alt="Citizenship"
                     className="w-full rounded-xl border border-amber-100 object-cover max-h-52"
                     onError={(e) => { e.target.style.display = "none"; }}

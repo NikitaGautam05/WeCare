@@ -24,7 +24,7 @@ const Connections = () => {
   const fetchConnections = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`http://localhost:8080/api/chat/accepted-for-receiver/${userId}`, axiosConfig);
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/chat/accepted-for-receiver/${userId}`, axiosConfig);
       setConnections(res.data || []);
     } catch (err) {
       console.error('Failed to fetch connected caregivers:', err);
@@ -38,7 +38,7 @@ const Connections = () => {
     if (!userId || !token) return;
     setRefreshing(true);
     try {
-      const res = await axios.get(`http://localhost:8080/api/chat/accepted-for-receiver/${userId}`, axiosConfig);
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/chat/accepted-for-receiver/${userId}`, axiosConfig);
       setConnections(res.data || []);
     } catch (err) {
       console.error('Failed to refresh connections:', err);
@@ -168,7 +168,7 @@ const Connections = () => {
               const photo = caregiver.photo
                 ? caregiver.photo.startsWith('http')
                   ? caregiver.photo
-                  : `http://localhost:8080/uploads/${caregiver.photo.replace(/\s+/g, '_').trim()}`
+                  : `${import.meta.env.VITE_API_URL}/uploads/${caregiver.photo.replace(/\s+/g, '_').trim()}`
                 : `https://ui-avatars.com/api/?name=${encodeURIComponent(caregiver.userName || 'Caregiver')}&background=d1fae5&color=065f46`;
 
               const connectedDate = connection.acceptedAt

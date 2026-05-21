@@ -130,8 +130,8 @@ const UserProfileForm = () => {
     try {
       setLoading(true);
       const endpoint = profile
-        ? `http://localhost:8080/api/users/update/${userId}`
-        : `http://localhost:8080/api/users/profile`;
+        ? `${import.meta.env.VITE_API_URL}/api/users/update/${userId}`
+        : `${import.meta.env.VITE_API_URL}/api/users/profile`;
       
       console.log("📤 Sending profile to:", endpoint);
       console.log("📋 Data:", { address: form.address, serviceType: form.serviceType, additionalInfo: form.additionalInfo, accountType: form.accountType });
@@ -153,7 +153,7 @@ const UserProfileForm = () => {
   useEffect(() => {
     if (!userId || !token) return;
 
-    axios.get(`http://localhost:8080/api/users/${userId}`, {
+    axios.get(`${import.meta.env.VITE_API_URL}/api/users/${userId}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => {
@@ -241,7 +241,7 @@ const UserProfileForm = () => {
   if (profile && !editMode) {
     const photoPath = form.photo ? form.photo : profile.photo;
     const photoUrl = photoPath 
-      ? `http://localhost:8080/uploads/${photoPath.replace(/\s+/g, "_")}`
+      ? `${import.meta.env.VITE_API_URL}/uploads/${photoPath.replace(/\s+/g, "_")}`
       : `https://ui-avatars.com/api/?name=${profile.userName}`;
 
     return (

@@ -34,17 +34,17 @@ const Dashboard = () => {
       localStorage.setItem(`profileReminder_${userId}`, 0);
     }
 
-    axios.get("http://localhost:8080/api/caregivers/verified", axiosConfig)
+    axios.get("${import.meta.env.VITE_API_URL}/api/caregivers/verified", axiosConfig)
       .then((res) => setCaregivers(res.data))
       .catch((err) => {
         if (err.response?.status === 401) navigate("/");
       });
 
-    axios.get(`http://localhost:8080/api/users/favorites/${userId}`, axiosConfig)
+    axios.get(`${import.meta.env.VITE_API_URL}/api/users/favorites/${userId}`, axiosConfig)
       .then((res) => {
         const favIds = res.data;
         if (Array.isArray(favIds) && favIds.length > 0) {
-          axios.get("http://localhost:8080/api/caregivers/verified", axiosConfig)
+          axios.get("${import.meta.env.VITE_API_URL}/api/caregivers/verified", axiosConfig)
             .then((res) => {
               const favCaregivers = res.data.filter((c) => favIds.includes(c.id));
               setFavouriteCaregivers(favCaregivers);
@@ -54,7 +54,7 @@ const Dashboard = () => {
       .catch((err) => console.error("Failed to fetch favourites", err));
 
     if (userId) {
-      axios.get(`http://localhost:8080/api/interest/sent-interests/${userId}`, axiosConfig)
+      axios.get(`${import.meta.env.VITE_API_URL}/api/interest/sent-interests/${userId}`, axiosConfig)
         .then((res) => {
           const ids = Array.isArray(res.data)
             ? res.data.map((interest) => interest.caregiver?.id).filter(Boolean)
@@ -71,7 +71,7 @@ const Dashboard = () => {
   const handleInterest = async (caregiver) => {
     try {
       await axios.post(
-        "http://localhost:8080/api/interest/send",
+        "${import.meta.env.VITE_API_URL}/api/interest/send",
         null,
         {
           params: {
@@ -154,7 +154,7 @@ const Dashboard = () => {
               <div key={c.id} className="group bg-white rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col min-w-0">
                 <div className="relative h-72 overflow-hidden">
                   <img
-                    src={`http://localhost:8080/uploads/${c.profilePhoto?.replace(/\s+/g, "_")}`}
+                    src={`${import.meta.env.VITE_API_URL}/uploads/${c.profilePhoto?.replace(/\s+/g, "_")}`}
                     alt={c.fullName}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     onError={(e) => (e.target.src = `https://ui-avatars.com/api/?name=${c.fullName}`)}
@@ -229,7 +229,7 @@ const Dashboard = () => {
                 >
                   <div className="relative h-50 w-full overflow-hidden">
                     <img
-                      src={`http://localhost:8080/uploads/${c.profilePhoto?.replace(/\s+/g, "_")}`}
+                      src={`${import.meta.env.VITE_API_URL}/uploads/${c.profilePhoto?.replace(/\s+/g, "_")}`}
                       alt={c.fullName}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       onError={(e) => (e.target.src = `https://ui-avatars.com/api/?name=${c.fullName}&background=f1f5f9&color=475569&bold=true`)}

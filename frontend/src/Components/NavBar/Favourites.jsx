@@ -4,7 +4,7 @@ import axios from "axios";
 import { FaSearch, FaHeart } from "react-icons/fa";
 import Layout from "../Layout/Layout";
 
-const BASE = "http://localhost:8080/api";
+const BASE = "${import.meta.env.VITE_API_URL}/api";
 
 export default function Favourites() {
   const navigate = useNavigate();
@@ -37,7 +37,7 @@ export default function Favourites() {
       const [favRes, cgRes, interestRes] = await Promise.all([
         axios.get(`${BASE}/users/favorites/${userId}`, axiosConfig),
         axios.get(`${BASE}/caregivers/verified`, axiosConfig),
-        axios.get(`http://localhost:8080/api/interest/sent-interests/${userId}`, axiosConfig)
+        axios.get(`${import.meta.env.VITE_API_URL}/api/interest/sent-interests/${userId}`, axiosConfig)
       ]);
       const ids = Array.isArray(favRes.data) ? favRes.data : [];
       const all = Array.isArray(cgRes.data)  ? cgRes.data  : [];
@@ -192,7 +192,7 @@ export default function Favourites() {
                   {/* Photo */}
                   <div className="h-56 relative overflow-hidden bg-slate-100">
                     <img
-                      src={`http://localhost:8080/uploads/${photo}`}
+                      src={`${import.meta.env.VITE_API_URL}/uploads/${photo}`}
                       alt={c.fullName}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       onError={(e) =>

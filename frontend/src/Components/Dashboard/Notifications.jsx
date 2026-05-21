@@ -41,6 +41,10 @@ const Notifications = () => {
         return 'interest_rejected';
       case 'INTEREST_SENT':
         return 'interest_sent';
+      case 'BOOKING_LOG':
+      case 'DAILY_LOG':
+      case 'BOOKING_LOG_NOTE':
+        return 'booking_log';
       default:
         return raw.toLowerCase();
     }
@@ -72,7 +76,7 @@ const Notifications = () => {
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`http://localhost:8080/api/notifications/${userId}`, axiosConfig);
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/notifications/${userId}`, axiosConfig);
 
       const userNotifications = res.data || [];
       console.log('Raw notifications from API:', userNotifications);
@@ -112,7 +116,7 @@ const Notifications = () => {
       // Mark all notifications as read when viewing the page
       if (parsed.length > 0) {
         try {
-          await axios.put(`http://localhost:8080/api/notifications/${userId}/read-all`, {}, axiosConfig);
+          await axios.put(`${import.meta.env.VITE_API_URL}/api/notifications/${userId}/read-all`, {}, axiosConfig);
         } catch (err) {
           console.error('Failed to mark notifications as read:', err);
         }
@@ -151,6 +155,14 @@ const Notifications = () => {
           borderColor: 'border-red-200',
           label: 'Rejected',
         };
+      case 'booking_log':
+        return {
+          icon: FaBell,
+          color: 'text-blue-500',
+          bg: 'bg-blue-50',
+          borderColor: 'border-blue-200',
+          label: 'Care Update',
+        };
       default:
         return {
           icon: FaBell,
@@ -165,10 +177,20 @@ const Notifications = () => {
   const filteredNotifications = notifications.filter((notif) => {
     if (notif.type === 'booking') return false;
     if (filter === 'all') return true;
-    if (filter === 'accepted') return notif.type === 'booking_accepted' || notif.type === 'interest_accepted';
+    if (filter === 'accepted') return notif.type === 'booking_accepted' || notif.type === 'interest_accepted' || notif.type === 'booking_log';
     if (filter === 'rejected') return notif.type === 'booking_rejected' || notif.type === 'interest_rejected';
     return true;
   });
+
+  const groupNotificationsByMonth = (items) => {
+    return items.reduce((grouped, notif) => {
+      const date = notif.createdAt ? new Date(notif.createdAt) : new Date();
+      const monthKey = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+      if (!grouped[monthKey]) grouped[monthKey] = [];
+      grouped[monthKey].push(notif);
+      return grouped;
+    }, {});
+  };
 
   return (
     <Layout>
@@ -255,79 +277,85 @@ const Notifications = () => {
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {filteredNotifications.map((notif, idx) => {
-              const { icon: Icon, color, bg, borderColor, label } = getNotificationStyle(notif.type);
-              return (
-                <div
-                  key={notif.id || idx}
-                  className={`${bg} border-2 ${borderColor} rounded-3xl p-6 transition-all hover:scale-[1.01] hover:shadow-md`}
-                >
-                  <div className="flex items-start gap-5">
-                    <div className={`${color} bg-white p-3 rounded-xl shadow-sm flex-shrink-0`}>
-                      <Icon size={24} />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                        <h4 className="font-black text-xl text-slate-900 leading-tight">{notif.message}</h4>
-                        <span className={`text-[10px] uppercase tracking-widest font-black px-3 py-1 rounded-full bg-white border ${borderColor} ${color}`}>
-                          {label}
-                        </span>
-                      </div>
-                      
-                      <div className="mt-4 flex flex-wrap gap-4 text-sm font-bold text-slate-600">
-                        {notif.serviceDate && <span>📅 {notif.serviceDate}</span>}
-                        {notif.serviceTime && <span>⏰ {notif.serviceTime}</span>}
-                        {notif.actionId && (
-                           <span className="bg-white/50 px-2 py-0.5 rounded text-xs font-mono">
-                             ID: {notif.actionId.slice(0, 8)}
-                           </span>
-                        )}
-                        {notif.senderName && (
-                          <span className="bg-white/50 px-2 py-0.5 rounded text-xs">
-                            From: {notif.senderName}
-                          </span>
-                        )}
-                        {notif.title && (
-                          <span className="bg-white/50 px-2 py-0.5 rounded text-xs">
-                            {notif.title}
-                          </span>
-                        )}
-                      </div>
-
-                      {notif.reason && (
-                        <div className="mt-3 p-3 bg-white/40 rounded-xl border border-black/5">
-                          <p className="text-sm text-slate-700 italic">
-                            <span className="font-black not-italic text-slate-900 mr-2">Rejection Reason:</span> 
-                            {notif.reason}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Show notification ID and timestamps */}
-                      <div className="mt-4 pt-4 border-t border-slate-200">
-                        <div className="grid grid-cols-2 gap-4 text-xs text-slate-500">
-                          <div>
-                            <span className="font-semibold">Notification ID:</span>
-                            <p className="font-mono text-[10px] break-all">{notif.id}</p>
-                          </div>
-                          <div>
-                            <span className="font-semibold">Created:</span>
-                            <p className="text-[10px]">{new Date(notif.createdAt).toLocaleString()}</p>
-                          </div>
-                        </div>
-                        {notif.actionId && (
-                          <div className="mt-2">
-                            <span className="font-semibold text-xs text-slate-500">Action ID:</span>
-                            <p className="font-mono text-[10px] break-all">{notif.actionId}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+          <div className="space-y-10">
+            {Object.entries(groupNotificationsByMonth(filteredNotifications)).map(([month, monthNotifications]) => (
+              <div key={month} className="space-y-5">
+                <div className="sticky top-24 z-10 rounded-3xl border border-slate-200 bg-slate-50 px-5 py-4 shadow-sm">
+                  <h2 className="text-xl font-black text-slate-900">{month}</h2>
+                  <p className="text-sm text-slate-500">Care updates and booking activity for this month</p>
                 </div>
-              );
-            })}
+                <div className="space-y-4">
+                  {monthNotifications.map((notif, idx) => {
+                    const { icon: Icon, color, bg, borderColor, label } = getNotificationStyle(notif.type);
+                    return (
+                      <div
+                        key={notif.id || idx}
+                        className={`${bg} border-2 ${borderColor} rounded-3xl p-6 transition-all hover:scale-[1.01] hover:shadow-md`}
+                      >
+                        <div className="flex items-start gap-5">
+                          <div className={`${color} bg-white p-3 rounded-xl shadow-sm flex-shrink-0`}>
+                            <Icon size={24} />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                              <h4 className="font-black text-xl text-slate-900 leading-tight">{notif.message}</h4>
+                              <span className={`text-[10px] uppercase tracking-widest font-black px-3 py-1 rounded-full bg-white border ${borderColor} ${color}`}>
+                                {label}
+                              </span>
+                            </div>
+                            <div className="mt-4 flex flex-wrap gap-4 text-sm font-bold text-slate-600">
+                              {notif.serviceDate && <span>📅 {notif.serviceDate}</span>}
+                              {notif.serviceTime && <span>⏰ {notif.serviceTime}</span>}
+                              {notif.actionId && (
+                                <span className="bg-white/50 px-2 py-0.5 rounded text-xs font-mono">
+                                  ID: {notif.actionId.slice(0, 8)}
+                                </span>
+                              )}
+                              {notif.senderName && (
+                                <span className="bg-white/50 px-2 py-0.5 rounded text-xs">
+                                  From: {notif.senderName}
+                                </span>
+                              )}
+                              {notif.title && (
+                                <span className="bg-white/50 px-2 py-0.5 rounded text-xs">
+                                  {notif.title}
+                                </span>
+                              )}
+                            </div>
+                            {notif.reason && (
+                              <div className="mt-3 p-3 bg-white/40 rounded-xl border border-black/5">
+                                <p className="text-sm text-slate-700 italic">
+                                  <span className="font-black not-italic text-slate-900 mr-2">Rejection Reason:</span>
+                                  {notif.reason}
+                                </p>
+                              </div>
+                            )}
+                            <div className="mt-4 pt-4 border-t border-slate-200">
+                              <div className="grid grid-cols-2 gap-4 text-xs text-slate-500">
+                                <div>
+                                  <span className="font-semibold">Notification ID:</span>
+                                  <p className="font-mono text-[10px] break-all">{notif.id}</p>
+                                </div>
+                                <div>
+                                  <span className="font-semibold">Created:</span>
+                                  <p className="text-[10px]">{new Date(notif.createdAt).toLocaleString()}</p>
+                                </div>
+                              </div>
+                              {notif.actionId && (
+                                <div className="mt-2">
+                                  <span className="font-semibold text-xs text-slate-500">Action ID:</span>
+                                  <p className="font-mono text-[10px] break-all">{notif.actionId}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 

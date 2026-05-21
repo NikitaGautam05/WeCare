@@ -11,7 +11,7 @@
 //   },
 //     proxy: {
 //       '/login': {
-//         target: 'http://localhost:8080',
+//         target: '${import.meta.env.VITE_API_URL}',
 //         changeOrigin: true,
 //         secure: false,
 //         rewrite: (path) => path.replace(/^\/login/, '')
@@ -31,7 +31,7 @@ export default defineConfig({
     },
     proxy: {
       '/login': {
-        target: 'http://localhost:8080',
+        target: '${import.meta.env.VITE_API_URL}',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/login/, '')

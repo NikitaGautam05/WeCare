@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import logo from "../../assets/logo.jpg";
 
-const BASE_URL = "http://localhost:8080/api";
+const BASE_URL = "${import.meta.env.VITE_API_URL}/api";
 
 export default function Verified() {
   const navigate = useNavigate();
@@ -107,7 +107,7 @@ export default function Verified() {
             <div className="absolute inset-0 rounded-full blur-md opacity-30 scale-110 bg-emerald-400" />
             <div className="relative w-24 h-24 rounded-full ring-4 ring-white shadow-lg overflow-hidden bg-emerald-50">
               <img
-                src={`http://localhost:8080/uploads/${photo}`}
+                src={`${import.meta.env.VITE_API_URL}/uploads/${photo}`}
                 alt={c.fullName}
                 className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-400"
                 onError={(e) => {
@@ -282,7 +282,7 @@ export default function Verified() {
               <div className="rounded-xl bg-gradient-to-br from-emerald-100 to-teal-50 p-5 flex items-center gap-4">
                 <div className="relative flex-shrink-0">
                   <div className="absolute inset-0 rounded-full blur-md opacity-30 scale-110 bg-emerald-400" />
-                  <img src={selected.profilePhoto?.startsWith('http') ? selected.profilePhoto : `http://localhost:8080/uploads/${selected.profilePhoto?.replace(/\s+/g, "_")}`} alt={selected.fullName}
+                  <img src={selected.profilePhoto?.startsWith('http') ? selected.profilePhoto : `${import.meta.env.VITE_API_URL}/uploads/${selected.profilePhoto?.replace(/\s+/g, "_")}`} alt={selected.fullName}
                     className="relative w-20 h-20 rounded-2xl object-cover border-2 border-white shadow-md"
                     onError={(e) => { e.target.onerror = null; e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selected.fullName || "C")}&background=d1fae5&color=065f46&size=200&bold=true`; }} />
                 </div>
@@ -315,7 +315,7 @@ export default function Verified() {
               {selected.citizenshipPhoto && (
                 <div>
                   <p className="text-xs text-emerald-600 uppercase tracking-wider mb-2">📄 Citizenship Document</p>
-                  <img src={`http://localhost:8080/uploads/${selected.citizenshipPhoto?.replace(/\s+/g, "_")}`} alt="Citizenship"
+                  <img src={`${import.meta.env.VITE_API_URL}/uploads/${selected.citizenshipPhoto?.replace(/\s+/g, "_")}`} alt="Citizenship"
                     className="w-full rounded-xl border border-emerald-100 object-cover max-h-52" onError={(e) => { e.target.style.display = "none"; }} />
                 </div>
               )}

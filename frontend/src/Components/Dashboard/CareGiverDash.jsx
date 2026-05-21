@@ -43,7 +43,7 @@ const CareGiverDash = () => {
     const axiosConfig = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
     
     // Fetch profile and notifications
-    axios.get(`http://localhost:8080/api/caregivers/user/${userId}`, axiosConfig)
+    axios.get(`${import.meta.env.VITE_API_URL}/api/caregivers/user/${userId}`, axiosConfig)
       .then((res) => {
         setProfile(res.data);
 
@@ -69,7 +69,7 @@ const CareGiverDash = () => {
         setSortedNotifications(parsed);
         setRequestFetchError("");
 
-        axios.get(`http://localhost:8080/api/notifications/${userId}`, axiosConfig)
+        axios.get(`${import.meta.env.VITE_API_URL}/api/notifications/${userId}`, axiosConfig)
           .then((notifRes) => {
             const remoteNotifs = Array.isArray(notifRes.data) ? notifRes.data : [];
             const merged = [...remoteNotifs];
@@ -97,7 +97,7 @@ const CareGiverDash = () => {
         const caregiverName = res.data?.fullName || res.data?.userName || "Caregiver";
 
         if (caregiverId) {
-          axios.get(`http://localhost:8080/api/interest/pending-requests/${caregiverId}`, axiosConfig)
+          axios.get(`${import.meta.env.VITE_API_URL}/api/interest/pending-requests/${caregiverId}`, axiosConfig)
             .then((intRes) => {
               const interestData = Array.isArray(intRes.data) ? intRes.data : [];
               if (interestData.length > 0) {
@@ -140,7 +140,7 @@ const CareGiverDash = () => {
               setInterestRequests([]);
             });
           
-          axios.get(`http://localhost:8080/api/bookings/caregiver/${caregiverId}`, axiosConfig)
+          axios.get(`${import.meta.env.VITE_API_URL}/api/bookings/caregiver/${caregiverId}`, axiosConfig)
               .then((bookRes) => {
                 const list = Array.isArray(bookRes.data) ? bookRes.data : [];
                 // sort newest first by createdAt or startTime
@@ -177,10 +177,10 @@ const CareGiverDash = () => {
         const caregiverId = resolveCaregiverId(profile);
         if (!caregiverId) return;
 
-        const intRes = await axios.get(`http://localhost:8080/api/interest/pending-requests/${caregiverId}`, axiosConfig).catch(() => ({ data: [] }));
+        const intRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/interest/pending-requests/${caregiverId}`, axiosConfig).catch(() => ({ data: [] }));
         setInterestRequests(Array.isArray(intRes.data) ? intRes.data : []);
 
-        const bookRes = await axios.get(`http://localhost:8080/api/bookings/caregiver/${caregiverId}`, axiosConfig).catch(() => ({ data: [] }));
+        const bookRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/bookings/caregiver/${caregiverId}`, axiosConfig).catch(() => ({ data: [] }));
         const list = Array.isArray(bookRes.data) ? bookRes.data : [];
         list.sort((a, b) => {
           const ad = Date.parse(a?.createdAt || a?.startTime || "");

@@ -156,8 +156,8 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
     try {
       setLoading(true);
       const res = submittedProfile
-        ? await axios.put(`http://localhost:8080/api/caregivers/update/${uid}`, formData, config)
-        : await axios.post("http://localhost:8080/api/caregivers/add", formData, config);
+        ? await axios.put(`${import.meta.env.VITE_API_URL}/api/caregivers/update/${uid}`, formData, config)
+        : await axios.post("${import.meta.env.VITE_API_URL}/api/caregivers/add", formData, config);
 
       setSubmittedProfile(res.data);
       setEditMode(false);
@@ -177,7 +177,7 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
     const token = localStorage.getItem("jwtToken");
     if (!uid) return;
 
-    axios.get(`http://localhost:8080/api/caregivers/user/${uid}`, {
+    axios.get(`${import.meta.env.VITE_API_URL}/api/caregivers/user/${uid}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {}
     })
       .then(res => { if (res.data) setSubmittedProfile(res.data); })
@@ -220,7 +220,7 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
   const onFocus = e => { e.target.style.borderColor = "#0ea5e9"; e.target.style.background = "#fff"; };
   const onBlur  = (name) => e => { e.target.style.borderColor = errors[name] ? "#ef4444" : "#e2e8f0"; };
 
-  const getUploadUrl = (filename) => filename ? "http://localhost:8080/uploads/" + filename : "";
+  const getUploadUrl = (filename) => filename ? "${import.meta.env.VITE_API_URL}/uploads/" + filename : "";
   const certificatePreviewStyle = { width:120, minWidth:120, height:120, borderRadius:12, overflow:"hidden", background:"#f8fafc", border:"1.5px solid #cbd5e1" };
   const certificateWrapperStyle = { display:"flex", gap:14, flexWrap:"wrap" };
 
@@ -284,7 +284,7 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
           <div style={{ display:"flex", gap:20, alignItems:"flex-start", marginBottom:28, paddingBottom:24, borderBottom:"1px solid #e2e8f0" }}>
             <div style={{ width:88, height:88, borderRadius:8, overflow:"hidden", background:"#f8fafc", flexShrink:0, border:"1.5px solid #cbd5e1" }}>
               <img
-                src={`http://localhost:8080/uploads/${photo}`}
+                src={`${import.meta.env.VITE_API_URL}/uploads/${photo}`}
                 alt={submittedProfile.fullName}
                 style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"top" }}
                 onError={e => {

@@ -25,8 +25,8 @@ const ChatConversationsList = ({ userType, userId, caregiverId, selectedChat, on
       try {
         setLoading(true);
         const endpoint = userType === 'caregiver'
-          ? `http://localhost:8080/api/chat/accepted-for-caregiver/${caregiverId}`
-          : `http://localhost:8080/api/chat/accepted-for-receiver/${userId}`;
+          ? `${import.meta.env.VITE_API_URL}/api/chat/accepted-for-caregiver/${caregiverId}`
+          : `${import.meta.env.VITE_API_URL}/api/chat/accepted-for-receiver/${userId}`;
 
         const res = await axios.get(endpoint, axiosConfig);
         const data = res.data || [];
@@ -147,7 +147,7 @@ const ChatConversationsList = ({ userType, userId, caregiverId, selectedChat, on
             const target = userType === 'caregiver' ? conv.user : conv.caregiver;
             const isSelected = selectedChat?.id === conv.id;
             const photo = target?.photo
-              ? `http://localhost:8080/uploads/${target.photo}`
+              ? `${import.meta.env.VITE_API_URL}/uploads/${target.photo}`
               : `https://ui-avatars.com/api/?name=${encodeURIComponent(target?.userName || "U")}&background=e0f2fe&color=0369a1`;
 
             return (
@@ -204,7 +204,7 @@ const ChatConversationsList = ({ userType, userId, caregiverId, selectedChat, on
 const ChatInterface = ({ selectedChat, userType, onClose, onDeleteConversation }) => {
   const target = userType === 'caregiver' ? selectedChat.user : selectedChat.caregiver;
   const photo = target?.photo
-    ? `http://localhost:8080/uploads/${target.photo}`
+    ? `${import.meta.env.VITE_API_URL}/uploads/${target.photo}`
     : `https://ui-avatars.com/api/?name=${encodeURIComponent(target?.userName || "U")}&background=e0f2fe&color=0369a1`;
 
   return (
@@ -311,7 +311,7 @@ const ChatPage = () => {
   // Resolve caregiver ID — original logic untouched
   useEffect(() => {
     if (userType === 'caregiver' && !resolvedCaregiverId) {
-      axios.get(`http://localhost:8080/api/caregivers/user/${userId}`, axiosConfig)
+      axios.get(`${import.meta.env.VITE_API_URL}/api/caregivers/user/${userId}`, axiosConfig)
         .then(r => {
           if (r.data?.id) {
             localStorage.setItem('caregiverId', r.data.id);

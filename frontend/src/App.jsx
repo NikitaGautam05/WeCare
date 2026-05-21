@@ -26,6 +26,7 @@ import Reports from './Components/Dashboard/Reports'
 import History from  './Components/NavBar/History'
 import Connections from './Components/NavBar/Connections'
 import ProfileReceiver from './Components/Dashboard/ProfileReceiver'
+import CareLogs from './Components/Dashboard/CareLogs'
 import Chat from './Components/Chat/Chat';
 import ChatPage from './Components/Chat/ChatPage';
 import { Navigate } from 'react-router-dom';
@@ -99,6 +100,7 @@ function App() {
         <Route path="/messages" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
         <Route path="/terms" element={<ProtectedRoute><TermsAndServices /></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+        <Route path="/care-logs" element={<ProtectedRoute><CareLogs /></ProtectedRoute>} />
         {/* Protected Caregiver/Admin Routes */}
         <Route path='/CareGiverDash/:id' element={<ProtectedRoute><CareGiverDash /></ProtectedRoute>} />
         <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />

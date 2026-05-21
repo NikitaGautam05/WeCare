@@ -73,7 +73,7 @@ useEffect(() => {
 
 if (userId && token) {
 
-axios.get(`http://localhost:8080/api/users/${userId}`, {
+axios.get(`${import.meta.env.VITE_API_URL}/api/users/${userId}`, {
 
 headers: { Authorization: `Bearer ${token}` }
 
@@ -107,14 +107,14 @@ try {
 
 const chatRecipientId = role === 'CAREGIVER' ? localStorage.getItem('caregiverId') : userId;
 const requests = [
-  axios.get(`http://localhost:8080/api/notifications/${userId}`, {
+  axios.get(`${import.meta.env.VITE_API_URL}/api/notifications/${userId}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
 ];
 
 if (chatRecipientId) {
   requests.push(
-    axios.get(`http://localhost:8080/api/chat/unread-count/${chatRecipientId}`, {
+    axios.get(`${import.meta.env.VITE_API_URL}/api/chat/unread-count/${chatRecipientId}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
   );
@@ -193,7 +193,7 @@ return { message: safeString(notif), type: 'general' };
 // Mark notification as read
   const markNotificationAsRead = async (notificationId) => {
     try {
-      await axios.put(`http://localhost:8080/api/notifications/${notificationId}/read`, {}, {
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/notifications/${notificationId}/read`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       // Update local state
@@ -250,7 +250,9 @@ const navItems = [
 
 { name: "♥ Favourites", link: "/favourites" },
 
-{ name: "🔔 Notifications", link: "/notifications" },
+{ name: "� Care Logs", link: "/care-logs" },
+
+{ name: "�🔔 Notifications", link: "/notifications" },
 
 { name: "👤 Profile", link: "/my-profile" },
 
@@ -268,7 +270,7 @@ const headerIndices = [0, 1, 2, 4, 5];
 
 const profileImg = userPhoto
 
-? (userPhoto.startsWith("http") ? userPhoto : `http://localhost:8080/uploads/${encodeURIComponent(userPhoto)}`)
+? (userPhoto.startsWith("http") ? userPhoto : `${import.meta.env.VITE_API_URL}/uploads/${encodeURIComponent(userPhoto)}`)
 
 : `https://ui-avatars.com/api/?name=${userName}`;
 

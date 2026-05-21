@@ -13,7 +13,7 @@ const ProfileUpdatePrompt = ({ onClose, userId, onProfileUpdate }) => {
   const checkProfileUpdatePrompt = async () => {
     try {
       const response = await axios.get(
-        `http://localhost:8080/api/sessions/${userId}/check-prompt`,
+        `${import.meta.env.VITE_API_URL}/api/sessions/${userId}/check-prompt`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -32,7 +32,7 @@ const ProfileUpdatePrompt = ({ onClose, userId, onProfileUpdate }) => {
     try {
       // Mark as prompted
       await axios.put(
-        `http://localhost:8080/api/sessions/${userId}/mark-prompted`,
+        `${import.meta.env.VITE_API_URL}/api/sessions/${userId}/mark-prompted`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -51,7 +51,7 @@ const ProfileUpdatePrompt = ({ onClose, userId, onProfileUpdate }) => {
   const handleDismiss = async () => {
     try {
       await axios.put(
-        `http://localhost:8080/api/sessions/${userId}/mark-prompted`,
+        `${import.meta.env.VITE_API_URL}/api/sessions/${userId}/mark-prompted`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` }

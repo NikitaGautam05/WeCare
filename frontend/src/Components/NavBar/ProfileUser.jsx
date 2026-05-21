@@ -43,7 +43,7 @@ const ProfileUser = () => {
   const fetchAcceptedConnections = async () => {
     setLoadingConnections(true);
     try {
-      const response = await axios.get(`http://localhost:8080/api/chat/accepted-for-receiver/${userId}`, axiosConfig);
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/chat/accepted-for-receiver/${userId}`, axiosConfig);
       setAcceptedConnections(response.data || []);
     } catch (err) {
       console.error("Error fetching accepted connections:", err);
@@ -55,7 +55,7 @@ const ProfileUser = () => {
 
   useEffect(() => {
     if (!userId || !token) { navigate("/login"); return; }
-    axios.get(`http://localhost:8080/api/users/${userId}`, axiosConfig)
+    axios.get(`${import.meta.env.VITE_API_URL}/api/users/${userId}`, axiosConfig)
       .then(res => {
         const data = res.data;
         if (!data.accountType) data.accountType = data.organizationName ? "ORGANIZATION" : "INDIVIDUAL";
@@ -81,7 +81,7 @@ const ProfileUser = () => {
     formData.append("file", file);
     setUploading(true);
     try {
-      const res = await axios.post("http://localhost:8080/api/users/change-photo", formData, {
+      const res = await axios.post("${import.meta.env.VITE_API_URL}/api/users/change-photo", formData, {
         ...axiosConfig, headers: { ...axiosConfig.headers, "Content-Type": "multipart/form-data" },
       });
       setProfileData({ ...profileData, photo: res.data.photoUrl });
@@ -95,7 +95,7 @@ const ProfileUser = () => {
       setPasswordMsg({ text: "Passwords do not match", isError: true }); return;
     }
     try {
-      await axios.put(`http://localhost:8080/api/users/change-password`, null, {
+      await axios.put(`${import.meta.env.VITE_API_URL}/api/users/change-password`, null, {
         ...axiosConfig, params: { username: profileData.userName, currentPassword, newPassword },
       });
       setPasswordMsg({ text: "Password updated!", isError: false });
@@ -128,7 +128,7 @@ const ProfileUser = () => {
           formData.append(k, profileData[k])
         );
       }
-      const res = await axios.post(`http://localhost:8080/api/users/update/${userId}`, formData, {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/users/update/${userId}`, formData, {
         headers: { ...axiosConfig.headers, "Content-Type": "multipart/form-data" },
       });
       setProfileData(res.data);
@@ -141,7 +141,7 @@ const ProfileUser = () => {
   };
 
   const profileImg = profileData.photo
-    ? (profileData.photo.startsWith("http") ? profileData.photo : `http://localhost:8080/uploads/${profileData.photo}`)
+    ? (profileData.photo.startsWith("http") ? profileData.photo : `${import.meta.env.VITE_API_URL}/uploads/${profileData.photo}`)
     : `https://ui-avatars.com/api/?name=${profileData.userName}&background=1e293b&color=60a5fa&bold=true`;
 
   const isOrg = profileData.accountType === "ORGANIZATION";
@@ -505,7 +505,7 @@ const ProfileUser = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {acceptedConnections.map((connection) => {
                   const photoUrl = connection.caregiver?.photo
-                    ? `http://localhost:8080/uploads/${connection.caregiver.photo.replace(/\s+/g, "_").trim()}`
+                    ? `${import.meta.env.VITE_API_URL}/uploads/${connection.caregiver.photo.replace(/\s+/g, "_").trim()}`
                     : `https://ui-avatars.com/api/?name=${connection.caregiver?.userName || "Unknown"}&background=1e293b&color=60a5fa&bold=true`;
 
                   return (

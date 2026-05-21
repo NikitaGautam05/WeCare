@@ -10,7 +10,7 @@ const GoogleButton = () => {
     const token = credentialResponse.credential;
 
     // Call the backend
-    const res = await axios.post("http://localhost:8080/api/google-signup", {
+    const res = await axios.post("${import.meta.env.VITE_API_URL}/api/google-signup", {
       token: token,
       mode: "LOGIN" // This tells the backend we want to log in, not create a new user
     });
