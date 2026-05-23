@@ -111,8 +111,6 @@ public class CaregiverController {
         return saved;
     }
 
-        return saved;
-    }
     @GetMapping("/verified")
     public List<Caregiver> getVerifiedCaregivers(){
         return caregiverService.getCaregiversByStatus(CaregiverStatus.VERIFIED);
