@@ -24,35 +24,34 @@ public class FileController {
     public ResponseEntity<byte[]> getUploadedFile(@PathVariable String filename) {
         try {
             // Get file from GridFS
-            InputStream inputStream = fileStorageService.getFile(filename);
-            
-            if (inputStream == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            try (InputStream inputStream = fileStorageService.getFile(filename)) {
+                if (inputStream == null) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+                }
+
+                // Read file bytes
+                byte[] fileBytes = inputStream.readAllBytes();
+
+                // Determine content type
+                String contentType = fileStorageService.getFileContentType(filename);
+                if (contentType == null || contentType.isEmpty()) {
+                    contentType = determineContentType(filename);
+                }
+
+                // Set headers
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.parseMediaType(contentType));
+                headers.setContentLength(fileBytes.length);
+                headers.setContentDisposition(
+                    ContentDisposition.inline()
+                        .filename(filename)
+                        .build()
+                );
+
+                return ResponseEntity.ok()
+                        .headers(headers)
+                        .body(fileBytes);
             }
-
-            // Read file bytes
-            byte[] fileBytes = inputStream.readAllBytes();
-            inputStream.close();
-
-            // Determine content type
-            String contentType = fileStorageService.getFileContentType(filename);
-            if (contentType == null || contentType.isEmpty()) {
-                contentType = determineContentType(filename);
-            }
-
-            // Set headers
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.parseMediaType(contentType));
-            headers.setContentLength(fileBytes.length);
-            headers.setContentDisposition(
-                ContentDisposition.inline()
-                    .filename(filename)
-                    .build()
-            );
-
-            return ResponseEntity.ok()
-                    .headers(headers)
-                    .body(fileBytes);
 
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

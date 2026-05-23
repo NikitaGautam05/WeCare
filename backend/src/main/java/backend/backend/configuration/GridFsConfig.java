@@ -1,6 +1,5 @@
 package backend.backend.configuration;
 
-import com.mongodb.client.MongoClient;
 import com.mongodb.client.gridfs.GridFSBucket;
 import com.mongodb.client.gridfs.GridFSBuckets;
 import org.springframework.beans.factory.annotation.Autowired;

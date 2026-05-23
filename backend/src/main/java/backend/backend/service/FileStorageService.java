@@ -1,9 +1,5 @@
 package backend.backend.service;
 
-import com.mongodb.client.gridfs.GridFSBucket;
-import com.mongodb.client.gridfs.GridFSUploadStream;
-import com.mongodb.client.gridfs.model.GridFSFile;
-import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -13,7 +9,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Objects;
 
 @Service
 public class FileStorageService {
@@ -31,12 +26,12 @@ public class FileStorageService {
                          (originalFilename != null ? originalFilename.replaceAll("\\s+", "_") : "file");
         
         try (InputStream inputStream = file.getInputStream()) {
-            com.mongodb.client.gridfs.model.GridFSFile gridFSFile = gridFsOperations.store(
+            gridFsOperations.store(
                 inputStream,
                 filename,
                 file.getContentType()
             );
-            return gridFSFile.getFilename();
+            return filename;
         }
     }
 
@@ -44,21 +39,21 @@ public class FileStorageService {
      * Retrieve file from MongoDB GridFS
      */
     public InputStream getFile(String filename) throws IOException {
-        GridFSFile file = gridFsOperations.findOne(new Query(Criteria.where("filename").is(filename)));
+        org.springframework.data.mongodb.gridfs.GridFsResource resource = gridFsOperations.getResource(filename);
         
-        if (file == null) {
+        if (resource == null || !resource.exists()) {
             return null;
         }
         
-        return gridFsOperations.getResource(file).getInputStream();
+        return resource.getInputStream();
     }
 
     /**
      * Check if file exists
      */
     public boolean fileExists(String filename) {
-        GridFSFile file = gridFsOperations.findOne(new Query(Criteria.where("filename").is(filename)));
-        return file != null;
+        org.springframework.data.mongodb.gridfs.GridFsResource resource = gridFsOperations.getResource(filename);
+        return resource != null && resource.exists();
     }
 
     /**
@@ -72,9 +67,13 @@ public class FileStorageService {
      * Get file size
      */
     public long getFileSize(String filename) {
-        GridFSFile file = gridFsOperations.findOne(new Query(Criteria.where("filename").is(filename)));
-        if (file != null) {
-            return file.getLength();
+        org.springframework.data.mongodb.gridfs.GridFsResource resource = gridFsOperations.getResource(filename);
+        if (resource != null && resource.exists()) {
+            try {
+                return resource.contentLength();
+            } catch (IOException e) {
+                return 0;
+            }
         }
         return 0;
     }
@@ -83,11 +82,11 @@ public class FileStorageService {
      * Get file content type
      */
     public String getFileContentType(String filename) {
-        GridFSFile file = gridFsOperations.findOne(new Query(Criteria.where("filename").is(filename)));
-        if (file != null && file.getMetadata() != null) {
-            Object contentType = file.getMetadata().get("_contentType");
-            if (contentType != null) {
-                return contentType.toString();
+        org.springframework.data.mongodb.gridfs.GridFsResource resource = gridFsOperations.getResource(filename);
+        if (resource != null && resource.exists()) {
+            String contentType = resource.getContentType();
+            if (contentType != null && !contentType.isEmpty()) {
+                return contentType;
             }
         }
         return "application/octet-stream";
