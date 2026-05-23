@@ -34,9 +34,9 @@ public class SecurityConfig {
         http
                 .cors(cors -> cors.configurationSource(request -> {
                     var corsConfig = new org.springframework.web.cors.CorsConfiguration();
-                    corsConfig.setAllowedOrigins(List.of(
-                        "http://localhost:5173",
-                        "https://elderease-6cuj.onrender.com"
+                    corsConfig.setAllowedOriginPatterns(List.of(
+                            "http://localhost:5173",
+                            "https://elderease-6cuj.onrender.com"
                     ));
                     corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                     corsConfig.setAllowedHeaders(List.of("*"));
@@ -67,7 +67,7 @@ public class SecurityConfig {
                                 "/api/users/complete-google-profile",
                                 "/api/google-signup",
                                 "/api/forgetPassword",
-                                "/api/verify-otp",
+                                 "/api/verify-otp",
                                 "/api/caregivers/add",
                                 "/api/reset-password",
                             "/uploads/**",
