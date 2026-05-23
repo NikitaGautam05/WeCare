@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import AcceptedConnections from '../Chat/AcceptedConnections';
 
 const ProfileReceiver = () => {
   const { userId } = useParams(); // The ID of the Care Receiver
   const navigate = useNavigate();
+  const location = useLocation();
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -14,10 +15,18 @@ const ProfileReceiver = () => {
   const [profileAccepted, setProfileAccepted] = useState(false);
   const [interestRequests, setInterestRequests] = useState([]);
   const [bookingRequests, setBookingRequests] = useState([]);
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   const token = localStorage.getItem("jwtToken");
   const caregiverUserId = localStorage.getItem("userId");
   const axiosConfig = { headers: { Authorization: `Bearer ${token}` } };
+  const queryParams = new URLSearchParams(location.search);
+  const requestSource = queryParams.get("source");
+  const bookingId = queryParams.get("bookingId");
 
   useEffect(() => {
     if (!token || !userId || !caregiverUserId) {
@@ -76,7 +85,11 @@ const ProfileReceiver = () => {
   }, [userId, caregiverUserId, navigate, token]);
 
   const handleAccept = async () => {
-    if (!caregiver) return;
+    if (!caregiver) {
+      setErrorMessage("Caregiver information not loaded. Please refresh the page.");
+      setShowErrorModal(true);
+      return;
+    }
     setActionLoading(true);
     try {
       // Endpoint that updates connection status to ACCEPTED
@@ -88,44 +101,70 @@ const ProfileReceiver = () => {
       setProfileAccepted(true);
     } catch (err) {
       console.error("Accept Error:", err);
-      alert("Could not accept request.");
+      setErrorMessage("Could not accept request. Please try again.");
+      setShowErrorModal(true);
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleDecline = async () => {
-    if (!caregiver) return;
+    if (!caregiver) {
+      setErrorMessage("Caregiver information not loaded. Please refresh the page.");
+      setShowErrorModal(true);
+      return;
+    }
     setActionLoading(true);
     try {
-      // Use the same decline endpoint for both pending and accepted requests
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/caregivers/${caregiver.id}/decline-request`, 
-        { userId }, 
-        axiosConfig
-      );
+      if (requestSource === "booking" && bookingId) {
+        // Cancel the actual booking request when declined from booking profile
+        await axios.put(
+          `${import.meta.env.VITE_API_URL}/api/bookings/${bookingId}/cancel`,
+          {},
+          axiosConfig
+        );
+      } else {
+        // Use the same decline endpoint for interest requests
+        await axios.post(
+          `${import.meta.env.VITE_API_URL}/api/caregivers/${caregiver.id}/decline-request`,
+          { userId },
+          axiosConfig
+        );
+      }
+      try { window.dispatchEvent(new Event('acceptedConnectionsChanged')); } catch(e) { console.warn(e); }
+      try { window.dispatchEvent(new Event('requestsChanged')); } catch(e) { console.warn(e); }
       // Go back to dashboard after declining
       navigate(-1);
     } catch (err) {
       console.error("Decline Error:", err);
-      alert("Failed to decline request.");
+      setErrorMessage("Failed to decline request. Please try again.");
+      setShowErrorModal(true);
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleRemoveConnection = async () => {
+  const handleRemoveConnection = () => {
     if (!caregiver) {
-      alert("Caregiver information not loaded. Please refresh the page.");
+      setErrorMessage("Caregiver information not loaded. Please refresh the page.");
+      setShowErrorModal(true);
       return;
     }
-    if (!window.confirm('Remove this connection?')) return;
-    
+    setShowRemoveConfirm(true);
+  };
+
+  const confirmRemoveConnection = async () => {
+    if (!caregiver) {
+      setErrorMessage("Caregiver information not loaded. Please refresh the page.");
+      setShowErrorModal(true);
+      setShowRemoveConfirm(false);
+      return;
+    }
+
     setActionLoading(true);
     try {
       console.log('Removing connection...', { caregiverId: caregiver.id, userId });
       
-      // Remove the accepted connection
       const response = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/caregivers/${caregiver.id}/remove-connection`, 
         { userId }, 
@@ -133,15 +172,23 @@ const ProfileReceiver = () => {
       );
       
       console.log('Connection removed:', response.data);
-      // Navigate back to dashboard after removing connection
-      navigate(-1);
+
+      setInterestRequests((current) => current.filter(
+        (request) => request.user?.id !== userId && request.userId !== userId
+      ));
+
+      window.dispatchEvent(new Event('acceptedConnectionsChanged'));
+      setShowRemoveConfirm(false);
+      setSuccessMessage("Connection removed successfully.");
+      setShowSuccessModal(true);
     } catch (err) {
       console.error("Remove Connection Error Details:", {
         status: err.response?.status,
         data: err.response?.data,
         message: err.message
       });
-      alert("Failed to remove connection. Please try again.");
+      setErrorMessage("Failed to remove connection. Please try again.");
+      setShowErrorModal(true);
     } finally {
       setActionLoading(false);
     }
@@ -198,6 +245,107 @@ const ProfileReceiver = () => {
         </div>
       </div>
 
+      {showRemoveConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-5 shadow-xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Confirm remove</p>
+                <h2 className="mt-2 text-xl font-bold text-slate-900">Remove connection</h2>
+              </div>
+              <button
+                className="text-slate-500 transition hover:text-slate-800"
+                onClick={() => setShowRemoveConfirm(false)}
+                aria-label="Close confirmation dialog"
+              >
+                ×
+              </button>
+            </div>
+            <p className="mt-4 text-sm leading-6 text-slate-600">
+              Remove the connection with <span className="font-semibold text-slate-900">{userProfile?.userName}</span>? This action can be reversed later.
+            </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                onClick={() => setShowRemoveConfirm(false)}
+                className="w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 sm:w-auto"
+                disabled={actionLoading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmRemoveConnection}
+                disabled={actionLoading}
+                className="w-full rounded-3xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60 sm:w-auto"
+              >
+                {actionLoading ? 'Removing...' : 'Remove'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {showErrorModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
+          <div className="w-full max-w-lg rounded-[32px] border border-red-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-red-500">Error</p>
+                <h2 className="mt-3 text-2xl font-bold text-slate-900">Something went wrong</h2>
+              </div>
+              <button
+                className="text-slate-500 hover:text-slate-800"
+                onClick={() => setShowErrorModal(false)}
+                aria-label="Close error dialog"
+              >
+               
+              </button>
+            </div>
+            <p className="mt-4 text-slate-600">{errorMessage}</p>
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowErrorModal(false)}
+                className="rounded-3xl bg-red-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-red-700"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
+          <div className="w-full max-w-lg rounded-[32px] border border-emerald-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-500">Success</p>
+                <h2 className="mt-3 text-2xl font-bold text-slate-900">Connection removed</h2>
+              </div>
+              <button
+                className="text-slate-500 hover:text-slate-800"
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  navigate(-1);
+                }}
+                aria-label="Close success dialog"
+              >
+                ×
+              </button>
+            </div>
+            <p className="mt-4 text-slate-600">{successMessage}</p>
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  navigate(-1);
+                }}
+                className="rounded-3xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-10">
         <div className="w-full max-w-6xl">
           <div className="relative overflow-hidden rounded-[36px] border border-white/10 bg-white/95 shadow-[0_40px_120px_rgba(15,23,42,0.35)] backdrop-blur-xl">

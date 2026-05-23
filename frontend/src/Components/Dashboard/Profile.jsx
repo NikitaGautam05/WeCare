@@ -115,7 +115,7 @@ const Profile = () => {
           const bookingRes = await axios.get(`${BASE}/bookings/user/${userId}`, axiosConfig);
           const confirmedBooking = (Array.isArray(bookingRes.data) ? bookingRes.data : [])
             .find((booking) => booking?.caregiverId?.toString() === id?.toString()
-              && ["CONFIRMED", "COMPLETED"].includes((booking?.status || "").toUpperCase()));
+              && (booking?.status || "").toUpperCase() === "CONFIRMED");
           setCurrentBooking(confirmedBooking || null);
           setIsBooked(Boolean(confirmedBooking));
         } catch (err) {

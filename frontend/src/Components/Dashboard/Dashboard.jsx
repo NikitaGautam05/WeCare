@@ -10,6 +10,7 @@ const Dashboard = () => {
   const [caregivers, setCaregivers] = useState([]);
   const [dialogue, setDialogue] = useState(null);
   const [sentIds, setSentIds] = useState([]);
+  const [bookedIds, setBookedIds] = useState([]);
   const [favouriteCaregivers, setFavouriteCaregivers] = useState([]);
   const [showProfileReminder, setShowProfileReminder] = useState(false);
 
@@ -71,6 +72,21 @@ const Dashboard = () => {
         .catch((err) => {
           console.error("Failed to fetch sent interests", err);
           setSentIds([]);
+        });
+
+      // Fetch user's confirmed/completed bookings
+      axios.get(`${import.meta.env.VITE_API_URL}/api/bookings/user/${userId}`, axiosConfig)
+        .then((res) => {
+          const bookings = Array.isArray(res.data) ? res.data : [];
+          const bookedCaregiverIds = bookings
+            .filter((booking) => (booking?.status || "").toUpperCase() === "CONFIRMED")
+            .map((booking) => booking?.caregiverId)
+            .filter(Boolean);
+          setBookedIds(bookedCaregiverIds);
+        })
+        .catch((err) => {
+          console.error("Failed to fetch user bookings", err);
+          setBookedIds([]);
         });
     }
   }, [userId, token]);
@@ -188,7 +204,9 @@ const Dashboard = () => {
                     </div>
                     <div className="text-right">
                       <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest">Status</p>
-                      <p className="text-[11px] font-black text-green-600">Verified</p>
+                      <p className={`text-[11px] font-black ${bookedIds.includes(c.id) ? 'text-emerald-600' : 'text-green-600'}`}>
+                        {bookedIds.includes(c.id) ? 'Booked ✓' : 'Verified ✓'}
+                      </p>
                     </div>
                   </div>
 
@@ -198,10 +216,10 @@ const Dashboard = () => {
                     </button>
                     <button
                       onClick={() => handleInterest(c)}
-                      disabled={sentIds.includes(c.id)}
-                      className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${sentIds.includes(c.id) ? 'bg-slate-100 text-slate-400 border border-slate-100 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-700'}`}
+                      disabled={sentIds.includes(c.id) || bookedIds.includes(c.id)}
+                      className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${sentIds.includes(c.id) || bookedIds.includes(c.id) ? 'bg-slate-100 text-slate-400 border border-slate-100 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-700'}`}
                     >
-                      {sentIds.includes(c.id) ? 'Sent ✓' : 'Interest'}
+                      {bookedIds.includes(c.id) ? 'Booked ✓' : sentIds.includes(c.id) ? 'Sent ✓' : 'Interest'}
                     </button>
                   </div>
                 </div>
@@ -262,9 +280,15 @@ const Dashboard = () => {
                     </p>
                     <div className="mt-2.5 flex items-center justify-between">
                       <p className="text-[9px] font-black text-slate-900">Rs {c.chargeMin}–{c.chargeMax}</p>
-                      <span className="text-[8px] font-black text-green-600 bg-green-50 border border-green-100 px-1.5 py-0.5 rounded-md uppercase tracking-tight">
-                        ✓ Verified
-                      </span>
+                      {bookedIds.includes(c.id) ? (
+                        <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-md uppercase tracking-tight">
+                          ✓ Booked
+                        </span>
+                      ) : (
+                        <span className="text-[8px] font-black text-green-600 bg-green-50 border border-green-100 px-1.5 py-0.5 rounded-md uppercase tracking-tight">
+                          ✓ Verified
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="absolute bottom-0 left-0 right-0 bg-slate-900 py-2 text-center translate-y-full group-hover:translate-y-0 transition-transform duration-300">

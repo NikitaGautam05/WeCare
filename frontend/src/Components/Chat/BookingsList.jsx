@@ -59,9 +59,13 @@ const BookingsList = ({ userType, userId: propUserId }) => {
     });
   };
 
-  const filtered = bookings.filter((b) =>
-    statusFilter === "ALL" ? true : b.status === statusFilter
-  );
+  const filtered = bookings.filter((b) => {
+    // Always exclude CANCELLED bookings from display
+    if (b.status === "CANCELLED") return false;
+    
+    // Apply status filter for PENDING, CONFIRMED, COMPLETED
+    return statusFilter === "ALL" ? true : b.status === statusFilter;
+  });
 
   const updateBookingStatus = async (bookingId, action) => {
     try {
@@ -70,18 +74,46 @@ const BookingsList = ({ userType, userId: propUserId }) => {
         action === "CONFIRMED"
           ? `${import.meta.env.VITE_API_URL}/api/bookings/${bookingId}/confirm`
           : `${import.meta.env.VITE_API_URL}/api/bookings/${bookingId}/cancel`;
-      const res = await axios.put(endpoint, {}, axiosConfig);
-      setBookings((prev) =>
-        prev.map((booking) => (booking.id === bookingId ? res.data : booking))
-      );
-      setOpenBookingMenu(null);
-      try {
-        window.dispatchEvent(new Event("acceptedConnectionsChanged"));
-      } catch (e) {
-        console.warn("Failed to dispatch acceptedConnectionsChanged event", e);
+      
+      // Immediately remove from UI if declining for better UX
+      if (action === "CANCELLED") {
+        console.log("🗑️ Declining booking:", bookingId);
+        setBookings((prev) => {
+          const updated = prev.filter((booking) => booking.id !== bookingId);
+          console.log("Updated bookings list, remaining:", updated.length);
+          return updated;
+        });
       }
+      
+      const res = await axios.put(endpoint, {}, axiosConfig);
+      console.log("✅ Booking status updated:", res.data);
+      
+      // Update state with response (unless it was already removed)
+      if (action !== "CANCELLED") {
+        setBookings((prev) =>
+          prev.map((booking) => (booking.id === bookingId ? res.data : booking))
+        );
+      }
+      
+      setOpenBookingMenu(null);
+      
+      // Dispatch events to notify parent components to refetch
+      console.log("📢 Dispatching acceptedConnectionsChanged and requestsChanged events");
+      try { window.dispatchEvent(new Event("acceptedConnectionsChanged")); } catch (e) { console.warn(e); }
+      try { window.dispatchEvent(new Event("requestsChanged")); } catch (e) { console.warn(e); }
+      
+      // For declined bookings, also do a refresh after a short delay to ensure consistency
+      if (action === "CANCELLED") {
+        setTimeout(() => {
+          console.log("🔄 Refetching bookings after decline");
+          fetchBookings();
+        }, 500);
+      }
+      
     } catch (err) {
-      console.error("Failed to update booking status:", err);
+      console.error("❌ Failed to update booking status:", err);
+      // Re-fetch bookings if there was an error
+      fetchBookings();
       alert("Unable to update booking status. Please try again.");
     } finally {
       setActionLoading(false);

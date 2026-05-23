@@ -172,6 +172,7 @@ const CareGiverDash = () => {
   useEffect(() => {
     const handler = async () => {
       try {
+        console.log("🔄 Refreshing requests after acceptedConnectionsChanged event");
         const token = localStorage.getItem("jwtToken");
         const axiosConfig = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
         const caregiverId = resolveCaregiverId(profile);
@@ -182,6 +183,7 @@ const CareGiverDash = () => {
 
         const bookRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/bookings/caregiver/${caregiverId}`, axiosConfig).catch(() => ({ data: [] }));
         const list = Array.isArray(bookRes.data) ? bookRes.data : [];
+        console.log("📚 Refetched bookings:", list.map(b => ({ id: b.id, status: b.status })));
         list.sort((a, b) => {
           const ad = Date.parse(a?.createdAt || a?.startTime || "");
           const bd = Date.parse(b?.createdAt || b?.startTime || "");
@@ -194,7 +196,11 @@ const CareGiverDash = () => {
       }
     };
     window.addEventListener('acceptedConnectionsChanged', handler);
-    return () => window.removeEventListener('acceptedConnectionsChanged', handler);
+    window.addEventListener('requestsChanged', handler);
+    return () => {
+      window.removeEventListener('acceptedConnectionsChanged', handler);
+      window.removeEventListener('requestsChanged', handler);
+    };
   }, [profile]);
 
   const [requestFilter, setRequestFilter] = useState("all");
@@ -249,24 +255,34 @@ const CareGiverDash = () => {
   };
 
   const allRequests = [
-    ...(Array.isArray(interestRequests) ? interestRequests : []).map((request) => ({
-      ...request,
-      type: "interest",
-      title: request.user?.userName || request.userName || "Care Receiver",
-      subtitle: request.user?.serviceType || "Interest request",
-      date: request.sentAt,
-      profileId: request.user?.id,
-      statusLabel: request.status || "PENDING",
-    })),
-    ...(Array.isArray(bookingRequests) ? bookingRequests : []).map((request) => ({
-      ...request,
-      type: "booking",
-      title: request.userName || request.user?.userName || "Care Receiver",
-      subtitle: request.serviceType || "Booking request",
-      date: request.startTime || request.createdAt || request.sentAt,
-      profileId: request.userId || request.user?.id,
-      statusLabel: request.status || "PENDING",
-    })),
+    ...(Array.isArray(interestRequests) ? interestRequests : [])
+      .filter(request => request.status !== "REJECTED" && request.status !== "DECLINED")
+      .map((request) => ({
+        ...request,
+        type: "interest",
+        title: request.user?.userName || request.userName || "Care Receiver",
+        subtitle: request.user?.serviceType || "Interest request",
+        date: request.sentAt,
+        profileId: request.user?.id,
+        statusLabel: request.status || "PENDING",
+      })),
+    ...(Array.isArray(bookingRequests) ? bookingRequests : [])
+      .filter(request => {
+        const isPending = request.status === "PENDING";
+        if (!isPending) {
+          console.log(`Filtering out booking: ${request.id} with status: ${request.status}`);
+        }
+        return isPending;
+      })
+      .map((request) => ({
+        ...request,
+        type: "booking",
+        title: request.userName || request.user?.userName || "Care Receiver",
+        subtitle: request.serviceType || "Booking request",
+        date: request.startTime || request.createdAt || request.sentAt,
+        profileId: request.userId || request.user?.id,
+        statusLabel: request.status || "PENDING",
+      })),
   ].sort((a, b) => parseRequestDate(b).getTime() - parseRequestDate(a).getTime());
 
   const filteredRequests = allRequests.filter((request) => {
@@ -637,7 +653,11 @@ const CareGiverDash = () => {
                           </div>
 
                           <button
-                            onClick={() => navigate(`/profileReciever/${request.profileId}`)}
+                            onClick={() => navigate(
+                              request.type === "booking"
+                                ? `/profileReciever/${request.profileId}?source=booking&bookingId=${request.id}`
+                                : `/profileReciever/${request.profileId}`
+                            )}
                             className={`w-full rounded-2xl px-4 py-3 text-sm font-semibold text-white transition ${request.type === "interest" ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"}`}
                           >
                             View {request.type === "interest" ? "Interest" : "Booking"} profile

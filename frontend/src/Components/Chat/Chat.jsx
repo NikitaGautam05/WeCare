@@ -252,7 +252,7 @@ const Chat = ({ conversationId, conversationWith, onClose, userType = 'user', is
       params.append('recipientId', recipientId);
       params.append('text', newMessage);
       const res = await axios.post(
-        '${import.meta.env.VITE_API_URL}/api/chat/send',
+        `${import.meta.env.VITE_API_URL}/api/chat/send`,
         params,
         { headers: { Authorization: `Bearer ${freshToken}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
       );
