@@ -1,5 +1,6 @@
 package backend.backend.controller;
 
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -30,6 +31,7 @@ import backend.backend.repository.UserRepo;
 import backend.backend.service.EmailService;
 import backend.backend.service.JwtService;
 import backend.backend.service.MyUserDetailService;
+import jakarta.servlet.http.HttpServletRequest;
 @RestController
 @RequestMapping("/api/users")
 @CrossOrigin(origins="http://localhost:5173")
@@ -141,7 +143,8 @@ public class UserController {
     @PostMapping("/change-photo")
     public ResponseEntity<Map<String, String>> changePhoto(
             @RequestParam("userId") String userId,
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file,
+            HttpServletRequest request) {
 
         Map<String, String> resp = new HashMap<>();
 
@@ -152,9 +155,9 @@ public class UserController {
                 return ResponseEntity.badRequest().body(resp);
             }
 
-            // 1. Define the upload directory
-            String uploadDir = "uploads/";
-            Path uploadPath = Paths.get(uploadDir);
+            // 1. Define the upload directory dynamically
+            String uploadDirPath = System.getProperty("user.dir") + File.separator + "uploads" + File.separator;
+            Path uploadPath = Paths.get(uploadDirPath);
 
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
@@ -165,9 +168,15 @@ public class UserController {
             Path filePath = uploadPath.resolve(filename);
             Files.copy(file.getInputStream(), filePath);
 
-            // 3. Update User object with the URL
-            // This URL matches the Resource Handler we will create in step 2
-            String photoUrl = "http://localhost:8080/uploads/" + filename;
+            // 3. Build base URL dynamically from request
+            String baseUrl = request.getScheme() + "://" + request.getServerName();
+            if ((request.getScheme().equals("http") && request.getServerPort() != 80) ||
+                (request.getScheme().equals("https") && request.getServerPort() != 443)) {
+                baseUrl += ":" + request.getServerPort();
+            }
+
+            // 4. Update User object with the URL
+            String photoUrl = baseUrl + "/uploads/" + filename;
             user.setPhoto(photoUrl);
             userRepository.save(user);
 

@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -59,8 +58,26 @@ public class InterestController {
             @RequestParam String userId,
             @RequestParam String userName) {
         try {
-            // Always create a new interest request record, even if the same user has sent one before.
-            InterestRequest interest = new InterestRequest(caregiverId, caregiverName, userId, userName);
+            // Check if there's already an interest request from this user to this caregiver
+            List<InterestRequest> existingRequests = interestRequestRepository.findByCaregiverIdAndUserId(caregiverId, userId);
+            
+            InterestRequest interest;
+            boolean isNewRequest = true;
+            
+            if (!existingRequests.isEmpty()) {
+                // Reuse the most recent request and reset it to PENDING
+                interest = existingRequests.get(existingRequests.size() - 1);
+                interest.setStatus("PENDING");
+                interest.setSentAt(java.time.LocalDateTime.now().toString());
+                interest.setRespondedAt(null);
+                isNewRequest = false;
+                System.out.println("♻️  Resetting existing interest request to PENDING");
+            } else {
+                // Create a new interest request record
+                interest = new InterestRequest(caregiverId, caregiverName, userId, userName);
+                System.out.println("✨ Creating new interest request");
+            }
+            
             InterestRequest saved = interestRequestRepository.save(interest);
 
             Caregiver caregiver = caregiverService.getCaregiverById(caregiverId);

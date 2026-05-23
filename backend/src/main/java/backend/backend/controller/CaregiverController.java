@@ -21,9 +21,11 @@ import backend.backend.model.AcceptedRequest;
 import backend.backend.model.Caregiver;
 import backend.backend.model.CaregiverStatus;
 import backend.backend.model.InterestRequest;
+import backend.backend.model.Notification;
 import backend.backend.model.Users;
 import backend.backend.repository.AcceptedRequestRepository;
 import backend.backend.repository.InterestRequestRepository;
+import backend.backend.repository.NotificationRepository;
 import backend.backend.repository.UserRepo;
 import backend.backend.service.CaregiverService;
 import backend.backend.service.EmailService;
@@ -37,7 +39,6 @@ import backend.backend.service.EmailService;
 public class CaregiverController {
     @Autowired
     private CaregiverService caregiverService;
-    private final String uploadDir = "D:/fyp demo/backend/uploads/";
     @Autowired
     private EmailService emailService;
     @Autowired
@@ -46,6 +47,13 @@ public class CaregiverController {
     private InterestRequestRepository interestRequestRepository;
     @Autowired
     private AcceptedRequestRepository acceptedRequestRepository;
+    @Autowired
+    private NotificationRepository notificationRepository;
+    
+    // Get dynamic upload directory based on current working directory
+    private String getUploadDir() {
+        return System.getProperty("user.dir") + File.separator + "uploads" + File.separator;
+    }
     @PostMapping("/add")
     public Caregiver addCaregiver(
             @RequestParam String userId,  // <-- userId first
@@ -71,11 +79,12 @@ public class CaregiverController {
 
 
         // Ensure upload folder exists
-        File uploadFolder = new File(uploadDir);
+        String uploadDirPath = getUploadDir();
+        File uploadFolder = new File(uploadDirPath);
         if (!uploadFolder.exists()) {
             boolean created = uploadFolder.mkdirs();
             if (!created) {
-                throw new IOException("Could not create upload directory: " + uploadDir);
+                throw new IOException("Could not create upload directory: " + uploadDirPath);
             }
         }
 
@@ -250,19 +259,19 @@ public class CaregiverController {
         // Handle optional photos with spaces replaced
         if (profilePhoto != null) {
             String profileFileName = System.currentTimeMillis() + "_" + profilePhoto.getOriginalFilename().replaceAll("\\s+", "_");
-            profilePhoto.transferTo(new File(uploadDir, profileFileName));
+            profilePhoto.transferTo(new File(getUploadDir(), profileFileName));
             caregiver.setProfilePhoto(profileFileName);
         }
 
         if (citizenshipPhoto != null) {
             String citizenshipFileName = System.currentTimeMillis() + "_" + citizenshipPhoto.getOriginalFilename().replaceAll("\\s+", "_");
-            citizenshipPhoto.transferTo(new File(uploadDir, citizenshipFileName));
+            citizenshipPhoto.transferTo(new File(getUploadDir(), citizenshipFileName));
             caregiver.setCitizenshipPhoto(citizenshipFileName);
         }
 
         if (certificatePhoto != null && !certificatePhoto.isEmpty()) {
             String certificateFileName = System.currentTimeMillis() + "_" + certificatePhoto.getOriginalFilename().replaceAll("\\s+", "_");
-            certificatePhoto.transferTo(new File(uploadDir, certificateFileName));
+            certificatePhoto.transferTo(new File(getUploadDir(), certificateFileName));
             caregiver.setCertificatePhoto(certificateFileName);
         }
 
@@ -370,6 +379,31 @@ public class CaregiverController {
             
             System.out.println("✓ AcceptedRequest saved: " + savedRequest.getId() + " | Caregiver: " + caregiver.getId() + " | User: " + userId);
             
+            // Send email notification to care receiver
+            try {
+                emailService.sendInterestAcceptedEmail(user.getEmail(), caregiver.getFullName());
+                System.out.println("✓ Interest accepted email sent to: " + user.getEmail());
+            } catch (Exception emailErr) {
+                System.err.println("⚠️ Failed to send interest accepted email: " + emailErr.getMessage());
+            }
+            
+            // Create notification record for care receiver
+            try {
+                Notification notification = new Notification(
+                    userId,
+                    caregiver.getId(),
+                    caregiver.getFullName(),
+                    "INTEREST_ACCEPTED",
+                    "Interest Accepted",
+                    caregiver.getFullName() + " has accepted your interest request. You can now chat and book services!"
+                );
+                notification.setActionId(savedRequest.getId());
+                notificationRepository.save(notification);
+                System.out.println("✓ Notification created for user: " + userId);
+            } catch (Exception notifErr) {
+                System.err.println("⚠️ Failed to create notification: " + notifErr.getMessage());
+            }
+            
             return ResponseEntity.ok(Map.of(
                 "message", "Request accepted successfully",
                 "data", savedRequest
@@ -385,6 +419,10 @@ public class CaregiverController {
         try {
             String userId = request.get("userId");
             
+            // Find caregiver details for notifications
+            Caregiver caregiver = caregiverService.getCaregiverById(id);
+            Users user = userRepo.findById(userId).orElse(null);
+            
             // Find and delete the AcceptedRequest if it exists
             List<AcceptedRequest> acceptedRequests = acceptedRequestRepository.findByCaregiverIdAndUserId(id, userId);
             if (!acceptedRequests.isEmpty()) {
@@ -398,6 +436,32 @@ public class CaregiverController {
                     interest.setStatus("REJECTED");
                     interest.setRespondedAt(java.time.LocalDateTime.now().toString());
                     interestRequestRepository.save(interest);
+                }
+            }
+            
+            // Send email notification to care receiver
+            if (user != null && caregiver != null) {
+                try {
+                    emailService.sendInterestDeclinedEmail(user.getEmail(), caregiver.getFullName());
+                    System.out.println("✓ Interest declined email sent to: " + user.getEmail());
+                } catch (Exception emailErr) {
+                    System.err.println("⚠️ Failed to send interest declined email: " + emailErr.getMessage());
+                }
+                
+                // Create notification record for care receiver
+                try {
+                    Notification notification = new Notification(
+                        userId,
+                        caregiver.getId(),
+                        caregiver.getFullName(),
+                        "INTEREST_DECLINED",
+                        "Interest Request Declined",
+                        caregiver.getFullName() + " has declined your interest request. You can explore other caregivers."
+                    );
+                    notificationRepository.save(notification);
+                    System.out.println("✓ Notification created for user: " + userId);
+                } catch (Exception notifErr) {
+                    System.err.println("⚠️ Failed to create notification: " + notifErr.getMessage());
                 }
             }
             
@@ -418,51 +482,82 @@ public class CaregiverController {
             if (userId == null || userId.isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of("message", "userId is required"));
             }
-            
+
             if (id == null || id.isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of("message", "caregiverId is required"));
             }
-            
+
             System.out.println("REMOVE CONNECTION DEBUG: caregiverId=" + id + ", userId=" + userId);
-            
-            // Find and delete the AcceptedRequest
+
+            Caregiver caregiver = caregiverService.getCaregiverById(id);
+
+            // Remove any accepted connection records
             List<AcceptedRequest> acceptedRequests = acceptedRequestRepository.findByCaregiverIdAndUserId(id, userId);
             System.out.println("Found " + acceptedRequests.size() + " connections to delete");
-            
             if (!acceptedRequests.isEmpty()) {
                 acceptedRequestRepository.deleteAll(acceptedRequests);
+            }
 
-                // Also remove the user from the caregiver's accepted-user list if it exists
-                Caregiver caregiver = caregiverService.getCaregiverById(id);
-                if (caregiver != null && caregiver.getAcceptedUserIds() != null && caregiver.getAcceptedUserIds().contains(userId)) {
-                    caregiver.getAcceptedUserIds().removeIf(uid -> uid.equals(userId));
-                    caregiverService.saveCaregiver(caregiver);
+            // Also remove the user from the caregiver's accepted-user list if it exists
+            if (caregiver != null && caregiver.getAcceptedUserIds() != null && caregiver.getAcceptedUserIds().contains(userId)) {
+                caregiver.getAcceptedUserIds().removeIf(uid -> uid.equals(userId));
+                caregiverService.saveCaregiver(caregiver);
+            }
+
+            // Mark any existing interest request as rejected so the user can send interest again
+            List<InterestRequest> interestRequests = interestRequestRepository.findByCaregiverIdAndUserId(id, userId);
+            if (interestRequests != null && !interestRequests.isEmpty()) {
+                for (InterestRequest interest : interestRequests) {
+                    interest.setStatus("REJECTED");
+                    interest.setRespondedAt(java.time.LocalDateTime.now().toString());
+                    interestRequestRepository.save(interest);
                 }
+            }
 
-                // Mark any existing interest request as rejected so the user can send interest again
-                List<InterestRequest> interestRequests = interestRequestRepository.findByCaregiverIdAndUserId(id, userId);
-                if (interestRequests != null && !interestRequests.isEmpty()) {
-                    for (InterestRequest interest : interestRequests) {
-                        interest.setStatus("REJECTED");
-                        interest.setRespondedAt(java.time.LocalDateTime.now().toString());
-                        interestRequestRepository.save(interest);
+            // Remove stale interest notifications from this caregiver's profile notification list
+            if (caregiver != null && caregiver.getNotifications() != null) {
+                caregiver.getNotifications().removeIf(raw -> {
+                    if (raw == null) return false;
+                    try {
+                        String json = raw.toString();
+                        if (!json.trim().startsWith("{")) return false;
+                        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                        Map<?, ?> notifMap = mapper.readValue(json, Map.class);
+                        Object type = notifMap.get("type");
+                        Object senderId = notifMap.get("senderId");
+                        Object userIdValue = notifMap.get("userId");
+                        return type != null && type.toString().toLowerCase().contains("interest")
+                                && (userId.equals(senderId) || userId.equals(userIdValue));
+                    } catch (Exception ex) {
+                        return false;
+                    }
+                });
+                caregiverService.saveCaregiver(caregiver);
+            }
+
+            // Remove stale interest notification documents for the caregiver if they are related to this old interest/user
+            if (caregiver != null && caregiver.getUserId() != null) {
+                List<Notification> notifications = notificationRepository.findByUserId(caregiver.getUserId());
+                if (notifications != null && !notifications.isEmpty()) {
+                    List<Notification> toDelete = new java.util.ArrayList<>();
+                    for (Notification notification : notifications) {
+                        if (notification == null) continue;
+                        if (notification.getType() != null && notification.getType().toLowerCase().contains("interest")
+                                && (userId.equals(notification.getSenderId()) || userId.equals(notification.getUserId()))) {
+                            toDelete.add(notification);
+                        }
+                    }
+                    if (!toDelete.isEmpty()) {
+                        notificationRepository.deleteAll(toDelete);
                     }
                 }
-
-                return ResponseEntity.ok(Map.of("message", "Connection removed successfully"));
             }
-            
-            return ResponseEntity.badRequest().body(Map.of("message", "Connection not found"));
+
+            return ResponseEntity.ok(Map.of("message", "Connection removed successfully"));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500).body(Map.of("message", "Error: " + e.getMessage()));
         }
     }
-
-//    @GetMapping("/admin/reported")
-//    public List<Caregiver> getReportedCaregivers() {
-//        return caregiverService.getReportedCaregivers();
-//    }
-
 }
 
