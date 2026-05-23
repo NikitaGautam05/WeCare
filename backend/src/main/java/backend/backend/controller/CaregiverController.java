@@ -1,4 +1,4 @@
-package backend.backend.controller;
+import backend.backend.service.FileStorageService;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -29,6 +29,7 @@ import backend.backend.repository.NotificationRepository;
 import backend.backend.repository.UserRepo;
 import backend.backend.service.CaregiverService;
 import backend.backend.service.EmailService;
+import org.springframework.beans.factory.annotation.Value;
 
 @RestController
 @RequestMapping("/api/caregivers")
@@ -37,6 +38,12 @@ import backend.backend.service.EmailService;
     "https://elderease-6cuj.onrender.com"
 })
 public class CaregiverController {
+    @Value("${app.uploads.dir:./uploads}")
+    private String uploadsDir;
+    
+    @Autowired
+    private FileStorageService fileStorageService;
+    
     @Autowired
     private CaregiverService caregiverService;
     @Autowired
@@ -50,20 +57,14 @@ public class CaregiverController {
     @Autowired
     private NotificationRepository notificationRepository;
     
-    // Get dynamic upload directory based on current working directory
-    private String getUploadDir() {
-        return System.getProperty("user.dir") + File.separator + "uploads" + File.separator;
-    }
     @PostMapping("/add")
     public Caregiver addCaregiver(
-            @RequestParam String userId,  // <-- userId first
+            @RequestParam String userId,
             @RequestParam("profilePhoto") MultipartFile profilePhoto,
             @RequestParam("citizenshipPhoto") MultipartFile citizenshipPhoto,
             @RequestParam String fullName,
             @RequestParam String address,
             @RequestParam String phoneNumber,
-
-//            @RequestParam String email,
             @RequestParam String details,
             @RequestParam String experience,
             @RequestParam String speciality,
@@ -77,39 +78,18 @@ public class CaregiverController {
             throw new RuntimeException("User already has profile!");
         }
 
+        // Store files in MongoDB GridFS
+        String profileFileName = fileStorageService.storeFile(profilePhoto);
+        String citizenshipFileName = fileStorageService.storeFile(citizenshipPhoto);
 
-        // Ensure upload folder exists
-        String uploadDirPath = getUploadDir();
-        File uploadFolder = new File(uploadDirPath);
-        if (!uploadFolder.exists()) {
-            boolean created = uploadFolder.mkdirs();
-            if (!created) {
-                throw new IOException("Could not create upload directory: " + uploadDirPath);
-            }
-        }
-
-        // Generate unique filenames with spaces replaced
-        // --- 3. Generate unique filenames ---
-        String profileFileName = System.currentTimeMillis() + "_" + profilePhoto.getOriginalFilename().replaceAll("\\s+", "_");
-        String citizenshipFileName = System.currentTimeMillis() + "_" + citizenshipPhoto.getOriginalFilename().replaceAll("\\s+", "_");
-
-        // --- 4. Save files ---
-        try {
-            profilePhoto.transferTo(new File(uploadFolder, profileFileName));
-            citizenshipPhoto.transferTo(new File(uploadFolder, citizenshipFileName));
-        } catch (IOException e) {
-            throw new IOException("Error saving uploaded files", e);
-        }
-
-        // --- 5. Build caregiver object ---
+        // Build caregiver object
         Caregiver caregiver = new Caregiver();
-        caregiver.setUserId(userId);  // <-- set userId here
+        caregiver.setUserId(userId);
         caregiver.setFullName(fullName);
         caregiver.setAddress(address);
         caregiver.setPhoneNumber(phoneNumber);
         Users user = userRepo.findById(userId).orElseThrow();
         caregiver.setEmail(user.getEmail());
-//        caregiver.setEmail(email);
         caregiver.setDetails(details);
         caregiver.setExperience(experience);
         caregiver.setSpeciality(speciality);
@@ -120,14 +100,16 @@ public class CaregiverController {
         caregiver.setCitizenshipPhoto(citizenshipFileName);
 
         if (certificatePhoto != null && !certificatePhoto.isEmpty()) {
-            String certificateFileName = System.currentTimeMillis() + "_" + certificatePhoto.getOriginalFilename().replaceAll("\\s+", "_");
-            certificatePhoto.transferTo(new File(uploadFolder, certificateFileName));
+            String certificateFileName = fileStorageService.storeFile(certificatePhoto);
             caregiver.setCertificatePhoto(certificateFileName);
         }
 
-        // --- 6. Save to MongoDB ---
+        // Save to MongoDB
         Caregiver saved = caregiverService.saveCaregiver(caregiver);
         System.out.println("Caregiver saved with ID: " + saved.getId());
+
+        return saved;
+    }
 
         return saved;
     }
@@ -228,7 +210,6 @@ public class CaregiverController {
             @RequestParam String fullName,
             @RequestParam String address,
             @RequestParam String phoneNumber,
-
             @RequestParam String details,
             @RequestParam String experience,
             @RequestParam String speciality,
@@ -256,22 +237,19 @@ public class CaregiverController {
         caregiver.setChargeMax(chargeMax);
         caregiver.setCertification(certification);
 
-        // Handle optional photos with spaces replaced
-        if (profilePhoto != null) {
-            String profileFileName = System.currentTimeMillis() + "_" + profilePhoto.getOriginalFilename().replaceAll("\\s+", "_");
-            profilePhoto.transferTo(new File(getUploadDir(), profileFileName));
+        // Handle optional photos using GridFS
+        if (profilePhoto != null && !profilePhoto.isEmpty()) {
+            String profileFileName = fileStorageService.storeFile(profilePhoto);
             caregiver.setProfilePhoto(profileFileName);
         }
 
-        if (citizenshipPhoto != null) {
-            String citizenshipFileName = System.currentTimeMillis() + "_" + citizenshipPhoto.getOriginalFilename().replaceAll("\\s+", "_");
-            citizenshipPhoto.transferTo(new File(getUploadDir(), citizenshipFileName));
+        if (citizenshipPhoto != null && !citizenshipPhoto.isEmpty()) {
+            String citizenshipFileName = fileStorageService.storeFile(citizenshipPhoto);
             caregiver.setCitizenshipPhoto(citizenshipFileName);
         }
 
         if (certificatePhoto != null && !certificatePhoto.isEmpty()) {
-            String certificateFileName = System.currentTimeMillis() + "_" + certificatePhoto.getOriginalFilename().replaceAll("\\s+", "_");
-            certificatePhoto.transferTo(new File(getUploadDir(), certificateFileName));
+            String certificateFileName = fileStorageService.storeFile(certificatePhoto);
             caregiver.setCertificatePhoto(certificateFileName);
         }
 

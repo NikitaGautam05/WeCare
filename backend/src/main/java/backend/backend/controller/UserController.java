@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -34,8 +35,14 @@ import backend.backend.service.MyUserDetailService;
 import jakarta.servlet.http.HttpServletRequest;
 @RestController
 @RequestMapping("/api/users")
-@CrossOrigin(origins="http://localhost:5173")
+@CrossOrigin(origins = {
+    "http://localhost:5173",
+    "https://elderease-6cuj.onrender.com"
+})
 public class UserController {
+
+    @Value("${app.uploads.dir:./uploads}")
+    private String uploadsDir;
 
     @Autowired
     MyUserDetailService userService;
@@ -156,7 +163,7 @@ public class UserController {
             }
 
             // 1. Define the upload directory dynamically
-            String uploadDirPath = System.getProperty("user.dir") + File.separator + "uploads" + File.separator;
+            String uploadDirPath = new File(uploadsDir).getAbsolutePath() + File.separator;
             Path uploadPath = Paths.get(uploadDirPath);
 
             if (!Files.exists(uploadPath)) {
@@ -407,8 +414,8 @@ public class UserController {
 
             // Handle photo upload if provided
             if (photo != null && !photo.isEmpty()) {
-                String uploadDir = "uploads/";
-                Path uploadPath = Paths.get(uploadDir);
+                String uploadDirPath = new File(uploadsDir).getAbsolutePath() + File.separator;
+                Path uploadPath = Paths.get(uploadDirPath);
 
                 if (!Files.exists(uploadPath)) {
                     Files.createDirectories(uploadPath);
@@ -491,8 +498,8 @@ public class UserController {
 
             // Handle photo upload if provided
             if (photo != null && !photo.isEmpty()) {
-                String uploadDir = "uploads/";
-                Path uploadPath = Paths.get(uploadDir);
+                String uploadDirPath = new File(uploadsDir).getAbsolutePath() + File.separator;
+                Path uploadPath = Paths.get(uploadDirPath);
 
                 if (!Files.exists(uploadPath)) {
                     Files.createDirectories(uploadPath);

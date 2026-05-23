@@ -1,11 +1,7 @@
 package backend.backend.controller;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
+import backend.backend.service.FileStorageService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -15,32 +11,34 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
+import java.io.InputStream;
+
 @RestController
 public class FileController {
+
+    @Autowired
+    private FileStorageService fileStorageService;
 
     @GetMapping("/uploads/{filename}")
     public ResponseEntity<byte[]> getUploadedFile(@PathVariable String filename) {
         try {
-            // Get the uploads directory path
-            String uploadsDir = System.getProperty("user.dir") + File.separator + "uploads" + File.separator;
-            Path filePath = Paths.get(uploadsDir).resolve(filename).normalize();
-
-            // Security check: ensure the resolved path is still within the uploads directory
-            Path uploadsPath = Paths.get(uploadsDir).normalize();
-            if (!filePath.startsWith(uploadsPath)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
-
-            // Check if file exists
-            if (!Files.exists(filePath)) {
+            // Get file from GridFS
+            InputStream inputStream = fileStorageService.getFile(filename);
+            
+            if (inputStream == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
             // Read file bytes
-            byte[] fileBytes = Files.readAllBytes(filePath);
+            byte[] fileBytes = inputStream.readAllBytes();
+            inputStream.close();
 
-            // Determine content type based on file extension
-            String contentType = determineContentType(filename);
+            // Determine content type
+            String contentType = fileStorageService.getFileContentType(filename);
+            if (contentType == null || contentType.isEmpty()) {
+                contentType = determineContentType(filename);
+            }
 
             // Set headers
             HttpHeaders headers = new HttpHeaders();
