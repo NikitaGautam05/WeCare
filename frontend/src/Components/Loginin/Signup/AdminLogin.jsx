@@ -75,7 +75,8 @@ export default function AdminLogin() {
       }
     } catch (err) {
       console.error(err);
-      setMessage("Failed to send OTP.");
+      const errorMsg = err.response?.data || err.response?.data?.error || "Failed to send OTP.";
+      setMessage(typeof errorMsg === "string" ? errorMsg : "Failed to send OTP.");
     } finally {
       setLoading(false);
     }
@@ -97,7 +98,8 @@ export default function AdminLogin() {
       }
     } catch (err) {
       console.error(err);
-      setMessage("OTP verification failed.");
+      const errorMsg = err.response?.data || "OTP verification failed.";
+      setMessage(typeof errorMsg === "string" ? errorMsg : "OTP verification failed.");
     } finally {
       setLoading(false);
     }
@@ -112,7 +114,7 @@ export default function AdminLogin() {
     setLoading(true);
     setMessage("");
     try {
-      const res = await axios.post(`${BASE_URL}/admin/reset-password`, { email, newPassword });
+      await axios.post(`${BASE_URL}/admin/reset-password`, { email, newPassword });
       setMessage("Password reset successful! Redirecting to login...");
       setStep("login");
       setEmail("");
@@ -120,7 +122,8 @@ export default function AdminLogin() {
       setNewPassword("");
     } catch (err) {
       console.error(err);
-      setMessage(err.response?.data || "Failed to reset password.");
+      const errorMsg = err.response?.data || "Failed to reset password.";
+      setMessage(typeof errorMsg === "string" ? errorMsg : "Failed to reset password.");
     } finally {
       setLoading(false);
     }

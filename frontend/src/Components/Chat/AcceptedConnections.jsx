@@ -77,9 +77,15 @@ const AcceptedConnections = ({ userType = 'user', caregiverId: providedCaregiver
     return { sub: conv.caregiver?.speciality || 'Caregiver', experience: conv.caregiver?.experience };
   };
 
-  const filtered = conversations.filter(conv =>
-    getDisplayName(conv).toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = conversations
+    .filter(conv =>
+      getDisplayName(conv).toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => {
+      const timeA = new Date(a.updatedAt || a.lastMessageTime || a.acceptedAt).getTime();
+      const timeB = new Date(b.updatedAt || b.lastMessageTime || b.acceptedAt).getTime();
+      return timeB - timeA; // Most recent first
+    });
 
   if (loading) {
     return (

@@ -13,6 +13,7 @@ const BASE = `${import.meta.env.VITE_API_URL}/api`;
 const ACTION_META = {
   VIEWED:    { label: "Viewed Profile",  dot: "bg-blue-500",   badge: "bg-blue-50 text-blue-600 border-blue-100" },
   CONTACTED: { label: "Interested",      dot: "bg-violet-500", badge: "bg-violet-50 text-violet-600 border-violet-100" },
+  BOOKED:    { label: "Booked",          dot: "bg-emerald-500", badge: "bg-emerald-50 text-emerald-600 border-emerald-100" },
   SAVED:     { label: "Saved",           dot: "bg-rose-500",   badge: "bg-rose-50 text-rose-600 border-rose-100" },
   UNSAVED:   { label: "Removed",         dot: "bg-slate-300",  badge: "bg-slate-50 text-slate-500 border-slate-200" },
   DEFAULT:   { label: "Activity",        dot: "bg-slate-300",  badge: "bg-slate-50 text-slate-500 border-slate-200" },
@@ -59,11 +60,34 @@ export default function History() {
     const fetchData = async () => {
       setLoading(true);
       try {
+        let userHistory = [];
         if (userId) {
           const uRes = await axios.get(`${BASE}/users/${userId}`, axiosConfig);
-          setHistory((uRes.data?.history || []).slice().reverse());
+          userHistory = (uRes.data?.history || []).slice().reverse();
         }
-        const cRes = await axios.get(`${BASE}/caregivers/verified`, axiosConfig);
+
+        const bRes = await axios.get(`${BASE}/bookings/user/${userId}`, axiosConfig);
+        const bookings = Array.isArray(bRes.data) ? bRes.data : [];
+        const bookedCaregiverIds = new Set(
+          userHistory
+            .filter((item) => item.action?.toUpperCase() === "BOOKED")
+            .map((item) => item.caregiverId)
+        );
+        const bookingHistory = bookings
+          .filter((booking) => {
+            const status = booking.status?.toUpperCase();
+            return status === "PENDING" || status === "CONFIRMED" || status === "COMPLETED";
+          })
+          .filter((booking) => !bookedCaregiverIds.has(booking.caregiverId))
+          .map((booking) => ({
+            caregiverId: booking.caregiverId,
+            action: "BOOKED",
+            timestamp: booking.confirmedAt || booking.createdAt || booking.startTime || new Date().toISOString()
+          }));
+
+        setHistory([...bookingHistory, ...userHistory]);
+
+        const cRes = await axios.get(`${BASE}/caregivers/all`, axiosConfig);
         const map  = {};
         console.log('History caregivers response:', cRes.data, 'Type:', typeof cRes.data, 'IsArray:', Array.isArray(cRes.data));
         const caregiverData = cRes.data;
@@ -103,6 +127,7 @@ export default function History() {
     { id: "ALL",        label: "All" },
     { id: "VIEWED",     label: "Viewed" },
     { id: "INTERESTED", label: "Interested" },
+    { id: "BOOKED",     label: "Booked" },
     { id: "SAVED",      label: "Saved" },
     { id: "UNSAVED",    label: "Removed" },
   ];

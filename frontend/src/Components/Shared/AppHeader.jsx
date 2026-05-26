@@ -19,10 +19,12 @@ const AppHeader = ({ title, subtitle, showBackBtn = true, menuOpen, setMenuOpen 
 
   const isActive = (link) => location.pathname === link;
 
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
   return (
     <>
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
+      <header className={`${isAdminRoute ? 'bg-gradient-to-br from-amber-400 via-amber-500 to-orange-400 border-b border-amber-600 text-white' : 'bg-white border-b border-gray-200 text-slate-900'} shadow-sm sticky top-0 z-40`}>
         <div className="max-w-full mx-auto px-6 py-4">
           <div className="flex items-center justify-between gap-4">
             {/* Left: Logo / Back Button */}
@@ -30,17 +32,17 @@ const AppHeader = ({ title, subtitle, showBackBtn = true, menuOpen, setMenuOpen 
               {showBackBtn && location.pathname !== '/dash' ? (
                 <button
                   onClick={() => navigate(-1)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className={`p-2 rounded-lg transition-colors ${isAdminRoute ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}
                   title="Go back"
                 >
-                  <FaArrowLeft size={18} className="text-slate-700" />
+                  <FaArrowLeft size={18} className={`${isAdminRoute ? 'text-white' : 'text-slate-700'}`} />
                 </button>
               ) : (
                 <img src={logo} alt="Logo" className="h-8 w-auto" />
               )}
               <div>
-                {title && <h1 className="text-xl font-bold text-slate-900">{title}</h1>}
-                {subtitle && <p className="text-sm text-slate-500">{subtitle}</p>}
+                {title && <h1 className={`text-xl font-bold ${isAdminRoute ? 'text-white' : 'text-slate-900'}`}>{title}</h1>}
+                {subtitle && <p className={`text-sm ${isAdminRoute ? 'text-white/90' : 'text-slate-500'}`}>{subtitle}</p>}
               </div>
             </div>
 
@@ -49,22 +51,22 @@ const AppHeader = ({ title, subtitle, showBackBtn = true, menuOpen, setMenuOpen 
               {/* Chat Icon */}
               <button
                 onClick={() => navigate('/messages')}
-                className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors group"
+                className={`relative p-2 rounded-lg transition-colors group ${isAdminRoute ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}
                 title="Messages"
               >
-                <FaComments size={20} className="text-slate-700 group-hover:text-blue-600" />
+                <FaComments size={20} className={`${isAdminRoute ? 'text-white group-hover:text-white/80' : 'text-slate-700 group-hover:text-blue-600'}`} />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
 
               {/* Menu Toggle */}
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors lg:hidden"
+                className={`p-2 rounded-lg transition-colors lg:hidden ${isAdminRoute ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}
               >
                 {menuOpen ? (
-                  <FaTimes size={20} className="text-slate-700" />
+                  <FaTimes size={20} className={`${isAdminRoute ? 'text-white' : 'text-slate-700'}`} />
                 ) : (
-                  <FaBars size={20} className="text-slate-700" />
+                  <FaBars size={20} className={`${isAdminRoute ? 'text-white' : 'text-slate-700'}`} />
                 )}
               </button>
             </div>
@@ -74,7 +76,7 @@ const AppHeader = ({ title, subtitle, showBackBtn = true, menuOpen, setMenuOpen 
 
       {/* Mobile Menu */}
       {menuOpen && (
-        <div className="bg-white border-b border-gray-200 lg:hidden">
+        <div className={`${isAdminRoute ? 'bg-gradient-to-br from-amber-400 via-amber-500 to-orange-400 border-b border-amber-600 text-white' : 'bg-white border-b border-gray-200'} lg:hidden`}>
           <nav className="px-4 py-3 space-y-2">
             {navItems.map((item) => (
               <button
@@ -85,8 +87,8 @@ const AppHeader = ({ title, subtitle, showBackBtn = true, menuOpen, setMenuOpen 
                 }}
                 className={`w-full text-left px-4 py-2.5 rounded-lg font-medium transition-all ${
                   isActive(item.link)
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-700 hover:bg-gray-100'
+                    ? isAdminRoute ? 'bg-white/20 text-white' : 'bg-blue-600 text-white'
+                    : isAdminRoute ? 'text-white hover:bg-white/10' : 'text-slate-700 hover:bg-gray-100'
                 }`}
               >
                 {item.name}

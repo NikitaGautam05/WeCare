@@ -9,10 +9,21 @@ const ForgetPassword = () => {
   const [username, setUsername] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0); // Cooldown timer for resend OTP
 
   const [step, setStep] = useState("username"); // "username", "otp", "resetPassword"
+
+  // Password validation function
+  const validatePassword = (pwd) => {
+    if (pwd.length < 8) return "Password must be at least 8 characters";
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pwd)) {
+      return "Password must include special characters (e.g., !@#$%^&*)";
+    }
+    return "";
+  };
 
   // Send OTP
   const sendOtp = async () => {
@@ -26,6 +37,8 @@ const ForgetPassword = () => {
       setMessage(res.data);
       if (res.data === "OTP sent to registered email!") {
         setStep("otp");
+        // Start 30-second cooldown for resend
+        setResendTimer(30);
       }
     } catch (error) {
       console.error(error);
@@ -34,6 +47,32 @@ const ForgetPassword = () => {
       setLoading(false);
     }
   };
+
+  // Resend OTP
+  const resendOtp = async () => {
+    if (resendTimer > 0) return; // Prevent if cooldown active
+    
+    setLoading(true);
+    try {
+      const res = await axios.post(`${BASE_URL}/forgetPassword`, { username });
+      setMessage(res.data);
+      // Start 30-second cooldown for next resend
+      setResendTimer(30);
+    } catch (error) {
+      console.error(error);
+      setMessage("Failed to resend OTP.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cooldown timer effect
+  React.useEffect(() => {
+    if (resendTimer > 0) {
+      const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendTimer]);
 
   // Verify OTP
   const verifyOtp = async () => {
@@ -56,18 +95,42 @@ const ForgetPassword = () => {
     }
   };
 
-  // Reset Password (simple, just clears fields)
-  const resetPassword = () => {
-    if (!newPassword) {
-      setMessage("Please enter a new password.");
+  // Reset Password
+  const resetPassword = async () => {
+    const passwordValidationError = validatePassword(newPassword);
+    
+    if (passwordValidationError) {
+      setPasswordError(passwordValidationError);
       return;
     }
-    setMessage("Password reset successful! Redirecting to Dashboard");
-    setStep("username");
-    setUsername("");
-    setOtp("");
-    setNewPassword("");
-    navigate("/dash");
+    
+    setLoading(true);
+    try {
+      const res = await axios.post(`${BASE_URL}/reset-password`, { 
+        username, 
+        newPassword 
+      });
+      
+      if (res.data === "Password updated successfully!") {
+        setMessage("Password reset successful! Redirecting to login...");
+        // Wait a moment before redirecting
+        setTimeout(() => {
+          setStep("username");
+          setUsername("");
+          setOtp("");
+          setNewPassword("");
+          setPasswordError("");
+          navigate("/optionLogin", { state: { mode: "LOGIN" } });
+        }, 1500);
+      } else {
+        setMessage(res.data || "Failed to reset password.");
+      }
+    } catch (error) {
+      console.error(error);
+      setMessage(error.response?.data || "Failed to reset password. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -140,26 +203,70 @@ const ForgetPassword = () => {
                   >
                     {loading ? "Verifying..." : "Verify OTP"}
                   </button>
+                  <button
+                    onClick={resendOtp}
+                    disabled={loading || resendTimer > 0}
+                    className="w-full py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {resendTimer > 0 ? `Resend OTP (${resendTimer}s)` : "Resend OTP"}
+                  </button>
                 </div>
               )}
 
               {step === "resetPassword" && (
                 <div className="space-y-4">
-                  <div className="space-y-1 text-left">
+                  <div className="space-y-2 text-left">
                     <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">New Password</label>
                     <input
                       type="password"
                       value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
+                      onChange={(e) => {
+                        setNewPassword(e.target.value);
+                        setPasswordError(validatePassword(e.target.value));
+                      }}
                       placeholder="Enter your new password"
-                      className="w-full px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 rounded-xl border border-slate-200 bg-white/90 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-300"
+                      className={`w-full px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 rounded-xl border transition-all duration-300 bg-white/90 focus:outline-none focus:ring-2 focus:border-transparent ${
+                        passwordError 
+                          ? "border-red-400 focus:ring-red-400" 
+                          : newPassword && !passwordError 
+                          ? "border-emerald-400 focus:ring-emerald-400" 
+                          : "border-slate-200 focus:ring-blue-400"
+                      }`}
                     />
+                    {/* Password validation feedback */}
+                    {passwordError && (
+                      <p className="text-xs text-red-600 font-semibold">⚠ {passwordError}</p>
+                    )}
+                    {newPassword && !passwordError && (
+                      <p className="text-xs text-emerald-600 font-semibold">✓ Password is strong</p>
+                    )}
+                    
+                    {/* Password requirements */}
+                    <div className="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                      <p className="text-xs font-semibold text-slate-700 mb-2">Password Requirements:</p>
+                      <div className="space-y-1">
+                        <div className={`text-xs flex items-center gap-2 ${newPassword.length >= 8 ? "text-emerald-600" : "text-slate-600"}`}>
+                          <span className={`w-4 h-4 rounded-full flex items-center justify-center text-xs ${newPassword.length >= 8 ? "bg-emerald-100" : "bg-slate-200"}`}>
+                            {newPassword.length >= 8 ? "✓" : "○"}
+                          </span>
+                          At least 8 characters
+                        </div>
+                        <div className={`text-xs flex items-center gap-2 ${/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) ? "text-emerald-600" : "text-slate-600"}`}>
+                          <span className={`w-4 h-4 rounded-full flex items-center justify-center text-xs ${/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) ? "bg-emerald-100" : "bg-slate-200"}`}>
+                            {/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) ? "✓" : "○"}
+                          </span>
+                          Special character (!@#$%^&* etc)
+                        </div>
+                      </div>
+                    </div>
                   </div>
+                  
                   <button
                     onClick={resetPassword}
-                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-500 via-blue-600 to-emerald-500 text-white font-semibold text-sm shadow-lg shadow-blue-500/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
+                    disabled={loading || !!passwordError || !newPassword}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-500 via-blue-600 to-emerald-500 text-white font-semibold text-sm shadow-lg shadow-blue-500/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Reset Password
+                    {loading ? "Updating Password..." : "Reset Password"}
                   </button>
                 </div>
               )}

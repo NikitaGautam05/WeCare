@@ -15,6 +15,9 @@ export default function AdminDashboard() {
   const [search, setSearch]               = useState("");
   const [selected, setSelected]           = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
+  const [bookings, setBookings]           = useState([]);
+  const [adminBookings, setAdminBookings] = useState([]);
+  const [bookingStatusFilter, setBookingStatusFilter] = useState("ALL");
 
   const adminToken = localStorage.getItem("adminToken");
   const axiosConfig = adminToken
@@ -24,15 +27,25 @@ export default function AdminDashboard() {
   const fetchCaregivers = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${BASE_URL}/caregivers/all`, axiosConfig);
-      const data = Array.isArray(res.data)
+      const [pendingRes, verifiedRes, blockedRes] = await Promise.all([
+        axios.get(`${BASE_URL}/admin/pending`, axiosConfig),
+        axios.get(`${BASE_URL}/admin/verified`, axiosConfig),
+        axios.get(`${BASE_URL}/admin/blocked`, axiosConfig),
+      ]);
+
+      const normalize = (res) => Array.isArray(res.data)
         ? res.data
         : Array.isArray(res.data?.content)
         ? res.data.content
         : Array.isArray(res.data?.data)
         ? res.data.data
         : [];
-      setCaregivers(data);
+
+      setCaregivers([
+        ...normalize(pendingRes),
+        ...normalize(verifiedRes),
+        ...normalize(blockedRes),
+      ]);
     } catch (err) {
       console.error("Failed to fetch caregivers:", err);
       setCaregivers([]);
@@ -58,6 +71,19 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchAdminBookings = async (status = "ALL") => {
+    try {
+      const url = status === "ALL"
+        ? `${import.meta.env.VITE_API_URL}/api/bookings/admin`
+        : `${import.meta.env.VITE_API_URL}/api/bookings/admin?status=${status}`;
+      const res = await axios.get(url, axiosConfig);
+      setAdminBookings(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error("Failed to fetch admin bookings:", err);
+      setAdminBookings([]);
+    }
+  };
+
   useEffect(() => {
     if (!adminToken) {
       navigate("/admin");
@@ -66,6 +92,38 @@ export default function AdminDashboard() {
     fetchCaregivers();
     fetchReported();
   }, [adminToken, navigate]);
+
+  useEffect(() => {
+    fetchAdminBookings(bookingStatusFilter);
+  }, [bookingStatusFilter]);
+
+  useEffect(() => {
+    const fetchBookings = async (id) => {
+      try {
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/bookings/caregiver/${id}`, axiosConfig);
+        const data = Array.isArray(res.data) ? res.data : [];
+        const now = new Date();
+        const isCurrent = (b) => {
+          if (!b) return false;
+          const status = (b.status || "").toUpperCase();
+          if (status !== "CONFIRMED") return false;
+          if (!b.startTime && !b.endTime) return true;
+          const start = b.startTime ? new Date(b.startTime) : null;
+          const end = b.endTime ? new Date(b.endTime) : null;
+          if (start && end) return now >= start && now <= end;
+          if (start && !end) return now >= start;
+          if (!start && end) return now <= end;
+          return false;
+        };
+        setBookings(data.filter(isCurrent));
+      } catch (err) {
+        console.error("Failed to fetch bookings:", err);
+        setBookings([]);
+      }
+    };
+    if (selected?.id) fetchBookings(selected.id);
+    else setBookings([]);
+  }, [selected]);
 
   const doAction = async (id, action, newStatus) => {
     setActionLoading(id);
@@ -321,11 +379,14 @@ export default function AdminDashboard() {
     <div className="min-h-screen w-screen bg-gray-50">
 
       {/* HEADER */}
-      <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b shadow-sm">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-emerald-100 shadow-sm">
         <div className="flex justify-between items-center px-6 py-3">
           <div className="flex items-center gap-3">
             <img src={logo} alt="logo" className="h-9" />
-            <h1 className="font-bold text-gray-800">ElderEase Admin</h1>
+            <div className="border-l border-gray-200 pl-3">
+              <p className="text-xs text-emerald-600 uppercase tracking-widest leading-none font-semibold">Admin</p>
+              <h1 className="font-bold text-gray-800">ElderEase Admin</h1>
+            </div>
           </div>
           <button onClick={handleLogout} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
             Logout
@@ -355,6 +416,39 @@ export default function AdminDashboard() {
                   <p className={`text-xs mt-0.5 uppercase tracking-widest ${sub}`}>{label}</p>
                 </div>
               ))}
+            </div>
+
+            <div className="bg-white/10 border border-white/20 rounded-3xl p-5 mb-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-white/80">Who booked who</p>
+                  <h3 className="text-lg font-semibold text-white">Booking records</h3>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <label className="text-xs text-white/70 uppercase tracking-wider">Filter</label>
+                  <select
+                    value={bookingStatusFilter}
+                    onChange={(e) => setBookingStatusFilter(e.target.value)}
+                    className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm text-slate-400 placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/30"
+                  >
+                    <option value="ALL">All</option>
+                    <option value="BOOKED">Booked</option>
+                    <option value="COMPLETED">Completed</option>
+                  </select>
+                </div>
+              </div>
+              <div className="mt-4 max-h-60 overflow-y-auto space-y-2">
+                {adminBookings.length === 0 ? (
+                  <p className="text-sm text-white/70">No bookings match this filter.</p>
+                ) : (
+                  adminBookings.map((b) => (
+                    <div key={b.id} className="rounded-2xl bg-white/10 border border-white/10 px-4 py-3 text-sm text-white flex items-center justify-between gap-3">
+                      <span>{b.userName || b.userId} → {b.caregiverName || b.caregiverId}</span>
+                      <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-white/80">{(b.status || "UNKNOWN").toLowerCase()}</span>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
 
             {/* Nav tabs */}
@@ -397,7 +491,7 @@ export default function AdminDashboard() {
               />
             </div>
             <button
-              onClick={() => { fetchCaregivers(); fetchReported(); }}
+              onClick={() => { fetchCaregivers(); fetchReported(); fetchAdminBookings(bookingStatusFilter); }}
               className="p-2.5 rounded-xl border border-gray-200 bg-white text-gray-500 hover:text-gray-800 hover:border-gray-300 transition-all"
               title="Refresh"
             >
@@ -484,10 +578,14 @@ export default function AdminDashboard() {
               {/* Detail grid */}
               <div className="grid grid-cols-2 gap-2.5">
                 {[
-                  { icon: "📞", label: "Phone",      val: selected.phoneNumber },
-                  { icon: "📍", label: "Address",    val: selected.address },
-                  { icon: "💼", label: "Experience", val: selected.experience ? `${selected.experience} Years` : null },
-                  { icon: "💰", label: "Rate",       val: selected.chargeMin && selected.chargeMax ? `Rs ${selected.chargeMin} – ${selected.chargeMax}/day` : null },
+                  { icon: "📞", label: "Phone",           val: selected.phoneNumber },
+                  { icon: "✉️", label: "Email",           val: selected.email },
+                  { icon: "📍", label: "Address",         val: selected.address },
+                  { icon: "👤", label: "Gender",          val: selected.gender },
+                  { icon: "🎯", label: "Speciality",      val: selected.speciality },
+                  { icon: "🧾", label: "Certification",   val: selected.certification },
+                  { icon: "💼", label: "Experience",      val: selected.experience ? `${selected.experience} Years` : null },
+                  { icon: "💰", label: "Daily Rate",      val: selected.chargeMin && selected.chargeMax ? `Rs ${selected.chargeMin} – ${selected.chargeMax}/day` : null },
                 ].map(({ icon, label, val }) => (
                   <div key={label} className="bg-gray-50 rounded-xl p-3 border border-gray-100">
                     <p className="text-xs text-gray-400 uppercase tracking-wider">{icon} {label}</p>
@@ -507,11 +605,44 @@ export default function AdminDashboard() {
                 <div>
                   <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">📄 Citizenship Document</p>
                   <img
-                    src={`${import.meta.env.VITE_API_URL}/uploads/${selected.citizenshipPhoto?.replace(/\s+/g, "_")}`}
+                    src={selected.citizenshipPhoto?.startsWith("http")
+                      ? selected.citizenshipPhoto
+                      : `${import.meta.env.VITE_API_URL}/uploads/${selected.citizenshipPhoto?.replace(/\s+/g, "_")}`}
                     alt="Citizenship"
                     className="w-full rounded-xl border border-gray-200 object-cover max-h-52"
-                    onError={(e) => { e.target.style.display = "none"; }}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "https://via.placeholder.com/600x400?text=Document+not+available";
+                    }}
                   />
+                </div>
+              )}
+
+              {selected.certificatePhoto && (
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">🧾 Certification Proof</p>
+                  <img
+                    src={selected.certificatePhoto?.startsWith("http")
+                      ? selected.certificatePhoto
+                      : `${import.meta.env.VITE_API_URL}/uploads/${selected.certificatePhoto?.replace(/\s+/g, "_")}`}
+                    alt="Certification Proof"
+                    className="w-full rounded-xl border border-gray-200 object-cover max-h-52"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "https://via.placeholder.com/600x400?text=Document+not+available";
+                    }}
+                  />
+                </div>
+              )}
+
+              {bookings && bookings.length > 0 && (
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">📅 Bookings</p>
+                  <ul className="text-sm text-gray-700 list-disc list-inside space-y-1">
+                    {bookings.map((b) => (
+                      <li key={b.id}>{b.userName || b.userId}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
 

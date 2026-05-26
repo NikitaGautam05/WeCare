@@ -15,6 +15,11 @@ const UserProfileForm = () => {
     additionalInfo: "",
     receiverType: "self", // "self" or "other"
     accountType: "INDIVIDUAL",
+    gender: "", // Gender field for individual receivers
+    recipientRelation: "",
+    recipientAge: "",
+    recipientPhone: "",
+    recipientGender: "", // Gender for recipient when requesting care for someone else
     // Organization fields
     organizationName: "",
     foundationDate: "",
@@ -28,7 +33,9 @@ const UserProfileForm = () => {
     contactPersonName: "",
     contactPersonTitle: "",
     contactPersonPhone: "",
+    organizationPhotos: [], // Array to store up to 5 photos
   });
+  const [organizationPhotosPreviews, setOrganizationPhotosPreviews] = useState([]);
 
   const serviceTypes = [
     "Elderly Care",
@@ -48,6 +55,24 @@ const UserProfileForm = () => {
     let finalValue = files ? files[0] : value;
     let fieldError = "";
 
+    // Handle organization photos (multiple files)
+    if (name === "organizationPhotos" && files) {
+      const newPhotos = Array.from(files);
+      const totalPhotos = form.organizationPhotos.length + newPhotos.length;
+      
+      if (totalPhotos > 5) {
+        fieldError = `You can upload a maximum of 5 photos. You already have ${form.organizationPhotos.length} photo(s).`;
+        return;
+      }
+
+      const updatedPhotos = [...form.organizationPhotos, ...newPhotos];
+      const previews = updatedPhotos.map(photo => URL.createObjectURL(photo));
+      
+      setForm({ ...form, organizationPhotos: updatedPhotos });
+      setOrganizationPhotosPreviews(previews);
+      return;
+    }
+
     // Validate capacity field - numbers only
     if (name === "capacity" && value !== "") {
       if (!/^\d+$/.test(value)) {
@@ -57,7 +82,7 @@ const UserProfileForm = () => {
     }
 
     // Validate phone number - 10 digits only
-    if ((name === "phoneNumber" || name === "contactPersonPhone") && value !== "") {
+    if ((name === "phoneNumber" || name === "contactPersonPhone" || name === "recipientPhone") && value !== "") {
       const digitsOnly = value.replace(/[^0-9]/g, "");
       if (digitsOnly.length > 10) {
         fieldError = "Phone number must be 10 digits maximum";
@@ -68,8 +93,27 @@ const UserProfileForm = () => {
       }
     }
 
+    if (name === "recipientAge" && value !== "") {
+      const digitsOnly = value.replace(/[^0-9]/g, "");
+      if (digitsOnly && Number(digitsOnly) < 50) {
+        fieldError = "Age must be 50 or older";
+      }
+      finalValue = digitsOnly;
+    }
+
     setForm({ ...form, [name]: finalValue });
     setErrors({ ...errors, [name]: fieldError });
+  };
+
+  const removeOrganizationPhoto = (index) => {
+    const updatedPhotos = form.organizationPhotos.filter((_, i) => i !== index);
+    const updatedPreviews = organizationPhotosPreviews.filter((_, i) => i !== index);
+    
+    // Revoke old preview URL
+    URL.revokeObjectURL(organizationPhotosPreviews[index]);
+    
+    setForm({ ...form, organizationPhotos: updatedPhotos });
+    setOrganizationPhotosPreviews(updatedPreviews);
   };
 
   const validateStep = () => {
@@ -80,6 +124,8 @@ const UserProfileForm = () => {
     if (step === 2) {
       if (!form.address) errs.address = "Address is required";
       if (!form.serviceType) errs.serviceType = "Service type is required";
+      if (!form.gender) errs.gender = "Gender is required";
+      if (form.recipientAge && Number(form.recipientAge) < 50) errs.recipientAge = "Age must be 50 or older";
     }
     if (step === 3) {
       if (!form.additionalInfo) errs.additionalInfo = "Please tell us more about your needs";
@@ -99,6 +145,11 @@ const UserProfileForm = () => {
     formData.append("additionalInfo", form.additionalInfo);
     formData.append("receiverType", form.receiverType);
     formData.append("accountType", form.accountType);
+    formData.append("gender", form.gender);
+    if (form.recipientRelation) formData.append("recipientRelation", form.recipientRelation);
+    if (form.recipientAge) formData.append("recipientAge", form.recipientAge);
+    if (form.recipientPhone) formData.append("recipientPhone", form.recipientPhone);
+    if (form.recipientGender) formData.append("recipientGender", form.recipientGender);
     
     // Organization fields
     if (form.accountType === "ORGANIZATION") {
@@ -133,13 +184,23 @@ const UserProfileForm = () => {
         ? `${import.meta.env.VITE_API_URL}/api/users/update/${userId}`
         : `${import.meta.env.VITE_API_URL}/api/users/profile`;
       
+      // Add organization photos to formData
+      if (form.accountType === "ORGANIZATION" && form.organizationPhotos.length > 0) {
+        form.organizationPhotos.forEach((photo, index) => {
+          if (photo instanceof File) {
+            formData.append(`organizationPhotos`, photo);
+          }
+        });
+      }
+      
       console.log("📤 Sending profile to:", endpoint);
-      console.log("📋 Data:", { address: form.address, serviceType: form.serviceType, additionalInfo: form.additionalInfo, accountType: form.accountType });
+      console.log("📋 Data:", { address: form.address, serviceType: form.serviceType, additionalInfo: form.additionalInfo, accountType: form.accountType, gender: form.gender });
       
       const res = await axios.post(endpoint, formData, config);
       console.log("✅ Response:", res.data);
       setProfile(res.data);
       setEditMode(false);
+      setOrganizationPhotosPreviews([]);
       alert("✅ Care profile updated successfully!");
     } catch (err) {
       console.error("❌ Error:", err.response?.data || err.message);
@@ -166,6 +227,11 @@ const UserProfileForm = () => {
             additionalInfo: res.data.additionalInfo || "",
             receiverType: res.data.receiverType || "self",
             accountType: res.data.accountType || "INDIVIDUAL",
+            gender: res.data.gender || "",
+            recipientRelation: res.data.recipientRelation || "",
+            recipientAge: res.data.recipientAge || "",
+            recipientPhone: res.data.recipientPhone || "",
+            recipientGender: res.data.recipientGender || "",
             organizationName: res.data.organizationName || "",
             foundationDate: res.data.foundationDate || "",
             capacity: res.data.capacity || "",
@@ -178,7 +244,15 @@ const UserProfileForm = () => {
             contactPersonName: res.data.contactPersonName || "",
             contactPersonTitle: res.data.contactPersonTitle || "",
             contactPersonPhone: res.data.contactPersonPhone || "",
+            organizationPhotos: [],
           });
+          // Load existing organization photos if available
+          if (res.data.organizationPhotos && Array.isArray(res.data.organizationPhotos)) {
+            const previews = res.data.organizationPhotos.map(photo => 
+              `${import.meta.env.VITE_API_URL}/uploads/${photo.replace(/\s+/g, "_")}`
+            );
+            setOrganizationPhotosPreviews(previews);
+          }
         }
       })
       .catch(err => console.error("Failed to fetch profile:", err));
@@ -196,6 +270,11 @@ const UserProfileForm = () => {
         additionalInfo: profile.additionalInfo || "",
         receiverType: profile.receiverType || "self",
         accountType: profile.accountType || "INDIVIDUAL",
+        gender: profile.gender || "",
+        recipientRelation: profile.recipientRelation || "",
+        recipientAge: profile.recipientAge || "",
+        recipientPhone: profile.recipientPhone || "",
+        recipientGender: profile.recipientGender || "",
         organizationName: profile.organizationName || "",
         foundationDate: profile.foundationDate || "",
         capacity: profile.capacity || "",
@@ -208,7 +287,17 @@ const UserProfileForm = () => {
         contactPersonName: profile.contactPersonName || "",
         contactPersonTitle: profile.contactPersonTitle || "",
         contactPersonPhone: profile.contactPersonPhone || "",
+        organizationPhotos: [],
       });
+      // Load existing organization photos if available
+      if (profile.organizationPhotos && Array.isArray(profile.organizationPhotos)) {
+        const previews = profile.organizationPhotos.map(photo => 
+          `${import.meta.env.VITE_API_URL}/uploads/${photo.replace(/\s+/g, "_")}`
+        );
+        setOrganizationPhotosPreviews(previews);
+      } else {
+        setOrganizationPhotosPreviews([]);
+      }
     }
     setStep(1);
     setEditMode(true);
@@ -314,6 +403,7 @@ const UserProfileForm = () => {
               { label: "Receiver Type", value: profile.receiverType === "other" ? "Requesting care for someone else" : "Requesting care for myself", icon: "👤" },
               { label: "Service Needed", value: profile.serviceType || "—", icon: "🏥" },
               { label: "Location", value: profile.address || "—", icon: "📍" },
+              { label: "Gender", value: profile.gender || "—", icon: "👨" },
             ].map((row, i) => (
               <div key={i} className="info-row">
                 <span className="info-label">{row.icon} {row.label}</span>
@@ -321,6 +411,25 @@ const UserProfileForm = () => {
               </div>
             ))}
           </div>
+
+          {profile.receiverType === "other" && (
+            <div style={{ marginBottom: 28 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: "#bbb", textTransform: "uppercase", marginBottom: 14 }}>
+                Recipient Information
+              </div>
+              {[
+                { label: "Relation", value: profile.recipientRelation || "—", icon: "👥" },
+                { label: "Age", value: profile.recipientAge ? `${profile.recipientAge} years` : "—", icon: "🎂" },
+                { label: "Contact", value: profile.recipientPhone || "—", icon: "📱" },
+                { label: "Gender", value: profile.recipientGender || "—", icon: "👤" },
+              ].map((row, i) => (
+                <div key={i} className="info-row">
+                  <span className="info-label">{row.icon} {row.label}</span>
+                  <span className="info-value">{row.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {profile.additionalInfo && (
             <div style={{ marginBottom: 28 }}>
@@ -497,6 +606,79 @@ const UserProfileForm = () => {
               </div>
             </div>
 
+            {/* Recipient Information (shown when "Someone Else" is selected) */}
+            {form.receiverType === "other" && (
+              <div style={{ marginBottom: 18, padding: "14px", background: "#f0f9ff", border: "1px solid #bfdbfe", borderRadius: 10 }}>
+                <p style={{ fontSize: 12, color: "#0369a1", margin: 0, fontWeight: 600 }}>👨‍👩‍👧 Who are you hiring for?</p>
+              </div>
+            )}
+
+            {form.receiverType === "other" && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>Relation</label>
+                  <input
+                    type="text"
+                    name="recipientRelation"
+                    placeholder="Eg. Grandfather, Mother, Father"
+                    value={form.recipientRelation}
+                    onChange={handleChange}
+                    style={fs("recipientRelation")}
+                    onFocus={onFocus}
+                    onBlur={onBlur("recipientRelation")}
+                  />
+                  {errors.recipientRelation && <p style={{ color: "#ef4444", fontSize: 12, marginTop: 5 }}>{errors.recipientRelation}</p>}
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>Age</label>
+                  <input
+                    type="number"
+                    min="50"
+                    name="recipientAge"
+                    placeholder="Eg. 50"
+                    value={form.recipientAge}
+                    onChange={handleChange}
+                    style={fs("recipientAge")}
+                    onFocus={onFocus}
+                    onBlur={onBlur("recipientAge")}
+                  />
+                  {errors.recipientAge && <p style={{ color: "#ef4444", fontSize: 12, marginTop: 5 }}>{errors.recipientAge}</p>}
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>Contact Number</label>
+                  <input
+                    type="text"
+                    name="recipientPhone"
+                    placeholder="Eg. 9876389191"
+                    value={form.recipientPhone}
+                    onChange={handleChange}
+                    style={fs("recipientPhone")}
+                    onFocus={onFocus}
+                    onBlur={onBlur("recipientPhone")}
+                    maxLength="10"
+                  />
+                  {errors.recipientPhone && <p style={{ color: "#ef4444", fontSize: 12, marginTop: 5 }}>{errors.recipientPhone}</p>}
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>Gender</label>
+                  <select
+                    name="recipientGender"
+                    value={form.recipientGender}
+                    onChange={handleChange}
+                    style={{ ...fs("recipientGender"), cursor: "pointer" }}
+                    onFocus={onFocus}
+                    onBlur={onBlur("recipientGender")}
+                  >
+                    <option value="">Select gender ...</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  {errors.recipientGender && <p style={{ color: "#ef4444", fontSize: 12, marginTop: 5 }}>{errors.recipientGender}</p>}
+                </div>
+              </div>
+            )}
+
             <div style={{ marginBottom: 14 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>Type of Care Need</label>
               <select
@@ -528,6 +710,24 @@ const UserProfileForm = () => {
                 onBlur={onBlur("address")}
               />
               {errors.address && <p style={{ color: "#ef4444", fontSize: 12, marginTop: 5 }}>{errors.address}</p>}
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>Gender</label>
+              <select
+                name="gender"
+                value={form.gender}
+                onChange={handleChange}
+                style={{ ...fs("gender"), cursor: "pointer" }}
+                onFocus={onFocus}
+                onBlur={onBlur("gender")}
+              >
+                <option value="">Select gender ...</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+              {errors.gender && <p style={{ color: "#ef4444", fontSize: 12, marginTop: 5 }}>{errors.gender}</p>}
             </div>
           </div>
         )}
@@ -738,6 +938,71 @@ const UserProfileForm = () => {
                 onBlur={onBlur("aboutOrganization")}
               />
             </div>
+
+            <div style={{ marginBottom: 18, padding: "14px", background: "#f0f9ff", border: "1px solid #bfdbfe", borderRadius: 10 }}>
+              <p style={{ fontSize: 12, color: "#0369a1", margin: 0, fontWeight: 600 }}>🏢 Organization Photos</p>
+              <p style={{ fontSize: 11, color: "#0369a1", margin: "4px 0 0 0", opacity: 0.8 }}>Upload up to 5 photos of your organization (facilities, team, etc.)</p>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 7 }}>
+                Organization Photos ({form.organizationPhotos.length}/5)
+              </label>
+              <div className="upload-zone" style={{ borderColor: errors.organizationPhotos ? "#ef4444" : "#ddd" }}>
+                <input 
+                  type="file" 
+                  name="organizationPhotos" 
+                  onChange={handleChange} 
+                  accept="image/*" 
+                  multiple
+                  disabled={form.organizationPhotos.length >= 5}
+                />
+                <div style={{ fontSize: 24, marginBottom: 6 }}>📸</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#555" }}>Click to upload photos</div>
+                <div style={{ fontSize: 11, color: "#bbb", marginTop: 3 }}>You can upload up to 5 photos</div>
+              </div>
+              {errors.organizationPhotos && <p style={{ color: "#ef4444", fontSize: 12, marginTop: 5 }}>{errors.organizationPhotos}</p>}
+            </div>
+
+            {organizationPhotosPreviews.length > 0 && (
+              <div style={{ marginBottom: 18 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "#444", display: "block", marginBottom: 10 }}>Uploaded Photos</label>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: 10 }}>
+                  {organizationPhotosPreviews.map((preview, index) => (
+                    <div key={index} style={{ position: "relative", borderRadius: 10, overflow: "hidden", border: "1px solid #e0e0e0" }}>
+                      <img
+                        src={preview}
+                        alt={`Organization ${index + 1}`}
+                        style={{ width: "100%", height: "100px", objectFit: "cover" }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeOrganizationPhoto(index)}
+                        style={{
+                          position: "absolute",
+                          top: 4,
+                          right: 4,
+                          width: 24,
+                          height: 24,
+                          borderRadius: "50%",
+                          background: "#ef4444",
+                          color: "#fff",
+                          border: "none",
+                          fontSize: 14,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontWeight: "bold"
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

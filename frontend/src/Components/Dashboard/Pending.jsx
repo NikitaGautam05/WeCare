@@ -12,6 +12,7 @@ export default function Pending() {
   const [loading, setLoading]             = useState(true);
   const [search, setSearch]               = useState("");
   const [selected, setSelected]           = useState(null);
+  const [bookings, setBookings]           = useState([]);
   const [actionLoading, setActionLoading] = useState(null);
   const [toast, setToast]                 = useState(null); // { msg, type }
 
@@ -41,6 +42,36 @@ const fetchPending = async () => {
 };
   useEffect(() => { fetchPending(); }, []);
 
+  useEffect(() => {
+    const fetchBookings = async (id) => {
+      try {
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/bookings/caregiver/${id}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` }
+        });
+        const data = Array.isArray(res.data) ? res.data : [];
+        const now = new Date();
+        const isCurrent = (b) => {
+          if (!b) return false;
+          const status = (b.status || "").toUpperCase();
+          if (status !== "CONFIRMED") return false;
+          if (!b.startTime && !b.endTime) return true;
+          const start = b.startTime ? new Date(b.startTime) : null;
+          const end = b.endTime ? new Date(b.endTime) : null;
+          if (start && end) return now >= start && now <= end;
+          if (start && !end) return now >= start;
+          if (!start && end) return now <= end;
+          return false;
+        };
+        setBookings(data.filter(isCurrent));
+      } catch (err) {
+        console.error("Failed to fetch bookings:", err);
+        setBookings([]);
+      }
+    };
+    if (selected?.id) fetchBookings(selected.id);
+    else setBookings([]);
+  }, [selected]);
+
   // ── Show toast ────────────────────────────────────────────────────────────
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -51,7 +82,7 @@ const fetchPending = async () => {
   const verify = async (id) => {
     setActionLoading(id);
     try {
-      await axios.post(`${BASE_URL}/caregivers/admin/${id}/verify`, {}, {
+      await axios.put(`${BASE_URL}/admin/caregivers/${id}/verify`, {}, {
         headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
       });
       setAll((prev) => prev.filter((c) => c.id !== id));
@@ -69,7 +100,7 @@ const fetchPending = async () => {
   const reject = async (id) => {
     setActionLoading(id + "_reject");
     try {
-      await axios.post(`${BASE_URL}/caregivers/admin/${id}/block`, {}, {
+      await axios.put(`${BASE_URL}/admin/caregivers/${id}/block`, {}, {
         headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
       });
       setAll((prev) => prev.filter((c) => c.id !== id));
@@ -112,13 +143,13 @@ const fetchPending = async () => {
       )}
 
       {/* ── HEADER ── */}
-      <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-amber-100 shadow-sm">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-emerald-100 shadow-sm">
         <div className="flex items-center justify-between px-6 py-3">
           {/* Brand */}
           <div className="flex items-center gap-3">
             <img src={logo} alt="ElderEase" className="h-9 w-auto" />
             <div className="border-l border-gray-200 pl-3">
-              <p className="text-xs text-amber-500 uppercase tracking-widest leading-none font-semibold">Admin</p>
+              <p className="text-xs text-emerald-600 uppercase tracking-widest leading-none font-semibold">Admin</p>
               <h1 className="text-base font-bold text-gray-800 leading-tight">Pending Verifications</h1>
             </div>
           </div>
@@ -127,13 +158,13 @@ const fetchPending = async () => {
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate("/admin/dashboard")}
-              className="text-sm text-white hover:white border border-gray-200 hover:border-gray-300 px-4 py-1.5 rounded-lg transition-all font-medium"
+              className="text-sm text-black hover:text-gray-600 border border-gray-200 hover:border-gray-300 px-4 py-1.5 rounded-lg transition-all font-medium"
             >
               ← Dashboard
             </button>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 text-sm text-white hover:text-red-600 border border-gray-200 hover:border-red-200 hover:bg-red-50 px-4 py-1.5 rounded-lg transition-all font-medium"
+              className="text-sm text-black hover:text-red-600 border border-gray-200 hover:border-red-200 hover:bg-red-50 px-4 py-1.5 rounded-lg transition-all font-medium"
             >
               Sign Out
             </button>
@@ -381,10 +412,14 @@ const fetchPending = async () => {
               {/* Info grid */}
               <div className="grid grid-cols-2 gap-2.5">
                 {[
-                  { icon: "📞", label: "Phone",      val: selected.phoneNumber },
-                  { icon: "📍", label: "Address",    val: selected.address },
-                  { icon: "💼", label: "Experience", val: selected.experience ? `${selected.experience} Years` : null },
-                  { icon: "💰", label: "Rate",       val: selected.chargeMin && selected.chargeMax ? `Rs ${selected.chargeMin}–${selected.chargeMax}/day` : null },
+                  { icon: "📞", label: "Phone",           val: selected.phoneNumber },
+                  { icon: "✉️", label: "Email",           val: selected.email },
+                  { icon: "📍", label: "Address",         val: selected.address },
+                  { icon: "👤", label: "Gender",          val: selected.gender },
+                  { icon: "🎯", label: "Speciality",      val: selected.speciality },
+                  { icon: "🧾", label: "Certification",   val: selected.certification },
+                  { icon: "💼", label: "Experience",      val: selected.experience ? `${selected.experience} Years` : null },
+                  { icon: "💰", label: "Daily Rate",      val: selected.chargeMin && selected.chargeMax ? `Rs ${selected.chargeMin}–${selected.chargeMax}/day` : null },
                 ].map(({ icon, label, val }) => (
                   <div key={label} className="bg-amber-50 rounded-xl p-3 border border-amber-100">
                     <p className="text-xs text-amber-500 uppercase tracking-wider">{icon} {label}</p>
@@ -406,11 +441,45 @@ const fetchPending = async () => {
                 <div>
                   <p className="text-xs text-amber-500 uppercase tracking-wider mb-2">📄 Citizenship Document</p>
                   <img
-                    src={`${import.meta.env.VITE_API_URL}/uploads/${selected.citizenshipPhoto?.replace(/\s+/g, "_")}`}
+                    src={selected.citizenshipPhoto?.startsWith("http")
+                      ? selected.citizenshipPhoto
+                      : `${import.meta.env.VITE_API_URL}/uploads/${selected.citizenshipPhoto?.replace(/\s+/g, "_")}`}
                     alt="Citizenship"
                     className="w-full rounded-xl border border-amber-100 object-cover max-h-52"
-                    onError={(e) => { e.target.style.display = "none"; }}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "https://via.placeholder.com/600x400?text=Document+not+available";
+                    }}
                   />
+                </div>
+              )}
+
+              {selected.certificatePhoto && (
+                <div>
+                  <p className="text-xs text-amber-500 uppercase tracking-wider mb-2">🧾 Certification Proof</p>
+                  <img
+                    src={selected.certificatePhoto?.startsWith("http")
+                      ? selected.certificatePhoto
+                      : `${import.meta.env.VITE_API_URL}/uploads/${selected.certificatePhoto?.replace(/\s+/g, "_")}`}
+                    alt="Certification Proof"
+                    className="w-full rounded-xl border border-amber-100 object-cover max-h-52"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "https://via.placeholder.com/600x400?text=Document+not+available";
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Bookings (show only who booked them) */}
+              {bookings && bookings.length > 0 && (
+                <div className="bg-amber-50 rounded-xl p-4 border border-amber-100">
+                  <p className="text-xs text-amber-500 uppercase tracking-wider mb-2">📅 Bookings</p>
+                  <ul className="text-sm text-gray-700 list-disc list-inside space-y-1">
+                    {bookings.map((b) => (
+                      <li key={b.id}>{b.userName || b.userId}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
 

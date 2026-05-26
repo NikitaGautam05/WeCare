@@ -12,6 +12,7 @@ export default function Verified() {
   const [loading, setLoading]             = useState(true);
   const [search, setSearch]               = useState("");
   const [selected, setSelected]           = useState(null);
+  const [bookings, setBookings]           = useState([]);
   const [actionLoading, setActionLoading] = useState(null);
   const [toast, setToast]                 = useState(null);
 
@@ -25,6 +26,34 @@ export default function Verified() {
     }
     fetchVerified();
   }, [adminToken, navigate]);
+
+  useEffect(() => {
+    const fetchBookings = async (id) => {
+      try {
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/bookings/caregiver/${id}`, axiosConfig);
+        const data = Array.isArray(res.data) ? res.data : [];
+        const now = new Date();
+        const isCurrent = (b) => {
+          if (!b) return false;
+          const status = (b.status || "").toUpperCase();
+          if (status !== "CONFIRMED") return false;
+          if (!b.startTime && !b.endTime) return true;
+          const start = b.startTime ? new Date(b.startTime) : null;
+          const end = b.endTime ? new Date(b.endTime) : null;
+          if (start && end) return now >= start && now <= end;
+          if (start && !end) return now >= start;
+          if (!start && end) return now <= end;
+          return false;
+        };
+        setBookings(data.filter(isCurrent));
+      } catch (err) {
+        console.error("Failed to fetch bookings:", err);
+        setBookings([]);
+      }
+    };
+    if (selected?.id) fetchBookings(selected.id);
+    else setBookings([]);
+  }, [selected]);
 
   const fetchVerified = async () => {
     setLoading(true);
@@ -184,10 +213,10 @@ export default function Verified() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate("/admin/dashboard")} className="text-sm text-white hover:text-gray-600 border border-gray-200 hover:border-gray-300 px-4 py-1.5 rounded-lg transition-all font-medium">
+            <button onClick={() => navigate("/admin/dashboard")} className="text-sm text-black hover:text-gray-600 border border-gray-200 hover:border-gray-300 px-4 py-1.5 rounded-lg transition-all font-medium">
               ← Dashboard
             </button>
-            <button onClick={handleLogout} className="text-sm text-white hover:text-red-600 border border-gray-200 hover:border-red-200 hover:bg-red-50 px-4 py-1.5 rounded-lg transition-all font-medium">
+            <button onClick={handleLogout} className="text-sm text-black hover:text-red-600 border border-gray-200 hover:border-red-200 hover:bg-red-50 px-4 py-1.5 rounded-lg transition-all font-medium">
               Sign Out
             </button>
           </div>
@@ -294,9 +323,15 @@ export default function Verified() {
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
-                {[{ icon: "📞", label: "Phone", val: selected.phoneNumber }, { icon: "📍", label: "Address", val: selected.address },
-                  { icon: "💼", label: "Experience", val: selected.experience ? `${selected.experience} Years` : null },
-                  { icon: "💰", label: "Rate", val: selected.chargeMin && selected.chargeMax ? `Rs ${selected.chargeMin}–${selected.chargeMax}/day` : null }
+                {[
+                  { icon: "📞", label: "Phone",           val: selected.phoneNumber },
+                  { icon: "✉️", label: "Email",           val: selected.email },
+                  { icon: "📍", label: "Address",         val: selected.address },
+                  { icon: "👤", label: "Gender",          val: selected.gender },
+                  { icon: "🎯", label: "Speciality",      val: selected.speciality },
+                  { icon: "🧾", label: "Certification",   val: selected.certification },
+                  { icon: "💼", label: "Experience",      val: selected.experience ? `${selected.experience} Years` : null },
+                  { icon: "💰", label: "Daily Rate",      val: selected.chargeMin && selected.chargeMax ? `Rs ${selected.chargeMin}–${selected.chargeMax}/day` : null },
                 ].map(({ icon, label, val }) => (
                   <div key={label} className="bg-emerald-50 rounded-xl p-3 border border-emerald-100">
                     <p className="text-xs text-emerald-600 uppercase tracking-wider">{icon} {label}</p>
@@ -315,8 +350,45 @@ export default function Verified() {
               {selected.citizenshipPhoto && (
                 <div>
                   <p className="text-xs text-emerald-600 uppercase tracking-wider mb-2">📄 Citizenship Document</p>
-                  <img src={`${import.meta.env.VITE_API_URL}/uploads/${selected.citizenshipPhoto?.replace(/\s+/g, "_")}`} alt="Citizenship"
-                    className="w-full rounded-xl border border-emerald-100 object-cover max-h-52" onError={(e) => { e.target.style.display = "none"; }} />
+                  <img
+                    src={selected.citizenshipPhoto?.startsWith("http")
+                      ? selected.citizenshipPhoto
+                      : `${import.meta.env.VITE_API_URL}/uploads/${selected.citizenshipPhoto?.replace(/\s+/g, "_")}`}
+                    alt="Citizenship"
+                    className="w-full rounded-xl border border-emerald-100 object-cover max-h-52"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "https://via.placeholder.com/600x400?text=Document+not+available";
+                    }}
+                  />
+                </div>
+              )}
+
+              {selected.certificatePhoto && (
+                <div>
+                  <p className="text-xs text-emerald-600 uppercase tracking-wider mb-2">🧾 Certification Proof</p>
+                  <img
+                    src={selected.certificatePhoto?.startsWith("http")
+                      ? selected.certificatePhoto
+                      : `${import.meta.env.VITE_API_URL}/uploads/${selected.certificatePhoto?.replace(/\s+/g, "_")}`}
+                    alt="Certification Proof"
+                    className="w-full rounded-xl border border-emerald-100 object-cover max-h-52"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "https://via.placeholder.com/600x400?text=Document+not+available";
+                    }}
+                  />
+                </div>
+              )}
+
+              {bookings && bookings.length > 0 && (
+                <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
+                  <p className="text-xs text-emerald-600 uppercase tracking-wider mb-2">📅 Bookings</p>
+                  <ul className="text-sm text-gray-700 list-disc list-inside space-y-1">
+                    {bookings.map((b) => (
+                      <li key={b.id}>{b.userName || b.userId}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
 

@@ -66,6 +66,9 @@ const Profile = () => {
   const [comment,             setComment]             = useState("");
   const [isSubmitting,        setIsSubmitting]        = useState(false);
   const [isReported,          setIsReported]          = useState(false);
+  const [reportReason,        setReportReason]        = useState("");
+  const [reportProofFile,     setReportProofFile]     = useState(null);
+  const [reportProofPreview,  setReportProofPreview]  = useState(null);
 
   const userId      = localStorage.getItem("userId");
   const token       = localStorage.getItem("jwtToken");
@@ -195,14 +198,48 @@ const Profile = () => {
     }
   };
 
+  const handleProofFile = (file) => {
+    if (!file) {
+      setReportProofFile(null);
+      setReportProofPreview(null);
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      showToast("Please upload an image file for proof.");
+      return;
+    }
+    setReportProofFile(file);
+    setReportProofPreview(URL.createObjectURL(file));
+  };
+
   const handleReport = async () => {
     if (!userId) return showToast("Please login to report");
+    if (!reportReason.trim()) {
+      return showToast("Please tell us why you are reporting this caregiver.");
+    }
     if (!window.confirm("Report this profile for misconduct?")) return;
+
+    const formData = new FormData();
+    formData.append("userId", userId);
+    formData.append("reason", reportReason.trim());
+    if (reportProofFile) {
+      formData.append("proofFile", reportProofFile);
+    }
+
     try {
-      await axios.post(`${BASE}/caregivers/${id}/report`, null, axiosConfig);
+      await axios.post(`${BASE}/caregivers/${id}/report`, formData, {
+        ...axiosConfig,
+        headers: {
+          ...(axiosConfig.headers || {}),
+          "Content-Type": "multipart/form-data",
+        },
+      });
       setIsReported(true);
       showToast("Profile reported to Admin.");
-    } catch { showToast("Failed to submit report"); }
+    } catch (err) {
+      console.error("Failed to submit report:", err);
+      showToast("Failed to submit report");
+    }
   };
 
   const handleReviewSubmit = async (e) => {
@@ -255,6 +292,7 @@ const Profile = () => {
       });
       setShowBookingModal(false);
       showToast("Booking request sent!");
+      logHistory("BOOKED");
     } catch (err) {
       console.error("Booking error:", err);
       showToast("Failed to submit booking.");
@@ -437,10 +475,66 @@ const Profile = () => {
         {/* ── Back + Action bar ──────────────────────────────────── */}
         <div className="flex items-center justify-between py-5">
         
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between w-full">
+          <div className="flex flex-1 flex-col gap-3">
+            <label className="block text-sm text-slate-700">
+              Why are you reporting this caregiver?
+              <textarea
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+                rows={3}
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-red-400"
+                placeholder="Explain the issue or misconduct..."
+              />
+            </label>
+            <label className="block text-sm text-slate-700">
+              Proof (optional)
+              <div
+                className="mt-2 flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-slate-500 transition hover:border-slate-400 hover:bg-slate-100"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (e.dataTransfer.files?.length) {
+                    handleProofFile(e.dataTransfer.files[0]);
+                  }
+                }}
+              >
+                <input
+                  type="file"
+                  accept="image/*"
+                  id="report-proof-file"
+                  className="hidden"
+                  onChange={(e) => handleProofFile(e.target.files?.[0])}
+                />
+                {reportProofPreview ? (
+                  <div className="space-y-3">
+                    <img
+                      src={reportProofPreview}
+                      alt="Proof preview"
+                      className="mx-auto h-32 w-full max-w-xs rounded-2xl object-cover border border-slate-200"
+                    />
+                    <p className="text-sm text-slate-600">{reportProofFile?.name}</p>
+                    <button
+                      type="button"
+                      onClick={() => handleProofFile(null)}
+                      className="text-xs font-semibold text-red-500 hover:text-red-600"
+                    >
+                      Remove file
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-sm text-slate-600">Drag & drop an image here, or <button type="button" onClick={() => document.getElementById("report-proof-file").click()} className="text-blue-600 underline">choose a file</button>.</p>
+                    <p className="text-xs text-slate-400">Supported: JPG, PNG, GIF</p>
+                  </div>
+                )}
+              </div>
+            </label>
+          </div>
           <div className="flex items-center gap-2">
             {!isReported ? (
               <button onClick={handleReport}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all border border-transparent hover:border-red-100">
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-white bg-red-500 hover:bg-red-600 transition-all border border-transparent">
                 <FaFlag size={11} /> Report
               </button>
             ) : (
@@ -448,7 +542,6 @@ const Profile = () => {
                 <FaCheckCircle size={11} /> Flagged
               </span>
             )}
-
             <button onClick={handleFavourite}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all ${
                 isFavourited
@@ -460,6 +553,7 @@ const Profile = () => {
             </button>
           </div>
         </div>
+      </div>
 
         {/* ── HERO BANNER ────────────────────────────────────────── */}
         <div className="relative bg-slate-900 rounded-3xl overflow-hidden mb-7">

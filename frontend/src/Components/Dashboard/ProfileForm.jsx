@@ -9,13 +9,19 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
   const [loading,          setLoading]          = useState(false);
   const [submittedProfile, setSubmittedProfile] = useState(null);
   const [editMode,         setEditMode]         = useState(false);
+  const [formSubmitting,   setFormSubmitting]   = useState(false); // Track if user clicked submit
 
   const [form, setForm] = useState({
     fullName: "", address: "", phoneNumber: "", email: "",
     details: "", certification: "", experience: "", chargeMin: "", chargeMax: "",
-    speciality: "", profilePhoto: null, citizenshipPhoto: null, certificatePhoto: null,
+    speciality: "", gender: "", profilePhoto: null, citizenshipPhoto: null, certificatePhoto: null,
   });
   const [filePreviews, setFilePreviews] = useState({ profilePhoto: "", citizenshipPhoto: "", certificatePhoto: "" });
+
+  // DEBUG: Log step changes
+  useEffect(() => {
+    console.log("🔄 STEP CHANGED TO:", step, "| Edit mode:", editMode, "| Form submitting:", formSubmitting);
+  }, [step, editMode, formSubmitting]);
 
   useEffect(() => {
     return () => {
@@ -105,14 +111,19 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
   const validateStep = () => {
     let errs = {};
     if (step === 1) {
-      if (!form.profilePhoto)    errs.profilePhoto    = "Profile photo required";
-      if (!form.citizenshipPhoto) errs.citizenshipPhoto = "Citizenship photo required";
+      // In edit mode, citizenship photo is locked so skip its validation
+      if (!editMode && !form.profilePhoto) errs.profilePhoto = "Profile photo required";
+      if (!editMode && !form.citizenshipPhoto) errs.citizenshipPhoto = "Citizenship photo required";
+      // In edit mode, only require profile photo if user is trying to change it
+      if (editMode && !form.profilePhoto && !submittedProfile?.profilePhoto) errs.profilePhoto = "Profile photo required";
+      if (editMode && !form.citizenshipPhoto && !submittedProfile?.citizenshipPhoto) errs.citizenshipPhoto = "Citizenship photo required";
     }
     if (step === 2) {
       if (!form.fullName)    errs.fullName    = "Full name required";
       if (!form.address)     errs.address     = "Address required";
       if (!form.phoneNumber) errs.phoneNumber = "Phone required";
       else if (form.phoneNumber.replace(/[^0-9]/g, "").length < 10) errs.phoneNumber = "Phone must be 10 digits";
+      if (!form.gender) errs.gender = "Gender required";
       // if (!form.email)       errs.email       = "Email required";
     }
     if (step === 3) {
@@ -129,16 +140,52 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
     return Object.keys(errs).length === 0;
   };
 
-  const next = () => validateStep() && setStep(s => s + 1);
-  const back = () => setStep(s => s - 1);
+  const next = () => {
+    console.log("⏭️ Next clicked - Current step:", step, "Validating step", step);
+    if (validateStep()) {
+      console.log("✅ Step validated, moving to step", step + 1);
+      setStep(s => s + 1);
+    } else {
+      console.log("❌ Step validation failed");
+    }
+  };
+  const back = () => {
+    console.log("⏮️ Back clicked - Moving from step", step, "to step", step - 1);
+    setStep(s => s - 1);
+  };
 
   // ── SUBMIT / UPDATE ──
   const handleSubmit = async (e) => {
+    console.log("📝 Form submit triggered on step:", step, "| formSubmitting:", formSubmitting);
     e.preventDefault();
-    if (!validateStep()) return;
+    
+    // Only allow submission on step 4 when user explicitly clicks submit
+    if (step !== 4 || !formSubmitting) {
+      console.log("⛔ Submission blocked: step=" + step + ", formSubmitting=" + formSubmitting);
+      return;
+    }
+    
+    if (!validateStep()) {
+      console.log("❌ Validation failed, aborting submission");
+      return;
+    }
+    console.log("✅ Validation passed, proceeding with submission");
 
     const formData = new FormData();
-    Object.entries(form).forEach(([k, v]) => { if (v !== null && v !== "") formData.append(k, v); });
+    Object.entries(form).forEach(([k, v]) => { 
+      // Always include gender, skip only file fields if empty
+      if (k === "gender" || (v !== null && v !== "")) {
+        formData.append(k, v);
+      }
+    });
+    
+    // DEBUG: Log what's being sent
+    console.log("📤 Form data being sent:", {
+      gender: form.gender,
+      fullName: form.fullName,
+      phoneNumber: form.phoneNumber
+    });
+    
     const uid = localStorage.getItem("userId");
     if (!uid) {
       alert("Please log in before submitting a caregiver profile.");
@@ -159,15 +206,32 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
         ? await axios.put(`${import.meta.env.VITE_API_URL}/api/caregivers/update/${uid}`, formData, config)
         : await axios.post(`${import.meta.env.VITE_API_URL}/api/caregivers/add`, formData, config);
 
-      setSubmittedProfile(res.data);
+      // DEBUG: Log response
+      console.log("📥 Response from server:", { gender: res.data.gender });
+
+      // Merge form data with response to ensure all fields are displayed
+      // If backend doesn't return certain fields, use the values from the form
+      const mergedData = {
+        ...res.data,
+        gender: res.data.gender || form.gender,
+        speciality: res.data.speciality || form.speciality,
+        certification: res.data.certification || form.certification,
+        experience: res.data.experience || form.experience,
+        details: res.data.details || form.details,
+        chargeMin: res.data.chargeMin || form.chargeMin,
+        chargeMax: res.data.chargeMax || form.chargeMax,
+      };
+
+      setSubmittedProfile(mergedData);
       setEditMode(false);
-      onSubmitSuccess?.(res.data);
+      onSubmitSuccess?.(mergedData);
     } catch (err) {
       const msg = err.response?.data?.message || err.response?.data || err.message || "Error submitting profile.";
       alert(msg);
       if (String(msg).toLowerCase().includes("already has profile")) setSubmittedProfile({ duplicate: true });
     } finally {
       setLoading(false);
+      setFormSubmitting(false);  // Reset the submitting flag
     }
   };
 
@@ -197,6 +261,7 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
         certification: submittedProfile.certification || "",
         experience:  submittedProfile.experience  || "",
         speciality:  submittedProfile.speciality  || "",
+        gender:      submittedProfile.gender      || "",
         chargeMin:   submittedProfile.chargeMin   || "",
         chargeMax:   submittedProfile.chargeMax   || "",
         profilePhoto:    null,
@@ -275,7 +340,7 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
                 {s === "VERIFIED" ? "Profile Verified & Live" : s === "PENDING" ? "Profile Pending Verification" : "Profile Blocked"}
               </div>
               <div style={{ fontSize:12, color: statusColor[s], opacity:0.7, marginTop:2 }}>
-                {s === "VERIFIED" ? "Care receivers can now find and contact you." : s === "PENDING" ? "An admin will review your profile shortly." : "Contact support for assistance."}
+                {s === "VERIFIED" ? "Care receivers can now find and contact you." : s === "PENDING" ? "An admin will review your profile shortly." : "Profile blocked for security reasons."}
               </div>
             </div>
           </div>
@@ -328,6 +393,7 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
               { label:"Phone",   value: submittedProfile.phoneNumber, icon:"📞" },
               { label:"Email",   value: submittedProfile.email,       icon:"✉️" },
               { label:"Address", value: submittedProfile.address,     icon:"📍" },
+              { label:"Gender",  value: submittedProfile.gender,      icon:"👤" },
             ].map((row,i) => (
               <div key={i} className="info-row">
                 <span className="info-label">{row.icon} {row.label}</span>
@@ -341,13 +407,13 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
               💼 Professional
             </div>
             {[
-              { label:"Speciality",  value: submittedProfile.speciality },
-              { label:"Certification", value: submittedProfile.certification },
-              { label:"Experience",  value: submittedProfile.experience ? `${submittedProfile.experience} years` : null },
-              { label:"Daily Rate",  value: submittedProfile.chargeMin && submittedProfile.chargeMax ? `Rs ${submittedProfile.chargeMin} – ${submittedProfile.chargeMax}` : null },
+              { label:"Speciality",  value: submittedProfile.speciality, icon:"🎯" },
+              { label:"Certification", value: submittedProfile.certification, icon:"🧾" },
+              { label:"Experience",  value: submittedProfile.experience ? `${submittedProfile.experience} years` : null, icon:"💼" },
+              { label:"Daily Rate",  value: submittedProfile.chargeMin && submittedProfile.chargeMax ? `Rs ${submittedProfile.chargeMin} – ${submittedProfile.chargeMax}` : null, icon:"💰" },
             ].map((row,i) => (
               <div key={i} className="info-row">
-                <span className="info-label">{row.label}</span>
+                <span className="info-label">{row.icon} {row.label}</span>
                 <span className="info-value">{row.value || "—"}</span>
               </div>
             ))}
@@ -447,7 +513,13 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
         })}
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} onKeyDown={(e) => {
+        // Prevent Enter from submitting the form when not on the final submit step
+        if (e.key === "Enter" && step < 4) {
+          e.preventDefault();
+          console.log("⛔ Enter prevented on step", step);
+        }
+      }}>
 
         {/* Step 1 — Documents */}
         {step===1 && (
@@ -458,27 +530,33 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
               {[
-                { name:"profilePhoto",    label:"Profile Photo",        icon:"📷", hint:"Clear face photo" },
-                { name:"citizenshipPhoto",label:"Citizenship Document",  icon:"🪪", hint:"Front side" },
-                { name:"certificatePhoto",label:"Certification Proof",   icon:"🧾", hint:"Training certificate or any experience proof" },
-              ].map(({ name, label, icon, hint }) => (
-                <div key={name} className="field-group">
-                  <label style={{ fontSize:12, fontWeight:600, color:"#111", display:"block", marginBottom:6 }}>{label}</label>
-                  <div className="upload-zone" style={{ borderColor: errors[name]?"#ef4444":"#cbd5e1" }}>
-                    <input type="file" name={name} onChange={handleChange} accept="image/*" />
-                    {filePreviews[name] ? (
-                      <img src={filePreviews[name]} alt={label} style={{ width:"100%", maxHeight:160, objectFit:"cover", marginBottom:10, borderRadius:8 }} />
-                    ) : (
-                      <>
-                        <div style={{ fontSize:26, marginBottom:6 }}>{icon}</div>
-                        <div style={{ fontSize:13, fontWeight:600, color:"#555" }}>{form[name] ? form[name].name : "Click to upload"}</div>
-                        <div style={{ fontSize:11, color:"#bbb", marginTop:3 }}>{hint}</div>
-                      </>
-                    )}
+                { name:"profilePhoto",    label:"Profile Photo",        icon:"📷", hint:"Clear face photo", canEdit: true },
+                { name:"citizenshipPhoto",label:"Citizenship Document",  icon:"🪪", hint:"Front side", canEdit: false },
+                { name:"certificatePhoto",label:"Certification Proof",   icon:"🧾", hint:"Training certificate or any experience proof", canEdit: true },
+              ].map(({ name, label, icon, hint, canEdit }) => {
+                const isLocked = editMode && !canEdit && submittedProfile?.[name];
+                const displayImage = filePreviews[name] || (isLocked && submittedProfile?.[name] ? getUploadUrl(submittedProfile[name]) : "");
+                return (
+                  <div key={name} className="field-group">
+                    <label style={{ fontSize:12, fontWeight:600, color:"#111", display:"block", marginBottom:6 }}>
+                      {label} {isLocked && <span style={{ fontSize:10, color:"#ef4444", marginLeft:6 }}>🔒 Cannot change</span>}
+                    </label>
+                    <div className="upload-zone" style={{ borderColor: errors[name]?"#ef4444":"#cbd5e1", opacity: isLocked ? 0.7 : 1, pointerEvents: isLocked ? "none" : "auto", cursor: isLocked ? "not-allowed" : "pointer" }}>
+                      <input type="file" name={name} onChange={handleChange} accept="image/*" disabled={isLocked} />
+                      {displayImage ? (
+                        <img src={displayImage} alt={label} style={{ width:"100%", maxHeight:160, objectFit:"cover", marginBottom:10, borderRadius:8 }} />
+                      ) : (
+                        <>
+                          <div style={{ fontSize:26, marginBottom:6 }}>{icon}</div>
+                          <div style={{ fontSize:13, fontWeight:600, color:"#555" }}>{form[name] ? form[name].name : isLocked ? "Locked" : "Click to upload"}</div>
+                          <div style={{ fontSize:11, color:"#bbb", marginTop:3 }}>{hint}</div>
+                        </>
+                      )}
+                    </div>
+                    {errors[name] && <p style={{ color:"#ef4444", fontSize:12, marginTop:5 }}>{errors[name]}</p>}
                   </div>
-                  {errors[name] && <p style={{ color:"#ef4444", fontSize:12, marginTop:5 }}>{errors[name]}</p>}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -505,6 +583,18 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
                   {!errors[name] && form[name] && <p style={{ color:"#10b981", fontSize:12, marginTop:5 }}>✓ Valid</p>}
                 </div>
               ))}
+            </div>
+            <div className="field-group">
+              <label style={{ fontSize:12, fontWeight:600, color:"#111", display:"block", marginBottom:6 }}>👤 Gender</label>
+              <select name="gender" value={form.gender} onChange={handleChange}
+                style={fs("gender")} onFocus={onFocus} onBlur={onBlur("gender")}>
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+              {errors.gender && <p style={{ color:"#ef4444", fontSize:12, marginTop:5 }}>{errors.gender}</p>}
+              {!errors.gender && form.gender && <p style={{ color:"#10b981", fontSize:12, marginTop:5 }}>✓ Selected</p>}
             </div>
           </div>
         )}
@@ -589,7 +679,15 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
             {step < 4
               ? <button type="button" className="action-btn primary" onClick={next}>Continue →</button>
               : (
-                <button type="submit" className="action-btn primary" disabled={loading}>
+                <button 
+                  type="submit" 
+                  className="action-btn primary" 
+                  disabled={loading}
+                  onClick={() => {
+                    console.log("🖱️ Submit button clicked on step 4");
+                    setFormSubmitting(true);
+                  }}
+                >
                   {loading
                     ? <span style={{ display:"flex", alignItems:"center", gap:8 }}>
                         <div style={{ width:13, height:13, border:"2px solid rgba(255,255,255,0.3)", borderTopColor:"#fff", borderRadius:"50%", animation:"spin 0.7s linear infinite" }} />

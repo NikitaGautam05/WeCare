@@ -21,11 +21,31 @@ const Login = () => {
       });
 
       if (response.data.token) {
+        // Get the selected role from localStorage (from OptionLogin component)
+        const selectedRole = localStorage.getItem("selectedRole");
+        const actualRole = (response.data.role || "USER").toUpperCase();
+        const selectedRoleNormalized = (selectedRole || "").toUpperCase();
+
+        // Validate that selected role matches actual role in database
+        if (selectedRole && selectedRoleNormalized !== actualRole) {
+          // Role mismatch - show error message
+          const roleDisplayName = actualRole.includes("CAREGIVER") ? "Caregiver" : "Care Receiver";
+          setMessage(`This account is registered as a ${roleDisplayName}. Please select the correct role to login.`);
+          
+          console.warn("Role mismatch detected:", {
+            selectedRole: selectedRoleNormalized,
+            actualRole: actualRole,
+            userName: response.data.userName
+          });
+          
+          return; // Don't proceed with login
+        }
+
         // Save everything needed
         localStorage.setItem("jwtToken", response.data.token);
         localStorage.setItem("userId", response.data.userId);      
         localStorage.setItem("userName", response.data.userName);   
-        localStorage.setItem("role", response.data.role);       
+        localStorage.setItem("role", actualRole);       
         localStorage.setItem("email", response.data.email);    
         
         // If user is a caregiver, also store caregiverId
@@ -37,11 +57,11 @@ const Login = () => {
         console.log("Login successful:", {
           userId: response.data.userId,
           caregiverId: response.data.caregiverId,
-          role: response.data.role,
+          role: actualRole,
           userName: response.data.userName
         });
 
-        const normalizedRole = (response.data.role || "USER").toLowerCase().replace(/\s/g,'');
+        const normalizedRole = actualRole.toLowerCase().replace(/\s/g,'');
         if (normalizedRole.includes("caregiver")) navigate("/welcome");
         else navigate("/dash");
 
@@ -71,10 +91,29 @@ const Login = () => {
       }
 
       if (res.data.token) {
-        // 1. ALWAYS trust the role coming back from the database (res.data.role)
+        // 1. Get the actual role from database
         const actualRole = (res.data.role || "USER").toUpperCase();
+        
+        // 2. Get the selected role from localStorage (from OptionLogin component)
+        const selectedRole = localStorage.getItem("selectedRole");
+        const selectedRoleNormalized = (selectedRole || "").toUpperCase();
 
-        // 2. Save all details to localStorage
+        // Validate that selected role matches actual role in database
+        if (selectedRole && selectedRoleNormalized !== actualRole) {
+          // Role mismatch - show error message
+          const roleDisplayName = actualRole.includes("CAREGIVER") ? "Caregiver" : "Care Receiver";
+          setMessage(`This account is registered as a ${roleDisplayName}. Please select the correct role to login.`);
+          
+          console.warn("Role mismatch detected in Google login:", {
+            selectedRole: selectedRoleNormalized,
+            actualRole: actualRole,
+            userName: res.data.userName
+          });
+          
+          return; // Don't proceed with login
+        }
+
+        // 3. Save all details to localStorage
         localStorage.setItem("jwtToken", res.data.token);
         localStorage.setItem("userId", res.data.userId); 
         localStorage.setItem("userName", res.data.userName); 
@@ -86,7 +125,7 @@ const Login = () => {
           localStorage.setItem("caregiverId", res.data.caregiverId);
         }
 
-        // 3. Redirect based on the REAL role
+        // 4. Redirect based on the REAL role
         if (actualRole.includes("CAREGIVER")) {
           navigate("/welcome"); 
         } else {

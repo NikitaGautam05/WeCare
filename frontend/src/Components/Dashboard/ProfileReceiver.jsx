@@ -214,6 +214,26 @@ const ProfileReceiver = () => {
       : `${import.meta.env.VITE_API_URL}/uploads/${userProfile.photo.replace(/\s+/g, "_")}`  // Just a filename
     : `https://ui-avatars.com/api/?name=${userProfile?.userName}&background=random`;
 
+  // Check if profile is organization
+  const isOrganization = userProfile?.accountType === "ORGANIZATION";
+
+  // Get organization photos
+  const getOrgPhotoUrl = (photo) => {
+    if (!photo) return null;
+    if (typeof photo === 'string') {
+      return photo.startsWith('http') 
+        ? photo 
+        : `${import.meta.env.VITE_API_URL}/uploads/${photo.replace(/\s+/g, "_")}`;
+    }
+    return null;
+  };
+
+  const orgPhotos = userProfile?.organizationPhotos 
+    ? (Array.isArray(userProfile.organizationPhotos) 
+      ? userProfile.organizationPhotos.map(getOrgPhotoUrl).filter(url => url !== null)
+      : [])
+    : [];
+
   return (
     <div className="min-h-screen w-screen relative bg-slate-950 text-slate-200 overflow-hidden">
       <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-3xl" />
@@ -352,8 +372,8 @@ const ProfileReceiver = () => {
             <div className="absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-slate-900/90 via-slate-900/25 to-transparent" />
             <div className="relative flex items-center justify-between gap-4 border-b border-slate-200/80 bg-white/90 px-6 py-5">
               <div>
-                <p className="text-sm font-semibold text-slate-600">Care Receiver Profile</p>
-                <h1 className="text-2xl font-bold text-slate-900">Request details</h1>
+                <p className="text-sm font-semibold text-slate-600">{isOrganization ? 'Organization Profile' : 'Care Receiver Profile'}</p>
+                <h1 className="text-2xl font-bold text-slate-900">{isOrganization ? 'Organization details' : 'Request details'}</h1>
               </div>
               <button
                 onClick={() => navigate(-1)}
@@ -366,76 +386,205 @@ const ProfileReceiver = () => {
               <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
                 <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-slate-900/95 shadow-xl">
                   <div className="relative h-80 overflow-hidden">
-                    <img src={photoUrl} alt="User" className="h-full w-full object-cover" />
+                    <img src={photoUrl} alt="Profile" className="h-full w-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/10 to-transparent" />
                     <div className="absolute bottom-6 left-6 text-white">
-                      <h2 className="text-3xl font-black tracking-tight">{userProfile?.userName}</h2>
-                      <p className="mt-1 text-sm text-slate-200/90">{userProfile?.address || 'Location unknown'}</p>
+                      <h2 className="text-3xl font-black tracking-tight">
+                        {isOrganization ? userProfile?.organizationName : userProfile?.userName}
+                      </h2>
+                      <p className="mt-1 text-sm text-slate-200/90">
+                        {isOrganization ? userProfile?.city : userProfile?.address || 'Location unknown'}
+                      </p>
                     </div>
                   </div>
                   <div className="space-y-4 p-6 bg-slate-950/95">
                     <div className="rounded-3xl bg-slate-900/90 p-4">
-                      <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400">Request status</p>
-                      <p className="mt-2 text-sm font-semibold text-white">{profileAccepted ? 'Accepted connection' : 'Pending request'}</p>
+                      <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400">Status</p>
+                      <p className="mt-2 text-sm font-semibold text-white">{profileAccepted ? 'Connected' : 'Pending'}</p>
                     </div>
                     <div className="grid gap-3">
-                      <div className="rounded-3xl bg-slate-900/90 p-4">
-                        <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400">Service requested</p>
-                        <p className="mt-2 font-semibold text-white">{userProfile?.serviceType || 'General Care'}</p>
-                      </div>
-                      <div className="rounded-3xl bg-slate-900/90 p-4">
-                        <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400">Care for</p>
-                        <p className="mt-2 font-semibold text-white">{userProfile?.receiverType === 'other' ? 'Someone Else' : 'Myself'}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
-                    <div className="mb-5 flex flex-wrap items-center gap-4">
-                      <div className="rounded-3xl bg-slate-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-700">
-                        {userProfile?.receiverType === 'other' ? 'Someone Else' : 'Self'}
-                      </div>
-                      <div className={`rounded-3xl px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] ${profileAccepted ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                        {profileAccepted ? 'Connected' : 'Pending'}
-                      </div>
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
-                        <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Location</p>
-                        <p className="font-semibold text-slate-900">{userProfile?.address || 'Not specified'}</p>
-                      </div>
-                      <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
-                        <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Phone</p>
-                        <p className="font-semibold text-slate-900">{userProfile?.phoneNumber || 'Not specified'}</p>
-                      </div>
-                      {userProfile?.receiverType === 'other' && (
+                      {isOrganization ? (
                         <>
-                          <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
-                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Relation</p>
-                            <p className="font-semibold text-slate-900">{userProfile?.recipientRelation || 'Not specified'}</p>
+                          <div className="rounded-3xl bg-slate-900/90 p-4">
+                            <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400">Organization</p>
+                            <p className="mt-2 font-semibold text-white">{userProfile?.organizationName || 'N/A'}</p>
                           </div>
-                          <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
-                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Recipient age</p>
-                            <p className="font-semibold text-slate-900">{userProfile?.recipientAge ? `${userProfile.recipientAge} years` : 'Not specified'}</p>
+                          <div className="rounded-3xl bg-slate-900/90 p-4">
+                            <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400">Capacity</p>
+                            <p className="mt-2 font-semibold text-white">{userProfile?.capacity ? `${userProfile.capacity} beds` : 'N/A'}</p>
                           </div>
-                          <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
-                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Contact</p>
-                            <p className="font-semibold text-slate-900">{userProfile?.recipientPhone || 'Not specified'}</p>
+                        </>
+                      ) : (
+                        <>
+                          <div className="rounded-3xl bg-slate-900/90 p-4">
+                            <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400">Service Requested</p>
+                            <p className="mt-2 font-semibold text-white">{userProfile?.serviceType || 'General Care'}</p>
+                          </div>
+                          <div className="rounded-3xl bg-slate-900/90 p-4">
+                            <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400">Care For</p>
+                            <p className="mt-2 font-semibold text-white">{userProfile?.receiverType === 'other' ? 'Someone Else' : 'Myself'}</p>
                           </div>
                         </>
                       )}
                     </div>
                   </div>
+                </div>
 
-                  {userProfile?.additionalInfo && (
-                    <div className="rounded-[32px] border border-slate-200 bg-slate-50 p-6">
-                      <h3 className="text-sm font-bold text-slate-900 mb-3">Additional Information</h3>
-                      <p className="text-sm leading-7 text-slate-700 whitespace-pre-wrap">{userProfile.additionalInfo}</p>
-                    </div>
+                <div className="space-y-6">
+                  {/* Individual Profile Display */}
+                  {!isOrganization && (
+                    <>
+                      <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
+                        <div className="mb-5 flex flex-wrap items-center gap-4">
+                          <div className="rounded-3xl bg-slate-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-700">
+                            {userProfile?.receiverType === 'other' ? 'Someone Else' : 'Self'}
+                          </div>
+                          <div className={`rounded-3xl px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] ${profileAccepted ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                            {profileAccepted ? 'Connected' : 'Pending'}
+                          </div>
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Location</p>
+                            <p className="font-semibold text-slate-900">{userProfile?.address || 'Not specified'}</p>
+                          </div>
+                          <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Phone</p>
+                            <p className="font-semibold text-slate-900">{userProfile?.phoneNumber || 'Not specified'}</p>
+                          </div>
+                          <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Gender</p>
+                            <p className="font-semibold text-slate-900">{userProfile?.gender || 'Not specified'}</p>
+                          </div>
+                          {userProfile?.receiverType === 'other' && (
+                            <>
+                              <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                                <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Relation</p>
+                                <p className="font-semibold text-slate-900">{userProfile?.recipientRelation || 'Not specified'}</p>
+                              </div>
+                              <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                                <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Recipient Age</p>
+                                <p className="font-semibold text-slate-900">{userProfile?.recipientAge ? `${userProfile.recipientAge} years` : 'Not specified'}</p>
+                              </div>
+                              <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                                <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Contact</p>
+                                <p className="font-semibold text-slate-900">{userProfile?.recipientPhone || 'Not specified'}</p>
+                              </div>
+                              <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                                <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Recipient Gender</p>
+                                <p className="font-semibold text-slate-900">{userProfile?.recipientGender || 'Not specified'}</p>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {userProfile?.additionalInfo && (
+                        <div className="rounded-[32px] border border-slate-200 bg-slate-50 p-6">
+                          <h3 className="text-sm font-bold text-slate-900 mb-3">Additional Information</h3>
+                          <p className="text-sm leading-7 text-slate-700 whitespace-pre-wrap">{userProfile.additionalInfo}</p>
+                        </div>
+                      )}
+                    </>
                   )}
 
+                  {/* Organization Profile Display */}
+                  {isOrganization && (
+                    <>
+                      <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
+                        <h3 className="text-lg font-bold text-slate-900 mb-5">Organization Information</h3>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Organization Name</p>
+                            <p className="font-semibold text-slate-900">{userProfile?.organizationName || 'Not specified'}</p>
+                          </div>
+                          <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Founded</p>
+                            <p className="font-semibold text-slate-900">{userProfile?.foundationDate ? new Date(userProfile.foundationDate).toLocaleDateString() : 'Not specified'}</p>
+                          </div>
+                          <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Capacity (Beds)</p>
+                            <p className="font-semibold text-slate-900">{userProfile?.capacity || 'Not specified'}</p>
+                          </div>
+                          <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">City/District</p>
+                            <p className="font-semibold text-slate-900">{userProfile?.city || 'Not specified'}</p>
+                          </div>
+                          <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">License Number</p>
+                            <p className="font-semibold text-slate-900">{userProfile?.licenseNumber || 'Not specified'}</p>
+                          </div>
+                          <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Registration Number</p>
+                            <p className="font-semibold text-slate-900">{userProfile?.registrationNumber || 'Not specified'}</p>
+                          </div>
+                          <div className="space-y-1 rounded-3xl bg-slate-50 p-4 md:col-span-2">
+                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Address</p>
+                            <p className="font-semibold text-slate-900">{userProfile?.address || 'Not specified'}</p>
+                          </div>
+                          <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Phone Number</p>
+                            <p className="font-semibold text-slate-900">{userProfile?.phoneNumber || 'Not specified'}</p>
+                          </div>
+                          <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Website</p>
+                            <p className="font-semibold text-slate-900">
+                              {userProfile?.website ? (
+                                <a href={userProfile.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                  {userProfile.website}
+                                </a>
+                              ) : 'Not specified'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
+                        <h3 className="text-lg font-bold text-slate-900 mb-5">Contact Person</h3>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Name</p>
+                            <p className="font-semibold text-slate-900">{userProfile?.contactPersonName || 'Not specified'}</p>
+                          </div>
+                          <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Title</p>
+                            <p className="font-semibold text-slate-900">{userProfile?.contactPersonTitle || 'Not specified'}</p>
+                          </div>
+                          <div className="space-y-1 rounded-3xl bg-slate-50 p-4 md:col-span-2">
+                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Phone</p>
+                            <p className="font-semibold text-slate-900">{userProfile?.contactPersonPhone || 'Not specified'}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {userProfile?.aboutOrganization && (
+                        <div className="rounded-[32px] border border-slate-200 bg-slate-50 p-6">
+                          <h3 className="text-sm font-bold text-slate-900 mb-3">About Organization</h3>
+                          <p className="text-sm leading-7 text-slate-700 whitespace-pre-wrap">{userProfile.aboutOrganization}</p>
+                        </div>
+                      )}
+
+                      {orgPhotos.length > 0 && (
+                        <div className="rounded-[32px] border border-slate-200 bg-white p-6">
+                          <h3 className="text-lg font-bold text-slate-900 mb-5">🏢 Organization Photos</h3>
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {orgPhotos.map((photoUrl, index) => (
+                              <div key={index} className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-lg transition">
+                                <img
+                                  src={photoUrl}
+                                  alt={`Organization ${index + 1}`}
+                                  className="w-full h-32 object-cover hover:scale-105 transition"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Action Buttons */}
+                  {/* Action Buttons */}
                   <div className="rounded-[32px] border border-slate-200 bg-white p-6 shadow-sm">
                     <div className="mb-5 flex items-center justify-between gap-4">
                       <h3 className="text-lg font-bold text-slate-900">Action</h3>

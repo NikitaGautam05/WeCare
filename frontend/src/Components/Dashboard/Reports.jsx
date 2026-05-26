@@ -12,30 +12,79 @@ export default function Reports() {
   const [loading, setLoading]             = useState(true);
   const [search, setSearch]               = useState("");
   const [selected, setSelected]           = useState(null);
+  const [bookings, setBookings]           = useState([]);
   const [actionLoading, setActionLoading] = useState(null);
   const [toast, setToast]                 = useState(null);
 
   const fetchReports = async () => {
     setLoading(true);
     try {
-      // 1. Retrieve the token from localStorage
       const adminToken = localStorage.getItem("adminToken");
-
-      // 2. Pass the Authorization header in the GET request
       const res = await axios.get(`${BASE_URL}/admin/reported`, {
         headers: {
           Authorization: `Bearer ${adminToken}`
         }
       });
 
-      const data = Array.isArray(res.data) ? res.data
+      const caregivers = Array.isArray(res.data) ? res.data
         : Array.isArray(res.data?.content) ? res.data.content
         : Array.isArray(res.data?.data) ? res.data.data
         : [];
-      setReports(data);
+
+      const entries = caregivers.flatMap((caregiver) => {
+        const reportList = Array.isArray(caregiver.reports) ? caregiver.reports : [];
+        if (reportList.length > 0) {
+          return reportList.map((report) => ({
+            reportId: report.id || `${caregiver.id}-${report.reportedAt || Math.random()}`,
+            caregiverId: caregiver.id,
+            fullName: caregiver.fullName,
+            email: caregiver.email,
+            phoneNumber: caregiver.phoneNumber,
+            profilePhoto: caregiver.profilePhoto,
+            speciality: caregiver.speciality,
+            address: caregiver.address,
+            gender: caregiver.gender,
+            details: caregiver.details,
+            chargeMin: caregiver.chargeMin,
+            chargeMax: caregiver.chargeMax,
+            certification: caregiver.certification,
+            citizenshipPhoto: caregiver.citizenshipPhoto,
+            certificatePhoto: caregiver.certificatePhoto,
+            reportsCount: caregiver.reportsCount ?? reportList.length,
+            reason: report.reason,
+            proof: report.proof,
+            reportedAt: report.reportedAt,
+            reportedByUserId: report.reportedByUserId,
+          }));
+        }
+
+        return [{
+          reportId: `${caregiver.id}-legacy`,
+          caregiverId: caregiver.id,
+          fullName: caregiver.fullName,
+          email: caregiver.email,
+          phoneNumber: caregiver.phoneNumber,
+          profilePhoto: caregiver.profilePhoto,
+          speciality: caregiver.speciality,
+          address: caregiver.address,
+          gender: caregiver.gender,
+          details: caregiver.details,
+          chargeMin: caregiver.chargeMin,
+          chargeMax: caregiver.chargeMax,
+          certification: caregiver.certification,
+          citizenshipPhoto: caregiver.citizenshipPhoto,
+          certificatePhoto: caregiver.certificatePhoto,
+          reportsCount: caregiver.reportsCount ?? 1,
+          reason: caregiver.reason,
+          proof: caregiver.proof,
+          reportedAt: caregiver.reportedAt,
+          reportedByUserId: caregiver.reportedByUserId,
+        }];
+      });
+
+      setReports(entries);
     } catch (err) {
       console.error("Failed to fetch reports:", err);
-      // Optional: If error is 403, you might want to redirect to /admin
       setReports([]);
     } finally {
       setLoading(false);
@@ -44,19 +93,49 @@ export default function Reports() {
 
   useEffect(() => { fetchReports(); }, []);
 
+  useEffect(() => {
+    const fetchBookings = async (id) => {
+      try {
+        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/bookings/caregiver/${id}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` }
+        });
+        const data = Array.isArray(res.data) ? res.data : [];
+        const now = new Date();
+        const isCurrent = (b) => {
+          if (!b) return false;
+          const status = (b.status || "").toUpperCase();
+          if (status !== "CONFIRMED") return false;
+          if (!b.startTime && !b.endTime) return true;
+          const start = b.startTime ? new Date(b.startTime) : null;
+          const end = b.endTime ? new Date(b.endTime) : null;
+          if (start && end) return now >= start && now <= end;
+          if (start && !end) return now >= start;
+          if (!start && end) return now <= end;
+          return false;
+        };
+        setBookings(data.filter(isCurrent));
+      } catch (err) {
+        console.error("Failed to fetch bookings:", err);
+        setBookings([]);
+      }
+    };
+    if (selected?.id) fetchBookings(selected.id);
+    else setBookings([]);
+  }, [selected]);
+
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  const blockCaregiver = async (id) => {
-    setActionLoading(id + "_block");
+  const blockCaregiver = async (caregiverId) => {
+    setActionLoading(caregiverId + "_block");
     try {
-      await axios.put(`${BASE_URL}/admin/caregivers/${id}/block`, {}, {
+      await axios.put(`${BASE_URL}/admin/caregivers/${caregiverId}/block`, {}, {
         headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
       });
-      setReports((prev) => prev.filter((r) => r.id !== id));
-      if (selected?.id === id) setSelected(null);
+      setReports((prev) => prev.filter((r) => r.caregiverId !== caregiverId));
+      if (selected?.caregiverId === caregiverId) setSelected(null);
       showToast("Caregiver blocked successfully. 🚫", "warning");
     } catch (err) {
       console.error(err);
@@ -79,7 +158,7 @@ export default function Reports() {
   };
 
   const ReportCard = ({ r }) => {
-    const busy  = actionLoading === r.id + "_block";
+    const busy  = actionLoading === r.caregiverId + "_block";
     const photo = r.profilePhoto?.replace(/\s+/g, "_").trim();
 
     return (
@@ -129,7 +208,7 @@ export default function Reports() {
 
         {/* ── Info body ── */}
         <div className="p-4 flex flex-col flex-1 gap-3">
-          <div className="space-y-1.5 text-xs text-gray-500">
+          <div className="space-y-2 text-xs text-gray-500">
             <div className="flex items-center gap-2 truncate">
               <span className="w-5 text-center text-gray-400">✉</span>
               <span className="truncate">{r.email || "—"}</span>
@@ -138,7 +217,25 @@ export default function Reports() {
               <span className="w-5 text-center text-gray-400">📞</span>
               <span>{r.phoneNumber || "—"}</span>
             </div>
-
+            <div className="flex items-start gap-2">
+              <span className="w-5 text-center text-gray-400">📝</span>
+              <span className="text-sm text-gray-600">{r.reason || "No report reason provided."}</span>
+            </div>
+            {r.proof && (
+              <div className="mt-3">
+                <p className="text-[10px] uppercase tracking-wider text-orange-400 mb-1">Proof</p>
+                {r.proof.match(/\.(jpe?g|png|gif|webp)$/i) ? (
+                  <img
+                    src={`${import.meta.env.VITE_API_URL}/uploads/${r.proof.replace(/\s+/g, "_")}`}
+                    alt="Report proof"
+                    className="w-full h-24 rounded-2xl object-cover border border-orange-100"
+                    onError={(e) => { e.target.onerror = null; e.target.src = "https://via.placeholder.com/400x240?text=Proof+not+available"; }}
+                  />
+                ) : (
+                  <p className="text-sm text-gray-500 break-words">{r.proof}</p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="mt-auto pt-3 border-t border-orange-50 flex items-center justify-between gap-2">
@@ -167,20 +264,20 @@ export default function Reports() {
       )}
 
       {/* HEADER */}
-      <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-orange-100 shadow-sm">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-emerald-100 shadow-sm">
         <div className="flex items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
             <img src={logo} alt="ElderEase" className="h-9 w-auto" />
             <div className="border-l border-gray-200 pl-3">
-              <p className="text-xs text-orange-500 uppercase tracking-widest leading-none font-semibold">Admin</p>
+              <p className="text-xs text-emerald-600 uppercase tracking-widest leading-none font-semibold">Admin</p>
               <h1 className="text-base font-bold text-gray-800 leading-tight">Reports & Complaints</h1>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate("/admin/dashboard")} className="text-sm text-white hover:text-gray-500 border border-gray-200 hover:border-gray-300 px-4 py-1.5 rounded-lg transition-all font-medium">
+            <button onClick={() => navigate("/admin/dashboard")} className="text-sm text-black hover:text-gray-600 border border-gray-200 hover:border-gray-300 px-4 py-1.5 rounded-lg transition-all font-medium">
               ← Dashboard
             </button>
-            <button onClick={handleLogout} className="text-sm text-white hover:text-red-500 border border-gray-200 hover:border-red-200 hover:bg-red-50 px-4 py-1.5 rounded-lg transition-all font-medium">
+            <button onClick={handleLogout} className="text-sm text-black hover:text-red-600 border border-gray-200 hover:border-red-200 hover:bg-red-50 px-4 py-1.5 rounded-lg transition-all font-medium">
               Sign Out
             </button>
           </div>
@@ -243,7 +340,7 @@ export default function Reports() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filtered.map((r) => <ReportCard key={r.id} r={r} />)}
+              {filtered.map((r) => <ReportCard key={r.reportId} r={r} />)}
             </div>
           )}
         </div>
@@ -295,9 +392,15 @@ export default function Reports() {
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
-                {[{ icon: "📞", label: "Phone", val: selected.phoneNumber }, { icon: "📍", label: "Address", val: selected.address },
-                  { icon: "💼", label: "Experience", val: selected.experience ? `${selected.experience} Years` : null },
-                  { icon: "💰", label: "Rate", val: selected.chargeMin && selected.chargeMax ? `Rs ${selected.chargeMin}–${selected.chargeMax}/day` : null }
+                {[
+                  { icon: "📞", label: "Phone",           val: selected.phoneNumber },
+                  { icon: "✉️", label: "Email",           val: selected.email },
+                  { icon: "📍", label: "Address",         val: selected.address },
+                  { icon: "👤", label: "Gender",          val: selected.gender },
+                  { icon: "🎯", label: "Speciality",      val: selected.speciality },
+                  { icon: "🧾", label: "Certification",   val: selected.certification },
+                  { icon: "💼", label: "Experience",      val: selected.experience ? `${selected.experience} Years` : null },
+                  { icon: "💰", label: "Daily Rate",      val: selected.chargeMin && selected.chargeMax ? `Rs ${selected.chargeMin}–${selected.chargeMax}/day` : null },
                 ].map(({ icon, label, val }) => (
                   <div key={label} className="bg-orange-50 rounded-xl p-3 border border-orange-100">
                     <p className="text-xs text-orange-400 uppercase tracking-wider">{icon} {label}</p>
@@ -313,11 +416,81 @@ export default function Reports() {
                 </div>
               )}
 
+              {selected.reason && (
+                <div className="bg-orange-50 rounded-xl p-4 border border-orange-100">
+                  <p className="text-xs text-orange-400 uppercase tracking-wider mb-2">Report reason</p>
+                  <p className="text-sm text-gray-700 whitespace-pre-line">{selected.reason}</p>
+                </div>
+              )}
+
+              {selected.reportedAt && (
+                <div className="bg-white rounded-xl p-4 border border-orange-100">
+                  <p className="text-xs text-orange-400 uppercase tracking-wider mb-2">Reported at</p>
+                  <p className="text-sm text-gray-700">{new Date(selected.reportedAt).toLocaleString()}</p>
+                </div>
+              )}
+
+              {selected.proof && (
+                <div className="bg-orange-50 rounded-xl p-4 border border-orange-100">
+                  <p className="text-xs text-orange-400 uppercase tracking-wider mb-2">Proof</p>
+                  {selected.proof.match(/\.(jpe?g|png|gif|webp)$/i) ? (
+                    <img
+                      src={selected.proof?.startsWith("http") ? selected.proof : `${import.meta.env.VITE_API_URL}/uploads/${selected.proof?.replace(/\s+/g, "_")}`}
+                      alt="Report proof"
+                      className="w-full rounded-xl border border-orange-100 object-cover max-h-72"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = "https://via.placeholder.com/600x400?text=Proof+not+available";
+                      }}
+                    />
+                  ) : (
+                    <p className="text-sm text-gray-700 break-words">{selected.proof}</p>
+                  )}
+                </div>
+              )}
+
               {selected.citizenshipPhoto && (
                 <div>
                   <p className="text-xs text-orange-400 uppercase tracking-wider mb-2">📄 Citizenship Document</p>
-                  <img src={`${import.meta.env.VITE_API_URL}/uploads/${selected.citizenshipPhoto?.replace(/\s+/g, "_")}`} alt="Citizenship"
-                    className="w-full rounded-xl border border-orange-100 object-cover max-h-52" onError={(e) => { e.target.style.display = "none"; }} />
+                  <img
+                    src={selected.citizenshipPhoto?.startsWith("http")
+                      ? selected.citizenshipPhoto
+                      : `${import.meta.env.VITE_API_URL}/uploads/${selected.citizenshipPhoto?.replace(/\s+/g, "_")}`}
+                    alt="Citizenship"
+                    className="w-full rounded-xl border border-orange-100 object-cover max-h-52"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "https://via.placeholder.com/600x400?text=Document+not+available";
+                    }}
+                  />
+                </div>
+              )}
+
+              {selected.certificatePhoto && (
+                <div>
+                  <p className="text-xs text-orange-400 uppercase tracking-wider mb-2">🧾 Certification Proof</p>
+                  <img
+                    src={selected.certificatePhoto?.startsWith("http")
+                      ? selected.certificatePhoto
+                      : `${import.meta.env.VITE_API_URL}/uploads/${selected.certificatePhoto?.replace(/\s+/g, "_")}`}
+                    alt="Certification Proof"
+                    className="w-full rounded-xl border border-orange-100 object-cover max-h-52"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "https://via.placeholder.com/600x400?text=Document+not+available";
+                    }}
+                  />
+                </div>
+              )}
+
+              {bookings && bookings.length > 0 && (
+                <div className="bg-orange-50 rounded-xl p-4 border border-orange-100">
+                  <p className="text-xs text-orange-400 uppercase tracking-wider mb-2">📅 Bookings</p>
+                  <ul className="text-sm text-gray-700 list-disc list-inside space-y-1">
+                    {bookings.map((b) => (
+                      <li key={b.id}>{b.userName || b.userId}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
 

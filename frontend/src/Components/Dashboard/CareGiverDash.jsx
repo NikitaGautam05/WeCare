@@ -5,6 +5,7 @@ import React, {
 import ProfileForm from "./ProfileForm";
 import AcceptedConnections from "../Chat/AcceptedConnections";
 import BookingsList from "../Chat/BookingsList";
+import logo from "../../assets/logo.jpg";
 import {
   FaUserCircle,
   FaBell,
@@ -36,7 +37,23 @@ const CareGiverDash = () => {
     return profileData?.id || profileData?.caregiverId || profileData?.userId || userId;
   };
 
-  // ── ALL ORIGINAL LOGIC UNCHANGED ──
+  const token = localStorage.getItem("jwtToken");
+  const axiosConfig = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+
+  const markNotificationAsRead = async (notification) => {
+    if (!notification?.id || notification.read) return;
+    try {
+      await axios.put(
+        `${import.meta.env.VITE_API_URL}/api/notifications/${notification.id}/read`,
+        {},
+        axiosConfig
+      );
+    } catch (err) {
+      console.error("Failed to mark notification as read:", err);
+    }
+  };
+
+  // ── ALL ORIGINAL LOGIC UNCHANGED ─
   useEffect(() => {
     if (!userId) { navigate("/login"); return; }
     const token       = localStorage.getItem("jwtToken");
@@ -228,7 +245,11 @@ const CareGiverDash = () => {
     return type.toString().toLowerCase().includes("interest");
   };
 
-  const handleNotificationClick = (notif) => {
+  const handleNotificationClick = async (notif) => {
+    if (notif?.id && !notif.read) {
+      await markNotificationAsRead(notif);
+    }
+
     setNotifications((current) => current.filter((item) => {
       if (notif.id) return item.id !== notif.id;
       return item !== notif;
@@ -246,7 +267,9 @@ const CareGiverDash = () => {
   const initials    = displayName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
   const totalRequestCount = (Array.isArray(interestRequests) ? interestRequests.length : 0) +
                             (Array.isArray(bookingRequests) ? bookingRequests.length : 0);
-  const notificationCount = (Array.isArray(notifications) ? notifications.length : 0) + totalRequestCount;
+  const unreadNotifications = Array.isArray(notifications) ? notifications.filter((notif) => !notif.read) : [];
+  const unreadNotificationCount = unreadNotifications.length;
+  const notificationCount = unreadNotificationCount + totalRequestCount;
 
   const parseRequestDate = (request) => {
     const dateString = request.date || request.sentAt || request.createdAt || request.startTime;
@@ -330,9 +353,7 @@ const CareGiverDash = () => {
 
         {/* Brand */}
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center shadow-lg">
-            <span className="text-white text-[11px] font-black tracking-tight">EE</span>
-          </div>
+          <img src={logo} alt="ElderEase Logo" className="w-8 h-8 rounded-lg shadow-lg" />
           <span className="text-[16px] font-semibold bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent tracking-tight">
             Elder<span className="font-normal text-blue-300">Ease</span>
           </span>
@@ -363,7 +384,21 @@ const CareGiverDash = () => {
             onClick={() => setActiveTab("profile")}
             className="flex items-center gap-2.5 cursor-pointer"
           >
-            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center text-white text-[10px] font-bold">
+            {profile?.profilePhoto ? (
+              <img 
+                src={`${import.meta.env.VITE_API_URL}/uploads/${profile.profilePhoto}`}
+                alt={displayName}
+                className="w-6 h-6 rounded-full object-cover object-center border border-blue-300"
+                onError={(e) => {
+                  e.target.style.display = "none";
+                  e.target.nextSibling.style.display = "flex";
+                }}
+              />
+            ) : null}
+            <div 
+              className="w-6 h-6 rounded-full bg-gradient-to-br from-teal-400 to-blue-500 flex items-center justify-center text-white text-[10px] font-bold"
+              style={{display: profile?.profilePhoto ? "none" : "flex"}}
+            >
               {initials}
             </div>
             <span className="text-[14px] font-medium text-blue-100 hidden sm:block max-w-[130px] truncate">
@@ -392,7 +427,21 @@ const CareGiverDash = () => {
           <div className="px-5 py-9 border-b border-blue-100/50 bg-gradient-to-b from-slate-50 to-transparent">
             {/* Avatar block */}
             <div className="relative w-fit mb-7">
-              <div className="w-[54px] h-[54px] rounded-2xl bg-gradient-to-br from-teal-400 to-blue-600 text-white flex items-center justify-center text-xl font-bold shadow-lg">
+              {profile?.profilePhoto ? (
+                <img 
+                  src={`${import.meta.env.VITE_API_URL}/uploads/${profile.profilePhoto}`}
+                  alt={displayName}
+                  className="w-[54px] h-[54px] rounded-2xl object-cover object-center shadow-lg border-2 border-white"
+                  onError={(e) => {
+                    e.target.style.display = "none";
+                    e.target.nextSibling.style.display = "flex";
+                  }}
+                />
+              ) : null}
+              <div 
+                className="w-[54px] h-[54px] rounded-2xl bg-gradient-to-br from-teal-400 to-blue-600 text-white flex items-center justify-center text-xl font-bold shadow-lg"
+                style={{display: profile?.profilePhoto ? "none" : "flex"}}
+              >
                 {initials}
               </div>
               {/* Online dot */}
@@ -681,16 +730,16 @@ const CareGiverDash = () => {
                       <p className="text-[11px] text-slate-500">System notifications and updates</p>
                     </div>
                     <span className="ml-auto px-3 py-1 bg-blue-100 text-blue-700 text-[11px] font-bold rounded-full">
-                      {notifications.length}
+                      {unreadNotificationCount}
                     </span>
                   </div>
-                  {notifications.length === 0 ? (
+                  {unreadNotifications.length === 0 ? (
                     <div className="p-6 bg-slate-50/50 border border-dashed border-slate-200 rounded-xl text-center">
-                      <p className="text-[13px] text-slate-500">No notifications yet</p>
+                      <p className="text-[13px] text-slate-500">No unread notifications</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {notifications.map((notif) => (
+                      {unreadNotifications.map((notif) => (
                         <div
                           key={notif.id || notif.message}
                           className="flex items-center gap-4 p-5 bg-gradient-to-r from-blue-50/50 to-blue-100/50 border border-blue-200/50 rounded-xl hover:border-blue-300 hover:shadow-md transition-all group cursor-pointer"

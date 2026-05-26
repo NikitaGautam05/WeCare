@@ -21,15 +21,19 @@ const ProfileUser = () => {
 
   const [profileData, setProfileData] = useState({
     userName: "", email: "", photo: "", address: "", serviceType: "",
-    additionalInfo: "", receiverType: "self", recipientRelation: "Myself", recipientAge: "", recipientPhone: "", accountType: "INDIVIDUAL",
+    additionalInfo: "", receiverType: "self", recipientRelation: "Myself", recipientAge: "", recipientPhone: "", recipientGender: "", accountType: "INDIVIDUAL",
     organizationName: "", foundationDate: "", capacity: "", city: "",
     phoneNumber: "", website: "", servicesOffered: [], aboutOrganization: "",
     licenseNumber: "", registrationNumber: "", logo: "", bannerImage: "",
     contactPersonName: "", contactPersonTitle: "", contactPersonPhone: "",
+    organizationPhotos: [],
   });
+  const [organizationPhotosPreviews, setOrganizationPhotosPreviews] = useState([]);
 
   const [careEditMode, setCareEditMode] = useState(false);
   const [careSaving,   setCareSaving]   = useState(false);
+  const [orgPhotoError, setOrgPhotoError] = useState("");
+  const [recipientAgeError, setRecipientAgeError] = useState("");
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: "", newPassword: "", confirmPassword: "",
@@ -65,11 +69,59 @@ const ProfileUser = () => {
           recipientRelation: data.recipientRelation || (data.receiverType === "other" ? "" : "Myself"),
           recipientAge: data.recipientAge || "",
           recipientPhone: data.recipientPhone || "",
+          recipientGender: data.recipientGender || "",
+          organizationPhotos: [],
         });
+        // Load existing organization photos if available
+        if (data.organizationPhotos && Array.isArray(data.organizationPhotos)) {
+          const previews = data.organizationPhotos.map(photo =>
+            typeof photo === "string" && photo.startsWith("http")
+              ? photo
+              : `${import.meta.env.VITE_API_URL}/uploads/${photo.replace(/\s+/g, "_")}`
+          );
+          setOrganizationPhotosPreviews(previews);
+        }
       })
       .catch(err => console.error(err));
     fetchAcceptedConnections();
   }, [userId, token, navigate]);
+
+  const handleOrganizationPhotosChange = (e) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newPhotos = Array.from(files);
+    const totalPhotos = profileData.organizationPhotos.length + newPhotos.length;
+    setOrgPhotoError("");
+
+    if (totalPhotos > 5) {
+      setOrgPhotoError(`You can upload a maximum of 5 photos. You already have ${profileData.organizationPhotos.length} photo(s).`);
+      return;
+    }
+
+    const updatedPhotos = [...profileData.organizationPhotos, ...newPhotos];
+    const previews = updatedPhotos.map(photo => {
+      if (photo instanceof File) {
+        return URL.createObjectURL(photo);
+      }
+      return photo;
+    });
+
+    setProfileData({ ...profileData, organizationPhotos: updatedPhotos });
+    setOrganizationPhotosPreviews(previews);
+  };
+
+  const removeOrganizationPhoto = (index) => {
+    const updatedPhotos = profileData.organizationPhotos.filter((_, i) => i !== index);
+    const updatedPreviews = organizationPhotosPreviews.filter((_, i) => i !== index);
+
+    if (organizationPhotosPreviews[index]) {
+      URL.revokeObjectURL(organizationPhotosPreviews[index]);
+    }
+
+    setProfileData({ ...profileData, organizationPhotos: updatedPhotos });
+    setOrganizationPhotosPreviews(updatedPreviews);
+  };
 
   const handlePhotoClick  = () => fileInputRef.current.click();
 
@@ -110,6 +162,12 @@ const ProfileUser = () => {
 
   const handleCareSave = async () => {
     setCareSaving(true);
+    if (profileData.recipientAge && Number(profileData.recipientAge) < 50) {
+      console.error("Age must be 50 or older");
+      setRecipientAgeError("Age must be 50 or older");
+      setCareSaving(false);
+      return;
+    }
     try {
       const formData = new FormData();
       formData.append("userId", userId);
@@ -120,6 +178,7 @@ const ProfileUser = () => {
       formData.append("recipientRelation", profileData.recipientRelation);
       formData.append("recipientAge", profileData.recipientAge);
       formData.append("recipientPhone", profileData.recipientPhone);
+      formData.append("recipientGender", profileData.recipientGender);
       formData.append("accountType", profileData.accountType);
       if (profileData.accountType === "ORGANIZATION") {
         ["organizationName","foundationDate","capacity","city","phoneNumber","website",
@@ -127,11 +186,20 @@ const ProfileUser = () => {
          "contactPersonName","contactPersonTitle","contactPersonPhone"].forEach(k =>
           formData.append(k, profileData[k])
         );
+        // Add organization photos
+        if (profileData.organizationPhotos.length > 0) {
+          profileData.organizationPhotos.forEach((photo) => {
+            if (photo instanceof File) {
+              formData.append("organizationPhotos", photo);
+            }
+          });
+        }
       }
       const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/users/update/${userId}`, formData, {
         headers: { ...axiosConfig.headers, "Content-Type": "multipart/form-data" },
       });
       setProfileData(res.data);
+      setOrganizationPhotosPreviews([]);
       setCareEditMode(false);
       alert("✅ Profile updated successfully!");
     } catch (err) {
@@ -309,6 +377,7 @@ const ProfileUser = () => {
                     { label: "Care Recipient", val: profileData.receiverType === "other" ? profileData.recipientRelation || "Someone else" : "Myself" },
                     { label: "Age",          val: profileData.recipientAge ? `${profileData.recipientAge} yrs` : "Not specified" },
                     { label: "Contact",      val: profileData.recipientPhone || "Not specified" },
+                    { label: "Gender",       val: profileData.receiverType === "other" ? (profileData.recipientGender || "Not specified") : "Not specified" },
                     { label: "Service Type",   val: profileData.serviceType   || "Not specified" },
                     { label: "Location",       val: profileData.address       || "Not specified" },
                     { label: "Details",        val: profileData.additionalInfo ? "Added" : "Not added" },
@@ -337,7 +406,7 @@ const ProfileUser = () => {
                     {["self", "other"].map((v) => (
                       <div
                         key={v}
-                        onClick={() => setProfileData({ ...profileData, receiverType: v, recipientRelation: v === "self" ? "Myself" : "" })}
+                        onClick={() => setProfileData({ ...profileData, receiverType: v, recipientRelation: v === "self" ? "Myself" : "", recipientGender: v === "self" ? "" : profileData.recipientGender })}
                         className={`py-3.5 px-4 rounded-2xl font-black text-sm text-center cursor-pointer transition-all border ${
                           profileData.receiverType === v
                             ? "bg-slate-900 text-white border-slate-900 shadow-lg"
@@ -370,12 +439,33 @@ const ProfileUser = () => {
                   <div>
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Age</label>
                     <input
-                      type="text"
+                      type="number"
+                      min="50"
                       value={profileData.recipientAge}
-                      onChange={(e) => setProfileData({ ...profileData, recipientAge: e.target.value.replace(/[^0-9]/g, "") })}
+                      onChange={(e) => {
+                        const cleaned = e.target.value.replace(/[^0-9]/g, "");
+                        setProfileData({ ...profileData, recipientAge: cleaned });
+                        if (cleaned && Number(cleaned) < 50) {
+                          setRecipientAgeError("Age must be 50 or older");
+                        } else {
+                          setRecipientAgeError("");
+                        }
+                      }}
+                      onBlur={(e) => {
+                        const age = Number(e.target.value);
+                        if (e.target.value && age < 50) {
+                          console.error("Age must be 50 or older");
+                          setRecipientAgeError("Age must be 50 or older");
+                        }
+                      }}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 text-sm font-semibold outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-50 transition-all"
-                      placeholder="Eg. 72"
+                      placeholder="Eg. 50"
                     />
+                    {recipientAgeError && (
+                      <p className="mt-2 text-xs font-bold text-red-600 bg-red-50 p-2 rounded-xl">
+                        {recipientAgeError}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Contact Number</label>
@@ -388,6 +478,19 @@ const ProfileUser = () => {
                       maxLength="10"
                     />
                   </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Gender</label>
+                  <select
+                    value={profileData.recipientGender}
+                    onChange={(e) => setProfileData({ ...profileData, recipientGender: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 text-sm font-semibold outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-50 transition-all"
+                  >
+                    <option value="">Select gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
                 </div>
                 <div>
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Type of Care Needed</label>
@@ -461,6 +564,58 @@ const ProfileUser = () => {
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">About Organization</label>
                   <textarea value={profileData.aboutOrganization} onChange={(e) => setProfileData({ ...profileData, aboutOrganization: e.target.value })} placeholder="Tell caregivers about your organization..." rows={4} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 text-sm font-semibold outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-50 transition-all resize-none" />
                 </div>
+
+                {/* Organization Photos Section */}
+                <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl">
+                  <p className="text-[10px] font-black text-blue-700 uppercase tracking-widest mb-1">🏢 Organization Photos</p>
+                  <p className="text-[9px] text-blue-600">Upload up to 5 photos of your organization (facilities, team, etc.)</p>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Organization Photos ({profileData.organizationPhotos.length}/5)</label>
+                  <div className="border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center cursor-pointer hover:border-slate-400 hover:bg-slate-50 transition-all">
+                    <input
+                      type="file"
+                      onChange={handleOrganizationPhotosChange}
+                      accept="image/*"
+                      multiple
+                      disabled={profileData.organizationPhotos.length >= 5}
+                      className="hidden"
+                      id="orgPhotosInput"
+                    />
+                    <label htmlFor="orgPhotosInput" className="cursor-pointer block">
+                      <div className="text-2xl mb-2">📸</div>
+                      <div className="text-sm font-bold text-slate-600">Click to upload photos</div>
+                      <div className="text-xs text-slate-400 mt-1">or drag and drop (max 5 photos)</div>
+                    </label>
+                  </div>
+                  {orgPhotoError && <p className="text-xs text-red-600 font-bold mt-2 bg-red-50 p-2 rounded-lg">{orgPhotoError}</p>}
+                </div>
+
+                {organizationPhotosPreviews.length > 0 && (
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Uploaded Photos</label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                      {organizationPhotosPreviews.map((preview, index) => (
+                        <div key={index} className="relative group rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                          <img
+                            src={preview}
+                            alt={`Organization ${index + 1}`}
+                            className="w-full h-24 object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeOrganizationPhoto(index)}
+                            className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold hover:bg-red-600"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <button onClick={handleCareSave} disabled={careSaving} className="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-sm disabled:opacity-50">
                   {careSaving ? "Saving…" : "Save Organization Profile"}
                 </button>
