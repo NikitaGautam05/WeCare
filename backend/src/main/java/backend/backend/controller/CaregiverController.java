@@ -1,4 +1,4 @@
-import backend.backend.service.FileStorageService;
+package backend.backend.controller;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -29,7 +29,6 @@ import backend.backend.repository.NotificationRepository;
 import backend.backend.repository.UserRepo;
 import backend.backend.service.CaregiverService;
 import backend.backend.service.EmailService;
-import org.springframework.beans.factory.annotation.Value;
 
 @RestController
 @RequestMapping("/api/caregivers")
@@ -38,12 +37,6 @@ import org.springframework.beans.factory.annotation.Value;
     "https://elderease-6cuj.onrender.com"
 })
 public class CaregiverController {
-    @Value("${app.uploads.dir:./uploads}")
-    private String uploadsDir;
-    
-    @Autowired
-    private FileStorageService fileStorageService;
-    
     @Autowired
     private CaregiverService caregiverService;
     @Autowired
@@ -57,14 +50,21 @@ public class CaregiverController {
     @Autowired
     private NotificationRepository notificationRepository;
     
+    // Get dynamic upload directory based on current working directory
+    private String getUploadDir() {
+        return System.getProperty("user.dir") + File.separator + "uploads" + File.separator;
+    }
     @PostMapping("/add")
     public Caregiver addCaregiver(
-            @RequestParam String userId,
+            @RequestParam String userId,  // <-- userId first
             @RequestParam("profilePhoto") MultipartFile profilePhoto,
             @RequestParam("citizenshipPhoto") MultipartFile citizenshipPhoto,
             @RequestParam String fullName,
             @RequestParam String address,
             @RequestParam String phoneNumber,
+            @RequestParam String gender,
+
+//            @RequestParam String email,
             @RequestParam String details,
             @RequestParam String experience,
             @RequestParam String speciality,
@@ -78,18 +78,42 @@ public class CaregiverController {
             throw new RuntimeException("User already has profile!");
         }
 
-        // Store files in MongoDB GridFS
-        String profileFileName = fileStorageService.storeFile(profilePhoto);
-        String citizenshipFileName = fileStorageService.storeFile(citizenshipPhoto);
+        System.out.println("📝 addCaregiver - gender received: '" + gender + "'");
 
-        // Build caregiver object
+        // Ensure upload folder exists
+        String uploadDirPath = getUploadDir();
+        File uploadFolder = new File(uploadDirPath);
+        if (!uploadFolder.exists()) {
+            boolean created = uploadFolder.mkdirs();
+            if (!created) {
+                throw new IOException("Could not create upload directory: " + uploadDirPath);
+            }
+        }
+
+        // Generate unique filenames with spaces replaced
+        // --- 3. Generate unique filenames ---
+        String profileFileName = System.currentTimeMillis() + "_" + profilePhoto.getOriginalFilename().replaceAll("\\s+", "_");
+        String citizenshipFileName = System.currentTimeMillis() + "_" + citizenshipPhoto.getOriginalFilename().replaceAll("\\s+", "_");
+
+        // --- 4. Save files ---
+        try {
+            profilePhoto.transferTo(new File(uploadFolder, profileFileName));
+            citizenshipPhoto.transferTo(new File(uploadFolder, citizenshipFileName));
+        } catch (IOException e) {
+            throw new IOException("Error saving uploaded files", e);
+        }
+
+        // --- 5. Build caregiver object ---
         Caregiver caregiver = new Caregiver();
-        caregiver.setUserId(userId);
+        caregiver.setUserId(userId);  // <-- set userId here
         caregiver.setFullName(fullName);
         caregiver.setAddress(address);
         caregiver.setPhoneNumber(phoneNumber);
+        caregiver.setGender(gender);
+        System.out.println("✅ Caregiver created with gender: '" + gender + "'");
         Users user = userRepo.findById(userId).orElseThrow();
         caregiver.setEmail(user.getEmail());
+//        caregiver.setEmail(email);
         caregiver.setDetails(details);
         caregiver.setExperience(experience);
         caregiver.setSpeciality(speciality);
@@ -100,17 +124,41 @@ public class CaregiverController {
         caregiver.setCitizenshipPhoto(citizenshipFileName);
 
         if (certificatePhoto != null && !certificatePhoto.isEmpty()) {
-            String certificateFileName = fileStorageService.storeFile(certificatePhoto);
+            String certificateFileName = System.currentTimeMillis() + "_" + certificatePhoto.getOriginalFilename().replaceAll("\\s+", "_");
+            certificatePhoto.transferTo(new File(uploadFolder, certificateFileName));
             caregiver.setCertificatePhoto(certificateFileName);
         }
 
-        // Save to MongoDB
+        // --- 6. Save to MongoDB ---
         Caregiver saved = caregiverService.saveCaregiver(caregiver);
         System.out.println("Caregiver saved with ID: " + saved.getId());
 
+        try {
+            String adminSubject = "New caregiver signup awaiting approval";
+            String adminBody = "A new caregiver has submitted a profile and is pending admin approval.\n\n"
+                    + "Name: " + saved.getFullName() + "\n"
+                    + "Email: " + saved.getEmail() + "\n"
+                    + "Speciality: " + saved.getSpeciality() + "\n"
+                    + "Status: " + saved.getStatus() + "\n\n"
+                    + "Please review the caregiver on the admin dashboard.";
+            emailService.sendAdminAlert(adminSubject, adminBody);
+
+            Notification adminNotification = new Notification(
+                    "admin",
+                    saved.getUserId(),
+                    saved.getFullName(),
+                    "ADMIN_NEW_CAREGIVER",
+                    "New caregiver pending approval",
+                    "New caregiver " + saved.getFullName() + " has submitted their profile and awaits verification."
+            );
+            adminNotification.setActionId(saved.getId());
+            notificationRepository.save(adminNotification);
+        } catch (Exception e) {
+            System.out.println("Failed to send admin notification for new caregiver signup: " + e.getMessage());
+        }
+
         return saved;
     }
-
     @GetMapping("/verified")
     public List<Caregiver> getVerifiedCaregivers(){
         return caregiverService.getCaregiversByStatus(CaregiverStatus.VERIFIED);
@@ -208,6 +256,8 @@ public class CaregiverController {
             @RequestParam String fullName,
             @RequestParam String address,
             @RequestParam String phoneNumber,
+            @RequestParam String gender,
+
             @RequestParam String details,
             @RequestParam String experience,
             @RequestParam String speciality,
@@ -222,9 +272,13 @@ public class CaregiverController {
         Caregiver caregiver = caregiverService.getByUserId(userId);
         if (caregiver == null) throw new RuntimeException("Profile not found");
 
+        System.out.println("📝 updateCaregiver - gender received: '" + gender + "' (existing: '" + caregiver.getGender() + "')");
+
         caregiver.setFullName(fullName);
         caregiver.setAddress(address);
         caregiver.setPhoneNumber(phoneNumber);
+        caregiver.setGender(gender);
+        System.out.println("✅ Gender set to: " + gender);
         Users user = userRepo.findById(userId).orElseThrow();
         caregiver.setEmail(user.getEmail());
 
@@ -235,19 +289,22 @@ public class CaregiverController {
         caregiver.setChargeMax(chargeMax);
         caregiver.setCertification(certification);
 
-        // Handle optional photos using GridFS
-        if (profilePhoto != null && !profilePhoto.isEmpty()) {
-            String profileFileName = fileStorageService.storeFile(profilePhoto);
+        // Handle optional photos with spaces replaced
+        if (profilePhoto != null) {
+            String profileFileName = System.currentTimeMillis() + "_" + profilePhoto.getOriginalFilename().replaceAll("\\s+", "_");
+            profilePhoto.transferTo(new File(getUploadDir(), profileFileName));
             caregiver.setProfilePhoto(profileFileName);
         }
 
-        if (citizenshipPhoto != null && !citizenshipPhoto.isEmpty()) {
-            String citizenshipFileName = fileStorageService.storeFile(citizenshipPhoto);
+        if (citizenshipPhoto != null) {
+            String citizenshipFileName = System.currentTimeMillis() + "_" + citizenshipPhoto.getOriginalFilename().replaceAll("\\s+", "_");
+            citizenshipPhoto.transferTo(new File(getUploadDir(), citizenshipFileName));
             caregiver.setCitizenshipPhoto(citizenshipFileName);
         }
 
         if (certificatePhoto != null && !certificatePhoto.isEmpty()) {
-            String certificateFileName = fileStorageService.storeFile(certificatePhoto);
+            String certificateFileName = System.currentTimeMillis() + "_" + certificatePhoto.getOriginalFilename().replaceAll("\\s+", "_");
+            certificatePhoto.transferTo(new File(getUploadDir(), certificateFileName));
             caregiver.setCertificatePhoto(certificateFileName);
         }
 
@@ -270,18 +327,79 @@ public class CaregiverController {
         return caregiverService.saveCaregiver(caregiver);
     }
     @PostMapping("/{id}/report")
-    public Caregiver reportCaregiver(@PathVariable String id) {
-
+    public ResponseEntity<Caregiver> reportCaregiver(
+            @PathVariable String id,
+            @RequestParam(required = false) String userId,
+            @RequestParam String reason,
+            @RequestParam(required = false) String proof,
+            @RequestParam(required = false) MultipartFile proofFile
+    ) {
         Caregiver caregiver = caregiverService.getCaregiverById(id);
 
         if (caregiver == null) {
-            throw new RuntimeException("Caregiver not found");
+            return ResponseEntity.status(404).build();
+        }
+        if (reason == null || reason.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
         }
 
-        // increment report count
-        caregiver.setReportsCount(caregiver.getReportsCount() + 1);
+        String proofValue = proof != null ? proof.trim() : null;
+        if (proofFile != null && !proofFile.isEmpty()) {
+            try {
+                String proofFileName = System.currentTimeMillis() + "_" + proofFile.getOriginalFilename().replaceAll("\\s+", "_");
+                File proofDir = new File(getUploadDir());
+                if (!proofDir.exists() && !proofDir.mkdirs()) {
+                    throw new IOException("Could not create upload directory: " + proofDir.getAbsolutePath());
+                }
+                proofFile.transferTo(new File(proofDir, proofFileName));
+                proofValue = proofFileName;
+            } catch (IOException e) {
+                System.out.println("Failed to save report proof file: " + e.getMessage());
+            }
+        }
 
-        return caregiverService.saveCaregiver(caregiver);
+        String reportedBy = userId != null ? userId.trim() : null;
+        String reportedAt = java.time.LocalDateTime.now().toString();
+        Caregiver.Report report = new Caregiver.Report(reportedBy, reason.trim(), proofValue, reportedAt);
+        caregiver.getReports().add(report);
+        caregiver.setReportsCount(caregiver.getReports().size());
+        caregiver.setReason(reason.trim());
+        caregiver.setProof(proofValue);
+        caregiver.setReportedByUserId(reportedBy);
+        caregiver.setReportedAt(reportedAt);
+
+        Caregiver saved = caregiverService.saveCaregiver(caregiver);
+
+        // Create admin notification record so admin dashboard shows the report even if email fails
+        Notification adminNotification = new Notification(
+            "admin",
+            saved.getReportedByUserId(),
+            "Care Receiver",
+            "ADMIN_CAREGIVER_REPORTED",
+            "Caregiver reported",
+            "Caregiver " + saved.getFullName() + " was reported for: " + saved.getReason()
+        );
+        adminNotification.setReason(saved.getReason());
+        adminNotification.setActionId(saved.getId());
+        notificationRepository.save(adminNotification);
+
+        try {
+            String adminSubject = "Caregiver reported by user";
+            String adminBody = "A caregiver has been reported.\n\n"
+                + "Caregiver: " + saved.getFullName() + "\n"
+                + "Reports count: " + saved.getReportsCount() + "\n"
+                + "Reported by user ID: " + (saved.getReportedByUserId() != null ? saved.getReportedByUserId() : "Unknown") + "\n"
+                + "Reason: " + saved.getReason() + "\n"
+                + "Proof: " + (saved.getProof() != null ? saved.getProof() : "None") + "\n\n"
+                + "Please review this report in the admin dashboard.";
+            emailService.sendAdminAlert(adminSubject, adminBody);
+            System.out.println("Admin alert sent for caregiver report: " + saved.getId());
+        } catch (Exception e) {
+            System.out.println("Failed to send admin email for caregiver report: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return ResponseEntity.ok(saved);
     }
 
     @PostMapping("/{id}/accept-request")

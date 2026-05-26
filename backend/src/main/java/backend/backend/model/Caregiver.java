@@ -2,6 +2,7 @@ package backend.backend.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -21,6 +22,7 @@ public class Caregiver {
     private String speciality;
     private String chargeMin;
     private String chargeMax;
+    private String gender;
     private String profilePhoto;
     private String citizenshipPhoto;
     private String certification;
@@ -29,6 +31,39 @@ public class Caregiver {
     // Status and Reports
     private CaregiverStatus status = CaregiverStatus.PENDING;
     private Integer reportsCount = 0;
+    private List<Report> reports = new ArrayList<>();
+    private String reason;
+    private String proof;
+    private String reportedByUserId;
+    private String reportedAt;
+
+    public static class Report {
+        private String id = UUID.randomUUID().toString();
+        private String reportedByUserId;
+        private String reason;
+        private String proof;
+        private String reportedAt;
+
+        public Report() {}
+
+        public Report(String reportedByUserId, String reason, String proof, String reportedAt) {
+            this.reportedByUserId = reportedByUserId;
+            this.reason = reason;
+            this.proof = proof;
+            this.reportedAt = reportedAt;
+        }
+
+        public String getId() { return id; }
+        public void setId(String id) { this.id = id; }
+        public String getReportedByUserId() { return reportedByUserId; }
+        public void setReportedByUserId(String reportedByUserId) { this.reportedByUserId = reportedByUserId; }
+        public String getReason() { return reason; }
+        public void setReason(String reason) { this.reason = reason; }
+        public String getProof() { return proof; }
+        public void setProof(String proof) { this.proof = proof; }
+        public String getReportedAt() { return reportedAt; }
+        public void setReportedAt(String reportedAt) { this.reportedAt = reportedAt; }
+    }
 
     // Lists for Interaction
     private List<String> comments = new ArrayList<>();
@@ -51,6 +86,46 @@ public class Caregiver {
 
     public void setReportsCount(Integer reportsCount) {
         this.reportsCount = reportsCount;
+    }
+
+    public List<Report> getReports() {
+        return reports;
+    }
+
+    public void setReports(List<Report> reports) {
+        this.reports = reports;
+    }
+
+    public String getReason() {
+        return reason;
+    }
+
+    public void setReason(String reason) {
+        this.reason = reason;
+    }
+
+    public String getProof() {
+        return proof;
+    }
+
+    public void setProof(String proof) {
+        this.proof = proof;
+    }
+
+    public String getReportedByUserId() {
+        return reportedByUserId;
+    }
+
+    public void setReportedByUserId(String reportedByUserId) {
+        this.reportedByUserId = reportedByUserId;
+    }
+
+    public String getReportedAt() {
+        return reportedAt;
+    }
+
+    public void setReportedAt(String reportedAt) {
+        this.reportedAt = reportedAt;
     }
 
     // --- Standard Getters and Setters ---
@@ -86,6 +161,9 @@ public class Caregiver {
 
     public String getChargeMax() { return chargeMax; }
     public void setChargeMax(String chargeMax) { this.chargeMax = chargeMax; }
+
+    public String getGender() { return gender; }
+    public void setGender(String gender) { this.gender = gender; }
 
     public String getProfilePhoto() { return profilePhoto; }
     public void setProfilePhoto(String profilePhoto) { this.profilePhoto = profilePhoto; }

@@ -19,7 +19,10 @@ import org.springframework.web.bind.annotation.RestController;
 import backend.backend.model.Admin;
 import backend.backend.model.Caregiver;
 import backend.backend.model.CaregiverStatus;
+import backend.backend.model.Notification;
 import backend.backend.repository.AdminRepo;
+import backend.backend.repository.NotificationRepository;
+import backend.backend.repository.UserRepo;
 import backend.backend.service.CaregiverService;
 import backend.backend.service.EmailService;
 import backend.backend.service.JwtService;
@@ -33,8 +36,10 @@ import backend.backend.service.JwtService;
 public class AdminController {
 
     @Autowired private AdminRepo adminRepo;
-    @Autowired private EmailService emailService;  // ← reuse, no duplication
-    @Autowired private JwtService jwtService;      // ← reuse, no duplication
+    @Autowired private UserRepo userRepo;
+    @Autowired private NotificationRepository notificationRepository;
+    @Autowired private EmailService emailService;
+    @Autowired private JwtService jwtService;
     @Autowired
     private PasswordEncoder passwordEncoder;
     @Autowired
@@ -75,15 +80,23 @@ public class AdminController {
     }
 
     @PostMapping("/forgetPassword")
-    public String forgetPassword(@RequestBody EmailRequest req) {
+    public ResponseEntity<String> forgetPassword(@RequestBody EmailRequest req) {
         Admin admin = adminRepo.findByEmail(req.getEmail());
-        if (admin == null) return "Admin email not found!";
+        if (admin == null) {
+            return ResponseEntity.status(404).body("Admin email not found!");
+        }
 
         String otp = String.valueOf((int)(Math.random() * 900000) + 100000);
-        emailService.sendOtp(admin.getEmail(), otp);   // ← reuse EmailService.sendOtp
-        otpStorage.put(admin.getEmail(), otp);
-
-        return "OTP sent to registered email!";
+        try {
+            emailService.sendOtp(admin.getEmail(), otp);   // ← reuse EmailService.sendOtp
+            otpStorage.put(admin.getEmail(), otp);
+            System.out.println("[Admin OTP] email=" + admin.getEmail() + " otp=" + otp);
+            return ResponseEntity.ok("OTP sent to registered email!");
+        } catch (Exception e) {
+            System.err.println("Failed to send admin OTP email: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Failed to send OTP email. Please check server logs and email configuration.");
+        }
     }
 
     @PostMapping("/verify-otp")
@@ -98,12 +111,27 @@ public class AdminController {
 
     @PostMapping("/reset-password")
     public ResponseEntity<String> resetPassword(@RequestBody ResetRequest req) {
-        Admin admin = adminRepo.findByEmail(req.getEmail());
-        if (admin == null) return ResponseEntity.status(404).body("Admin not found");
+        if (req.getEmail() == null || req.getEmail().isBlank()) {
+            return ResponseEntity.badRequest().body("Email is required.");
+        }
+        if (req.getNewPassword() == null || req.getNewPassword().isBlank()) {
+            return ResponseEntity.badRequest().body("New password is required.");
+        }
 
-        admin.setPassword(passwordEncoder.encode(req.getNewPassword()));
-        adminRepo.save(admin);
-        return ResponseEntity.ok("Password reset successful!");
+        Admin admin = adminRepo.findByEmail(req.getEmail());
+        if (admin == null) {
+            return ResponseEntity.status(404).body("Admin not found");
+        }
+
+        try {
+            admin.setPassword(passwordEncoder.encode(req.getNewPassword()));
+            adminRepo.save(admin);
+            return ResponseEntity.ok("Password reset successful!");
+        } catch (Exception e) {
+            System.err.println("Failed to reset admin password: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Unable to reset password right now. Please try again later.");
+        }
     }
 
     // ── DTOs ──────────────────────────────────────────────────────────────
@@ -146,8 +174,36 @@ public class AdminController {
         }
 
         caregiver.setStatus(CaregiverStatus.VERIFIED);
+        Caregiver saved = caregiverService.saveCaregiver(caregiver);
 
-        return caregiverService.saveCaregiver(caregiver);
+        try {
+            emailService.sendCaregiverVerifiedEmail(
+                    saved.getEmail(),
+                    saved.getFullName()
+            );
+
+            Notification notification = new Notification(
+                    saved.getUserId(),
+                    "admin",
+                    "Admin",
+                    "CAREGIVER_VERIFIED",
+                    "Caregiver profile approved",
+                    "Your caregiver profile has been approved and is now live on ElderEase."
+            );
+            notification.setActionId(saved.getId());
+            notificationRepository.save(notification);
+
+            String notificationJson = String.format(
+                    "{\"userId\":\"%s\",\"type\":\"verified\",\"message\":\"Your caregiver profile is now verified and live on ElderEase.\"}",
+                    saved.getUserId()
+            );
+            saved.getNotifications().add(notificationJson);
+            saved = caregiverService.saveCaregiver(saved);
+        } catch (Exception e) {
+            System.err.println("Failed to send verification email/notification for caregiver: " + e.getMessage());
+        }
+
+        return saved;
     }
     @PutMapping("/caregivers/{id}/block")
     public Caregiver blockCaregiver(@PathVariable String id){

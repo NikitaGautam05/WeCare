@@ -6,8 +6,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,13 +21,14 @@ import com.google.api.client.json.jackson2.JacksonFactory;
 import backend.backend.model.Caregiver;
 import backend.backend.model.Users;
 import backend.backend.repository.CaregiverRepository;
-import backend.backend.service.EmailService;
 import backend.backend.service.JwtService;
 import backend.backend.service.MyUserDetailService;
 
 @RestController
 @CrossOrigin(origins = {
     "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5174",
     "https://elderease-6cuj.onrender.com"
 })
 @RequestMapping("/api")
@@ -39,10 +38,6 @@ public class GoogleSignupController {
     private MyUserDetailService userService;
     @Autowired
     private JwtService jwtService;
-    @Autowired
-    EmailService emailService;
-    @Autowired
-    private PasswordEncoder passwordEncoder;
     @Autowired
     private CaregiverRepository caregiverRepository;
 
@@ -132,7 +127,7 @@ public Map<String, String> googleSignup(@RequestBody Map<String, String> payload
         response.put("email", email);
 
     } catch (Exception e) {
-        e.printStackTrace();
+        System.err.println("Google authentication failed: " + e.getMessage());
         response.put("error", "Google authentication failed");
     }
 
@@ -140,50 +135,4 @@ public Map<String, String> googleSignup(@RequestBody Map<String, String> payload
 }
 
 
-    @PostMapping("/users/complete-google-profile")
-    public ResponseEntity<Map<String, String>> completeGoogleProfile(@RequestBody Map<String, String> payload) {
-        Map<String, String> resp = new HashMap<>();
-
-        String userId = payload.get("userId");
-        String userName = payload.get("userName");
-        String password = payload.get("password");
-
-        // 1. Apply the same password restrictions as the /register endpoint
-        if (password == null || password.length() < 8 || !password.matches(".*[!@#$%^&*].*")) {
-            resp.put("error", "Password must be at least 8 characters and include special characters");
-            return ResponseEntity.badRequest().body(resp);
-        }
-
-        // 2. Find the existing user created during the initial Google sign-in
-        Users user = userService.getUserById(userId);
-        if (user == null) {
-            resp.put("error", "User session not found");
-            return ResponseEntity.badRequest().body(resp);
-        }
-
-        // 3. Check if the chosen username is already taken by another user
-        boolean exists = userService.getAllUsers()
-                .stream()
-                .anyMatch(u -> u.getUserName().equals(userName) && !u.getId().equals(userId));
-        if (exists) {
-            resp.put("error", "Username already exists");
-            return ResponseEntity.badRequest().body(resp);
-        }
-
-        // 4. Update and save
-        user.setUserName(userName);
-        user.setPassword(passwordEncoder.encode(password)); // Ensure it is hashed
-        userService.saveUser(user);
-
-        // 5. Send welcome email now that the profile is officially "complete"
-        try {
-            emailService.signupNotification(user.getEmail(), user.getUserName());
-        } catch (Exception e) {
-            System.err.println("Email failed: " + e.getMessage());
-        }
-
-        resp.put("message", "Profile completed");
-        resp.put("userId", user.getId());
-        return ResponseEntity.ok(resp);
-    }
 }

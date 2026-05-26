@@ -36,10 +36,19 @@ public class SecurityConfig {
                     var corsConfig = new org.springframework.web.cors.CorsConfiguration();
                     corsConfig.setAllowedOriginPatterns(List.of(
                             "http://localhost:5173",
+                            "http://127.0.0.1:5173",
+                            "http://localhost:5174",
+                            "https://elderease-6cuj.onrender.com"
+                    ));
+                    corsConfig.setAllowedOrigins(List.of(
+                            "http://localhost:5173",
+                            "http://127.0.0.1:5173",
+                            "http://localhost:5174",
                             "https://elderease-6cuj.onrender.com"
                     ));
                     corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                     corsConfig.setAllowedHeaders(List.of("*"));
+                    corsConfig.setExposedHeaders(List.of("Authorization", "Content-Type"));
                     corsConfig.setAllowCredentials(true);
                     return corsConfig;
                 }))

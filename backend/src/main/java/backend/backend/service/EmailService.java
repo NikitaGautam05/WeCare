@@ -1,15 +1,25 @@
 package backend.backend.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+
+import backend.backend.model.Admin;
+import backend.backend.repository.AdminRepo;
 
 @Service
 public class EmailService {
 
     @Autowired
     private JavaMailSender mailSender;
+
+    @Autowired(required = false)
+    private AdminRepo adminRepo;
+
+    @Value("${admin.notification.email:admin@elderease.com}")
+    private String adminNotificationEmail;
 
     public void sendOtp(String to, String otp) {
         if (to == null || to.isEmpty()) {
@@ -120,6 +130,48 @@ public class EmailService {
                 caregiverName + " has declined your interest request.\n\n" +
                 "You can send interest to other caregivers or explore more options on the ElderEase platform.\n\n" +
                 "Best regards,\nElderEase Team");
+        mailSender.send(message);
+    }
+
+    public void sendCaregiverVerifiedEmail(String to, String caregiverName) {
+        if (to == null || to.isEmpty()) {
+            throw new IllegalArgumentException("Email address is empty");
+        }
+        System.out.println("[EmailService] Sending caregiver-verified email to: " + to + " for " + caregiverName);
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(to);
+        message.setSubject("Your ElderEase caregiver profile has been verified");
+        message.setText("Hello " + caregiverName + ",\n\n" +
+                "Congratulations! Your caregiver profile has been approved by ElderEase admin and is now live on the platform.\n\n" +
+                "You can now receive interest from care receivers and begin connecting with them.\n\n" +
+                "Best regards,\nElderEase Team");
+        mailSender.send(message);
+    }
+
+    private String resolveAdminEmail() {
+        if (adminRepo != null) {
+            try {
+                Admin admin = adminRepo.findAll().stream().findFirst().orElse(null);
+                if (admin != null && admin.getEmail() != null && !admin.getEmail().isBlank()) {
+                    return admin.getEmail().trim();
+                }
+            } catch (Exception e) {
+                System.err.println("Could not resolve admin email from database: " + e.getMessage());
+            }
+        }
+        return adminNotificationEmail;
+    }
+
+    public void sendAdminAlert(String subject, String body) {
+        String to = resolveAdminEmail();
+        if (to == null || to.isEmpty()) {
+            throw new IllegalArgumentException("Admin notification email is not configured");
+        }
+        System.out.println("[EmailService] Sending admin alert to: " + to + " subject: " + subject);
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(to);
+        message.setSubject(subject);
+        message.setText(body);
         mailSender.send(message);
     }
 }

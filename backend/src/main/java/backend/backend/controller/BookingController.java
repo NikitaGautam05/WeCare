@@ -18,16 +18,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import backend.backend.model.Booking;
-import backend.backend.model.Notification;
 import backend.backend.model.AcceptedRequest;
+import backend.backend.model.Booking;
 import backend.backend.model.Caregiver;
+import backend.backend.model.HistoryItems;
+import backend.backend.model.Notification;
 import backend.backend.model.Users;
-import backend.backend.repository.BookingRepository;
-import backend.backend.repository.NotificationRepository;
-import backend.backend.repository.CaregiverRepository;
-import backend.backend.repository.UserRepo;
 import backend.backend.repository.AcceptedRequestRepository;
+import backend.backend.repository.BookingRepository;
+import backend.backend.repository.CaregiverRepository;
+import backend.backend.repository.NotificationRepository;
+import backend.backend.repository.UserRepo;
 import backend.backend.service.EmailService;
 
 @RestController
@@ -158,6 +159,16 @@ public class BookingController {
                 }
             } catch (Exception e) {
                 System.err.println("Email sending failed: " + e.getMessage());
+            }
+
+            Users user = userRepository.findById(booking.getUserId()).orElse(null);
+            if (user != null) {
+                HistoryItems item = new HistoryItems();
+                item.setCaregiverId(booking.getCaregiverId());
+                item.setAction("BOOKED");
+                item.setTimestamp(java.time.LocalDateTime.now().toString());
+                user.getHistory().add(item);
+                userRepository.save(user);
             }
 
             System.out.println("✅ Booking confirmed: " + booking.getId());
@@ -312,6 +323,29 @@ public class BookingController {
         } catch (Exception e) {
             System.err.println("❌ Error fetching caregiver bookings: " + e.getMessage());
             e.printStackTrace();
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    // ── Get all bookings for admin (optional status filter) ─
+    @GetMapping("/admin")
+    public ResponseEntity<List<Booking>> getAllBookings(@RequestParam(required = false) String status) {
+        try {
+            List<Booking> bookings = bookingRepository.findAll();
+            if (status != null && !status.isBlank()) {
+                String normalizedStatus = status.trim().toUpperCase();
+                if (!"ALL".equals(normalizedStatus)) {
+                    bookings.removeIf(b -> {
+                        String bookingStatus = b.getStatus() == null ? "" : b.getStatus().toUpperCase();
+                        if ("BOOKED".equals(normalizedStatus)) {
+                            return !("PENDING".equals(bookingStatus) || "CONFIRMED".equals(bookingStatus));
+                        }
+                        return !normalizedStatus.equals(bookingStatus);
+                    });
+                }
+            }
+            return ResponseEntity.ok(bookings);
+        } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
     }

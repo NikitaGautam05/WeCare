@@ -61,6 +61,7 @@ public class Users {
     private String recipientRelation;
     private String recipientAge;
     private String recipientPhone;
+    private String recipientGender; // Gender for recipient when requesting care for someone else
     
     // Organization fields
     private String accountType; // "INDIVIDUAL" or "ORGANIZATION"
@@ -69,6 +70,7 @@ public class Users {
     private String capacity;
     private String city;
     private String phoneNumber;
+    private String gender; // Gender for individual receivers
     private String website;
     private String aboutOrganization;
     private String licenseNumber;
@@ -135,6 +137,14 @@ public class Users {
         this.recipientPhone = recipientPhone;
     }
 
+    public String getRecipientGender() {
+        return recipientGender;
+    }
+
+    public void setRecipientGender(String recipientGender) {
+        this.recipientGender = recipientGender;
+    }
+
     public String getRole() {
         return role;
     }
@@ -195,6 +205,9 @@ public class Users {
 
     public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+
+    public String getGender() { return gender; }
+    public void setGender(String gender) { this.gender = gender; }
 
     public String getWebsite() { return website; }
     public void setWebsite(String website) { this.website = website; }
