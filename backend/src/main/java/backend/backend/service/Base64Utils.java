@@ -1,5 +1,6 @@
 package backend.backend.service;
 
+import java.io.IOException;
 import java.util.Base64;
 
 import org.springframework.web.multipart.MultipartFile;
@@ -9,7 +10,7 @@ public class Base64Utils {
     /**
      * Convert MultipartFile to Base64 encoded string
      */
-    public static String encodeFileToBase64(MultipartFile file) throws Exception {
+    public static String encodeFileToBase64(MultipartFile file) throws IOException {
         if (file == null || file.isEmpty()) {
             return null;
         }

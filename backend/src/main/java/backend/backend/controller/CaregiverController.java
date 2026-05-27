@@ -27,6 +27,7 @@ import backend.backend.repository.AcceptedRequestRepository;
 import backend.backend.repository.InterestRequestRepository;
 import backend.backend.repository.NotificationRepository;
 import backend.backend.repository.UserRepo;
+import backend.backend.service.Base64Utils;
 import backend.backend.service.CaregiverService;
 import backend.backend.service.EmailService;
 
@@ -95,6 +96,9 @@ public class CaregiverController {
         String profileFileName = System.currentTimeMillis() + "_" + profilePhoto.getOriginalFilename().replaceAll("\\s+", "_");
         String citizenshipFileName = System.currentTimeMillis() + "_" + citizenshipPhoto.getOriginalFilename().replaceAll("\\s+", "_");
 
+        // --- 5. Build caregiver object ---
+        Caregiver caregiver = new Caregiver();
+
         // --- 4. Save files AND Base64 encode ---
         try {
             profilePhoto.transferTo(new File(uploadFolder, profileFileName));
@@ -110,8 +114,6 @@ public class CaregiverController {
             throw new IOException("Error saving uploaded files", e);
         }
 
-        // --- 5. Build caregiver object ---
-        Caregiver caregiver = new Caregiver();
         caregiver.setUserId(userId);  // <-- set userId here
         caregiver.setFullName(fullName);
         caregiver.setAddress(address);
