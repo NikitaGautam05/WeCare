@@ -27,6 +27,11 @@ public class Caregiver {
     private String citizenshipPhoto;
     private String certification;
     private String certificatePhoto;
+    
+    // Base64 encoded photos (for Render persistent storage)
+    private String profilePhotoBase64;
+    private String citizenshipPhotoBase64;
+    private String certificatePhotoBase64;
 
     // Status and Reports
     private CaregiverStatus status = CaregiverStatus.PENDING;
@@ -177,6 +182,15 @@ public class Caregiver {
     public String getCertificatePhoto() { return certificatePhoto; }
     public void setCertificatePhoto(String certificatePhoto) { this.certificatePhoto = certificatePhoto; }
 
+    public String getProfilePhotoBase64() { return profilePhotoBase64; }
+    public void setProfilePhotoBase64(String profilePhotoBase64) { this.profilePhotoBase64 = profilePhotoBase64; }
+
+    public String getCitizenshipPhotoBase64() { return citizenshipPhotoBase64; }
+    public void setCitizenshipPhotoBase64(String citizenshipPhotoBase64) { this.citizenshipPhotoBase64 = citizenshipPhotoBase64; }
+
+    public String getCertificatePhotoBase64() { return certificatePhotoBase64; }
+    public void setCertificatePhotoBase64(String certificatePhotoBase64) { this.certificatePhotoBase64 = certificatePhotoBase64; }
+
     public List<String> getComments() { return comments; }
     public void setComments(List<String> comments) { this.comments = comments; }
 
@@ -185,4 +199,28 @@ public class Caregiver {
 
     public List<String> getAcceptedUserIds() { return acceptedUserIds; }
     public void setAcceptedUserIds(List<String> acceptedUserIds) { this.acceptedUserIds = acceptedUserIds; }
+
+    // Helper method: Get profile photo (prefers Base64, falls back to filename)
+    public String getPhotoForResponse() {
+        if (profilePhotoBase64 != null && !profilePhotoBase64.isEmpty()) {
+            return "data:image/jpeg;base64," + profilePhotoBase64;
+        }
+        return profilePhoto;
+    }
+
+    // Helper method: Get citizenship photo (prefers Base64, falls back to filename)
+    public String getCitizenshipPhotoForResponse() {
+        if (citizenshipPhotoBase64 != null && !citizenshipPhotoBase64.isEmpty()) {
+            return "data:image/jpeg;base64," + citizenshipPhotoBase64;
+        }
+        return citizenshipPhoto;
+    }
+
+    // Helper method: Get certificate photo (prefers Base64, falls back to filename)
+    public String getCertificatePhotoForResponse() {
+        if (certificatePhotoBase64 != null && !certificatePhotoBase64.isEmpty()) {
+            return "data:image/jpeg;base64," + certificatePhotoBase64;
+        }
+        return certificatePhoto;
+    }
 }

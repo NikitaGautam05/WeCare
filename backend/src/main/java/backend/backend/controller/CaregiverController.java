@@ -95,10 +95,17 @@ public class CaregiverController {
         String profileFileName = System.currentTimeMillis() + "_" + profilePhoto.getOriginalFilename().replaceAll("\\s+", "_");
         String citizenshipFileName = System.currentTimeMillis() + "_" + citizenshipPhoto.getOriginalFilename().replaceAll("\\s+", "_");
 
-        // --- 4. Save files ---
+        // --- 4. Save files AND Base64 encode ---
         try {
             profilePhoto.transferTo(new File(uploadFolder, profileFileName));
             citizenshipPhoto.transferTo(new File(uploadFolder, citizenshipFileName));
+            
+            // Encode photos to Base64 for MongoDB persistence (works on Render)
+            String profilePhotoBase64 = Base64Utils.encodeFileToBase64(profilePhoto);
+            String citizenshipPhotoBase64 = Base64Utils.encodeFileToBase64(citizenshipPhoto);
+            
+            caregiver.setProfilePhotoBase64(profilePhotoBase64);
+            caregiver.setCitizenshipPhotoBase64(citizenshipPhotoBase64);
         } catch (IOException e) {
             throw new IOException("Error saving uploaded files", e);
         }
@@ -127,6 +134,10 @@ public class CaregiverController {
             String certificateFileName = System.currentTimeMillis() + "_" + certificatePhoto.getOriginalFilename().replaceAll("\\s+", "_");
             certificatePhoto.transferTo(new File(uploadFolder, certificateFileName));
             caregiver.setCertificatePhoto(certificateFileName);
+            
+            // Encode certificate to Base64
+            String certificatePhotoBase64 = Base64Utils.encodeFileToBase64(certificatePhoto);
+            caregiver.setCertificatePhotoBase64(certificatePhotoBase64);
         }
 
         // --- 6. Save to MongoDB ---
@@ -161,12 +172,16 @@ public class CaregiverController {
     }
     @GetMapping("/verified")
     public List<Caregiver> getVerifiedCaregivers(){
-        return caregiverService.getCaregiversByStatus(CaregiverStatus.VERIFIED);
+        List<Caregiver> caregivers = caregiverService.getCaregiversByStatus(CaregiverStatus.VERIFIED);
+        transformCaregiverPhotos(caregivers);
+        return caregivers;
     }
 
     @GetMapping("/all")
     public List<Caregiver> getAllCaregivers() {
-        return caregiverService.getAllCaregivers();
+        List<Caregiver> caregivers = caregiverService.getAllCaregivers();
+        transformCaregiverPhotos(caregivers);
+        return caregivers;
     }
     @GetMapping("/test")
     public String testDb() {
@@ -248,6 +263,9 @@ public class CaregiverController {
             return ResponseEntity.ok(null);
         }
 
+        // Transform photos to use Base64 if available (persistent on Render)
+        transformCaregiverPhotos(caregiver);
+
         return ResponseEntity.ok(caregiver);
     }
     @PutMapping("/update/{userId}")
@@ -294,18 +312,30 @@ public class CaregiverController {
             String profileFileName = System.currentTimeMillis() + "_" + profilePhoto.getOriginalFilename().replaceAll("\\s+", "_");
             profilePhoto.transferTo(new File(getUploadDir(), profileFileName));
             caregiver.setProfilePhoto(profileFileName);
+            
+            // Also save Base64 version
+            String profilePhotoBase64 = Base64Utils.encodeFileToBase64(profilePhoto);
+            caregiver.setProfilePhotoBase64(profilePhotoBase64);
         }
 
         if (citizenshipPhoto != null) {
             String citizenshipFileName = System.currentTimeMillis() + "_" + citizenshipPhoto.getOriginalFilename().replaceAll("\\s+", "_");
             citizenshipPhoto.transferTo(new File(getUploadDir(), citizenshipFileName));
             caregiver.setCitizenshipPhoto(citizenshipFileName);
+            
+            // Also save Base64 version
+            String citizenshipPhotoBase64 = Base64Utils.encodeFileToBase64(citizenshipPhoto);
+            caregiver.setCitizenshipPhotoBase64(citizenshipPhotoBase64);
         }
 
         if (certificatePhoto != null && !certificatePhoto.isEmpty()) {
             String certificateFileName = System.currentTimeMillis() + "_" + certificatePhoto.getOriginalFilename().replaceAll("\\s+", "_");
             certificatePhoto.transferTo(new File(getUploadDir(), certificateFileName));
             caregiver.setCertificatePhoto(certificateFileName);
+            
+            // Also save Base64 version
+            String certificatePhotoBase64 = Base64Utils.encodeFileToBase64(certificatePhoto);
+            caregiver.setCertificatePhotoBase64(certificatePhotoBase64);
         }
 
         return caregiverService.saveCaregiver(caregiver);
@@ -651,6 +681,31 @@ public class CaregiverController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500).body(Map.of("message", "Error: " + e.getMessage()));
+        }
+    }
+
+    // Helper method: Transform caregiver photos to use Base64 if available
+    private void transformCaregiverPhotos(Caregiver caregiver) {
+        if (caregiver == null) return;
+        
+        // Use Base64 encoded photos if available
+        if (caregiver.getProfilePhotoBase64() != null && !caregiver.getProfilePhotoBase64().isEmpty()) {
+            caregiver.setProfilePhoto("data:image/jpeg;base64," + caregiver.getProfilePhotoBase64());
+        }
+        if (caregiver.getCitizenshipPhotoBase64() != null && !caregiver.getCitizenshipPhotoBase64().isEmpty()) {
+            caregiver.setCitizenshipPhoto("data:image/jpeg;base64," + caregiver.getCitizenshipPhotoBase64());
+        }
+        if (caregiver.getCertificatePhotoBase64() != null && !caregiver.getCertificatePhotoBase64().isEmpty()) {
+            caregiver.setCertificatePhoto("data:image/jpeg;base64," + caregiver.getCertificatePhotoBase64());
+        }
+    }
+
+    // Helper method: Transform list of caregivers
+    private void transformCaregiverPhotos(List<Caregiver> caregivers) {
+        if (caregivers != null) {
+            for (Caregiver caregiver : caregivers) {
+                transformCaregiverPhotos(caregiver);
+            }
         }
     }
 }
