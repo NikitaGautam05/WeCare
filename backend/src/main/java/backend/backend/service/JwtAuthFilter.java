@@ -61,12 +61,5 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 || path.startsWith("/api/verify-otp")
                 || path.startsWith("/uploads/");
     }
-//    @Override
-//    protected boolean shouldNotFilter(HttpServletRequest request) {
-//        String path = request.getServletPath();
-//        return path.equals("/api/users/complete-google-profile")
-//                || path.equals("/api/google-signup")
-//                || path.equals("/api/users/login")
-//                || path.equals("/api/users/register");
-//    }
+
 }

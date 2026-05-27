@@ -56,7 +56,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // ADD THIS (IMPORTANT FIX FOR GOOGLE LOGIN)
+                        // FOR GOOGLE LOGIN)
                         .requestMatchers("/oauth2/**", "/login/**").permitAll()
                         // 1. Always allow OPTIONS for CORS pre-flight checks
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
@@ -66,7 +66,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/users/**").permitAll()
                         .requestMatchers("/api/interest/**").permitAll()
 
-                        // 3. Admin endpoints (allowing all for now to fix your AdminDashboard 403s)
+                        // 3. Admin endpoints 
                         .requestMatchers("/api/admin/**").permitAll()
 
                         // 4. Authentication and Password Reset endpoints
@@ -94,7 +94,7 @@ public class SecurityConfig {
 
         return http.build();
     }
-    // === Success handler for login (OTP/email) ===
+    //  Success handler for login (OTP/email)
     @Bean
     public AuthenticationSuccessHandler customOtpSuccessHandler() {
         return (request, response, authentication) -> {
@@ -108,7 +108,7 @@ public class SecurityConfig {
         };
     }
 
-    // === Authentication provider (login) ===
+    //  Password encoder bean using BCrypt
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -127,25 +127,5 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    /*
-    // Optional in-memory test users
-    @Bean
-    public UserDetailsService userDetailsService() {
-        UserDetails user1 = User
-                .withDefaultPasswordEncoder()
-                .username("nikita")
-                .password("niki")
-                .roles("USER")
-                .build();
-
-        UserDetails user2 = User
-                .withDefaultPasswordEncoder()
-                .username("mili")
-                .password("{noop}mil")
-                .roles("USER")
-                .build();
-
-        return new InMemoryUserDetailsManager(user1, user2);
-    }
-    */
+   
 }

@@ -79,7 +79,7 @@ public class ChatController {
         }
     }
 
-    // ── Get unread message count for a recipient ──
+    // Get unread message count for a recipient 
     @GetMapping("/unread-count/{userId}")
     public ResponseEntity<Map<String, Object>> getUnreadMessageCount(@PathVariable String userId) {
         try {
@@ -91,7 +91,7 @@ public class ChatController {
         }
     }
 
-    // ── Mark conversation messages as read for a recipient ──
+    //  Mark conversation messages as read for a recipient
     @PutMapping("/read/conversation/{conversationId}/{recipientId}")
     public ResponseEntity<Map<String, Object>> markConversationAsRead(
             @PathVariable String conversationId,

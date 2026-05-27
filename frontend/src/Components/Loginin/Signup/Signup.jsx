@@ -41,6 +41,24 @@ const Signup = () => {
     confirmPassword: "",
   });
 
+  const normalizeRole = (role) => (role || "").toUpperCase().replace(/\s+/g, "");
+
+  const resetStaleSession = (newRole, newUserId, newCaregiverId) => {
+    const existingRole = normalizeRole(localStorage.getItem("role"));
+    const existingUserId = localStorage.getItem("userId");
+    const existingCaregiverId = localStorage.getItem("caregiverId");
+    const normalizedRole = normalizeRole(newRole);
+
+    const sameSession =
+      existingRole === normalizedRole &&
+      existingUserId === newUserId &&
+      (normalizedRole !== "CAREGIVER" || existingCaregiverId === newCaregiverId);
+
+    if (!sameSession && (existingRole || existingUserId || existingCaregiverId)) {
+      localStorage.clear();
+    }
+  };
+
   // Validation functions
   const validatePassword = (pwd) => {
     if (pwd.length < 8) return "Password must be at least 8 characters";
@@ -164,6 +182,7 @@ const Signup = () => {
             }
 
             if (res.data.token) {
+              resetStaleSession(res.data.role, res.data.userId, res.data.caregiverId);
               localStorage.setItem("jwtToken", res.data.token);
               localStorage.setItem("tempGoogleUserId", res.data.userId);
 
@@ -173,6 +192,10 @@ const Signup = () => {
                 localStorage.setItem("userName", res.data.userName);
                 localStorage.setItem("role", res.data.role);
                 localStorage.setItem("userId", res.data.userId);
+                localStorage.removeItem("selectedRole");
+                if (res.data.caregiverId) {
+                  localStorage.setItem("caregiverId", res.data.caregiverId);
+                }
                 const userRole = res.data.role.toLowerCase();
                 alert("Google login successful!");
                 navigate(userRole.includes("caregiver") ? "/welcome" : "/dash");

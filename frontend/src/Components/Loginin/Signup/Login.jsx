@@ -11,14 +11,36 @@ const Login = () => {
   const [message, setMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  const normalizeRole = (role) => (role || "").toUpperCase().replace(/\s+/g, "");
+
+  const resetStaleSession = (newRole, newUserId, newCaregiverId) => {
+    const existingRole = normalizeRole(localStorage.getItem("role"));
+    const existingUserId = localStorage.getItem("userId");
+    const existingCaregiverId = localStorage.getItem("caregiverId");
+    const normalizedRole = normalizeRole(newRole);
+
+    const sameSession =
+      existingRole === normalizedRole &&
+      existingUserId === newUserId &&
+      (normalizedRole !== "CAREGIVER" || existingCaregiverId === newCaregiverId);
+
+    if (!sameSession && (existingRole || existingUserId || existingCaregiverId)) {
+      localStorage.clear();
+    }
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
 
     try {
+      console.log("🔐 Attempting login to:", `${import.meta.env.VITE_API_URL}/api/users/login`);
       const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/users/login`, {
         userName: userName.trim(),
         password: password.trim()
       });
+
+      console.log("📦 Login response received:", response.data);
+      console.log("🔑 Token field:", response.data.token);
 
       if (response.data.token) {
         // Get the selected role from localStorage (from OptionLogin component)
@@ -41,6 +63,9 @@ const Login = () => {
           return; // Don't proceed with login
         }
 
+        // Clear any stale session if the current login differs from the previous session
+        resetStaleSession(actualRole, response.data.userId, response.data.caregiverId);
+
         // Save everything needed
         localStorage.setItem("jwtToken", response.data.token);
         localStorage.setItem("userId", response.data.userId);      
@@ -52,6 +77,7 @@ const Login = () => {
         if (response.data.caregiverId) {
           localStorage.setItem("caregiverId", response.data.caregiverId);
         }
+        localStorage.removeItem("selectedRole");
         
         // DEBUG: Log what was saved
         console.log("Login successful:", {
@@ -70,7 +96,9 @@ const Login = () => {
       }
 
     } catch (error) {
-      console.error(error);
+      console.error("❌ Login error:", error);
+      console.error("📡 Response status:", error.response?.status);
+      console.error("📦 Response data:", error.response?.data);
       setMessage(error.response?.data || "Login failed");
     }
   };
@@ -113,6 +141,9 @@ const Login = () => {
           return; // Don't proceed with login
         }
 
+        // Clear any stale session if the current login differs from the previous session
+        resetStaleSession(actualRole, res.data.userId, res.data.caregiverId);
+
         // 3. Save all details to localStorage
         localStorage.setItem("jwtToken", res.data.token);
         localStorage.setItem("userId", res.data.userId); 
@@ -124,6 +155,7 @@ const Login = () => {
         if (res.data.caregiverId) {
           localStorage.setItem("caregiverId", res.data.caregiverId);
         }
+        localStorage.removeItem("selectedRole");
 
         // 4. Redirect based on the REAL role
         if (actualRole.includes("CAREGIVER")) {

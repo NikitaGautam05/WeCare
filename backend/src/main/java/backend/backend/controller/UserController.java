@@ -113,18 +113,16 @@ public class UserController {
             return ResponseEntity.badRequest().body(resp);
         }
 
-        // 4. SAFE Email check (Fixes your NullPointerException)
-        // This replaces the .stream().anyMatch() logic that was crashing
         if (userRepository.existsByEmail(user.getEmail())) {
             resp.put("error", "Email already registered");
             return ResponseEntity.badRequest().body(resp);
         }
 
-        // 5. Set default role and clean whitespace
+        // Set default role and clean whitespace
         String role = (user.getRole() == null) ? "USER" : user.getRole().toUpperCase().replaceAll("\\s","");
         user.setRole(role);
 
-        // 6. Secure Password
+        //  Secure Password
         user.setPassword(passwordEncoder.encode(user.getPassword()));
 
         // 7. Save to Database

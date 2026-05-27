@@ -33,11 +33,23 @@ import { Navigate } from 'react-router-dom';
 import Notifications from './Components/Dashboard/Notifications'
 import ErrorBoundary from './Components/ErrorBoundary'
 function App() {
-  // Protection for standard Users & Caregivers
-  const ProtectedRoute = ({ children }) => {
+  const normalizeRole = (role) => (role || "").toUpperCase().replace(/\s+/g, "");
+
+  const SessionRoute = ({ children, allowedRoles }) => {
     const token = localStorage.getItem("jwtToken");
-    return token ? children : <Navigate to="/login" replace />;
+    const role = normalizeRole(localStorage.getItem("role"));
+
+    if (!token) return <Navigate to="/login" replace />;
+    if (allowedRoles && !allowedRoles.includes(role)) {
+      localStorage.clear();
+      return <Navigate to="/login" replace />;
+    }
+
+    return children;
   };
+
+  const UserRoute = ({ children }) => <SessionRoute allowedRoles={["USER"]}>{children}</SessionRoute>;
+  const CaregiverRoute = ({ children }) => <SessionRoute allowedRoles={["CAREGIVER"]}>{children}</SessionRoute>;
 
   // NEW: Specific Protection for Admin
   const AdminRoute = ({ children }) => {
@@ -88,23 +100,23 @@ function App() {
         <Route path="/admin" element={<AdminLogin />} />
         <Route path="/chat" element={<Chat/>} />
 
-        <Route path="/profileReciever/:userId" element={<ProtectedRoute><ProfileReceiver/></ProtectedRoute>} />
+        <Route path="/profileReciever/:userId" element={<SessionRoute><ProfileReceiver/></SessionRoute>} />
 
         {/* Protected User Routes */}
-        <Route path='/dash' element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path='/welcome' element={<ProtectedRoute><Welcome /></ProtectedRoute>} />
-        <Route path="/profile/:id" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-        <Route path="/my-profile" element={<ProtectedRoute><ProfileUser /></ProtectedRoute>} />
-        <Route path="/my-caregivers" element={<ProtectedRoute><Caregivers /></ProtectedRoute>} />
-        <Route path="/favourites" element={<ProtectedRoute><Favourites /></ProtectedRoute>} />
-        <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
-        <Route path="/connections" element={<ProtectedRoute><Connections /></ProtectedRoute>} />
-        <Route path="/messages" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
-        <Route path="/terms" element={<ProtectedRoute><TermsAndServices /></ProtectedRoute>} />
-        <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-        <Route path="/care-logs" element={<ProtectedRoute><CareLogs /></ProtectedRoute>} />
-        {/* Protected Caregiver/Admin Routes */}
-        <Route path='/CareGiverDash/:id' element={<ProtectedRoute><CareGiverDash /></ProtectedRoute>} />
+        <Route path='/dash' element={<UserRoute><Dashboard /></UserRoute>} />
+        <Route path='/welcome' element={<CaregiverRoute><Welcome /></CaregiverRoute>} />
+        <Route path="/profile/:id" element={<UserRoute><Profile /></UserRoute>} />
+        <Route path="/my-profile" element={<UserRoute><ProfileUser /></UserRoute>} />
+        <Route path="/my-caregivers" element={<UserRoute><Caregivers /></UserRoute>} />
+        <Route path="/favourites" element={<UserRoute><Favourites /></UserRoute>} />
+        <Route path="/history" element={<UserRoute><History /></UserRoute>} />
+        <Route path="/connections" element={<UserRoute><Connections /></UserRoute>} />
+        <Route path="/messages" element={<UserRoute><ChatPage /></UserRoute>} />
+        <Route path="/terms" element={<UserRoute><TermsAndServices /></UserRoute>} />
+        <Route path="/notifications" element={<UserRoute><Notifications /></UserRoute>} />
+        <Route path="/care-logs" element={<UserRoute><CareLogs /></UserRoute>} />
+        {/* Protected Caregiver Routes */}
+        <Route path='/CareGiverDash/:id' element={<CaregiverRoute><CareGiverDash /></CaregiverRoute>} />
         <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
         <Route path="/admin/pending" element={<AdminRoute><Pending /></AdminRoute>} />
         <Route path="/admin/verified" element={<AdminRoute><Verified /></AdminRoute>} />
