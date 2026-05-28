@@ -1,6 +1,5 @@
 package backend.backend.controller;
 
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -23,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import backend.backend.configuration.UploadDirectory;
 import backend.backend.model.Caregiver;
 import backend.backend.model.HistoryItems;
 import backend.backend.model.Users;
@@ -201,13 +201,8 @@ public class UserController {
                 return ResponseEntity.badRequest().body(resp);
             }
 
-            // 1. Define the upload directory dynamically
-            String uploadDirPath = System.getProperty("user.dir") + File.separator + "uploads" + File.separator;
-            Path uploadPath = Paths.get(uploadDirPath);
-
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
+            // 1. Resolve the upload directory dynamically
+            Path uploadPath = UploadDirectory.getOrCreateUploadsDir();
 
             // 2. Save the file with a unique name
             String filename = userId + "_" + System.currentTimeMillis() + "_" + file.getOriginalFilename();
@@ -414,6 +409,8 @@ public class UserController {
             @RequestParam(value = "contactPersonName", required = false) String contactPersonName,
             @RequestParam(value = "contactPersonTitle", required = false) String contactPersonTitle,
             @RequestParam(value = "contactPersonPhone", required = false) String contactPersonPhone,
+            @RequestParam(value = "gender", required = false) String gender,
+            @RequestParam(value = "recipientGender", required = false) String recipientGender,
             @RequestParam(value = "photo", required = false) MultipartFile photo) {
 
         try {
@@ -434,6 +431,8 @@ public class UserController {
             if (recipientRelation != null && !recipientRelation.isEmpty()) user.setRecipientRelation(recipientRelation);
             if (recipientAge != null && !recipientAge.isEmpty()) user.setRecipientAge(recipientAge);
             if (recipientPhone != null && !recipientPhone.isEmpty()) user.setRecipientPhone(recipientPhone);
+            if (gender != null && !gender.isEmpty()) user.setGender(gender);
+            if (recipientGender != null && !recipientGender.isEmpty()) user.setRecipientGender(recipientGender);
             
             // Organization fields
             if (organizationName != null && !organizationName.isEmpty()) user.setOrganizationName(organizationName);
@@ -498,7 +497,9 @@ public class UserController {
             @RequestParam(required = false) String registrationNumber,
             @RequestParam(required = false) String contactPersonName,
             @RequestParam(required = false) String contactPersonTitle,
-            @RequestParam(required = false) String contactPersonPhone) {
+            @RequestParam(required = false) String contactPersonPhone,
+            @RequestParam(required = false) String gender,
+            @RequestParam(required = false) String recipientGender) {
 
         try {
             Users user = userRepository.findById(userId).orElse(null);
@@ -516,6 +517,8 @@ public class UserController {
             if (recipientRelation != null && !recipientRelation.isEmpty()) user.setRecipientRelation(recipientRelation);
             if (recipientAge != null && !recipientAge.isEmpty()) user.setRecipientAge(recipientAge);
             if (recipientPhone != null && !recipientPhone.isEmpty()) user.setRecipientPhone(recipientPhone);
+            if (gender != null && !gender.isEmpty()) user.setGender(gender);
+            if (recipientGender != null && !recipientGender.isEmpty()) user.setRecipientGender(recipientGender);
             
             if (accountType != null && !accountType.isEmpty()) {
                 user.setAccountType(accountType);

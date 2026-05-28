@@ -76,6 +76,11 @@ public class BookingController {
                                          serviceType, startTime, endTime, hourlyRate);
             if (userPhone != null && !userPhone.isEmpty()) {
                 booking.setUserPhone(userPhone);
+            } else {
+                Users user = userRepository.findById(userId).orElse(null);
+                if (user != null && user.getPhoneNumber() != null && !user.getPhoneNumber().isEmpty()) {
+                    booking.setUserPhone(user.getPhoneNumber());
+                }
             }
             if (location != null && !location.isEmpty()) {
                 booking.setLocation(location);
@@ -317,6 +322,12 @@ public class BookingController {
             List<Booking> bookings = bookingRepository.findByCaregiverId(caregiverId);
             System.out.println("📊 Found " + bookings.size() + " bookings for caregiver: " + caregiverId);
             for (Booking b : bookings) {
+                if ((b.getUserPhone() == null || b.getUserPhone().isEmpty()) && b.getUserId() != null) {
+                    Users bookingUser = userRepository.findById(b.getUserId()).orElse(null);
+                    if (bookingUser != null && bookingUser.getPhoneNumber() != null && !bookingUser.getPhoneNumber().isEmpty()) {
+                        b.setUserPhone(bookingUser.getPhoneNumber());
+                    }
+                }
                 System.out.println("  - Booking " + b.getId() + ": " + b.getServiceType() + " from " + b.getUserName() + " (status: " + b.getStatus() + ")");
             }
             return ResponseEntity.ok(bookings);

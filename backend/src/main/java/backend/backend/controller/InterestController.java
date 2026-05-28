@@ -71,11 +71,11 @@ public class InterestController {
                 interest.setSentAt(java.time.LocalDateTime.now().toString());
                 interest.setRespondedAt(null);
                 isNewRequest = false;
-                System.out.println("♻️  Resetting existing interest request to PENDING");
+                System.out.println(" Resetting existing interest request to PENDING");
             } else {
                 // Create a new interest request record
                 interest = new InterestRequest(caregiverId, caregiverName, userId, userName);
-                System.out.println("✨ Creating new interest request");
+                System.out.println(" Creating new interest request");
             }
             
             InterestRequest saved = interestRequestRepository.save(interest);

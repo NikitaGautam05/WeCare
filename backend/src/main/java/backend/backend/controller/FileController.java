@@ -1,10 +1,8 @@
 package backend.backend.controller;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -15,26 +13,31 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
+import backend.backend.configuration.UploadDirectory;
+
 @RestController
 public class FileController {
 
-    @GetMapping("/uploads/{filename}")
+    @GetMapping({"/uploads/{filename:.+}", "/api/uploads/{filename:.+}"})
     public ResponseEntity<byte[]> getUploadedFile(@PathVariable String filename) {
         try {
-            // Get the uploads directory path
-            String uploadsDir = System.getProperty("user.dir") + File.separator + "uploads" + File.separator;
-            Path filePath = Paths.get(uploadsDir).resolve(filename).normalize();
+            // Resolve the uploads directory path
+            Path uploadsPath = UploadDirectory.resolveUploadsDir();
+            Path filePath = uploadsPath.resolve(filename).normalize();
 
             // Security check: ensure the resolved path is still within the uploads directory
-            Path uploadsPath = Paths.get(uploadsDir).normalize();
             if (!filePath.startsWith(uploadsPath)) {
+                System.err.println("Security violation: Attempted access outside uploads directory: " + filePath);
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
             // Check if file exists
             if (!Files.exists(filePath)) {
+                System.err.println("File not found: " + filePath + " | Looking in: " + uploadsPath);
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
+
+            System.out.println(" File found and serving: " + filename);
 
             // Read file bytes
             byte[] fileBytes = Files.readAllBytes(filePath);
@@ -57,6 +60,8 @@ public class FileController {
                     .body(fileBytes);
 
         } catch (IOException e) {
+            System.err.println(" IOException while serving file: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -68,6 +73,8 @@ public class FileController {
             return "image/jpeg";
         } else if (filename.endsWith(".gif")) {
             return "image/gif";
+        } else if (filename.endsWith(".webp")) {
+            return "image/webp";
         } else if (filename.endsWith(".pdf")) {
             return "application/pdf";
         }

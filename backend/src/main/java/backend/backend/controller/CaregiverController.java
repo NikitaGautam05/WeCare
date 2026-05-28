@@ -1,6 +1,7 @@
 package backend.backend.controller;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import backend.backend.configuration.UploadDirectory;
 import backend.backend.model.AcceptedRequest;
 import backend.backend.model.Caregiver;
 import backend.backend.model.CaregiverStatus;
@@ -51,10 +53,6 @@ public class CaregiverController {
     @Autowired
     private NotificationRepository notificationRepository;
     
-    // Get dynamic upload directory based on current working directory
-    private String getUploadDir() {
-        return System.getProperty("user.dir") + File.separator + "uploads" + File.separator;
-    }
     @PostMapping("/add")
     public Caregiver addCaregiver(
             @RequestParam String userId,  // <-- userId first
@@ -82,14 +80,8 @@ public class CaregiverController {
         System.out.println("📝 addCaregiver - gender received: '" + gender + "'");
 
         // Ensure upload folder exists
-        String uploadDirPath = getUploadDir();
-        File uploadFolder = new File(uploadDirPath);
-        if (!uploadFolder.exists()) {
-            boolean created = uploadFolder.mkdirs();
-            if (!created) {
-                throw new IOException("Could not create upload directory: " + uploadDirPath);
-            }
-        }
+        Path uploadPath = UploadDirectory.getOrCreateUploadsDir();
+        File uploadFolder = uploadPath.toFile();
 
         // Generate unique filenames with spaces replaced
         // --- 3. Generate unique filenames ---
@@ -101,12 +93,13 @@ public class CaregiverController {
 
         // --- 4. Save files AND Base64 encode ---
         try {
-            profilePhoto.transferTo(new File(uploadFolder, profileFileName));
-            citizenshipPhoto.transferTo(new File(uploadFolder, citizenshipFileName));
-            
-            // Encode photos to Base64 for MongoDB persistence (works on Render)
+            // Read bytes BEFORE transferTo() to avoid temp file cleanup issues
             String profilePhotoBase64 = Base64Utils.encodeFileToBase64(profilePhoto);
             String citizenshipPhotoBase64 = Base64Utils.encodeFileToBase64(citizenshipPhoto);
+            
+            // Now transfer files to disk
+            profilePhoto.transferTo(new File(uploadFolder, profileFileName));
+            citizenshipPhoto.transferTo(new File(uploadFolder, citizenshipFileName));
             
             caregiver.setProfilePhotoBase64(profilePhotoBase64);
             caregiver.setCitizenshipPhotoBase64(citizenshipPhotoBase64);
@@ -134,11 +127,12 @@ public class CaregiverController {
 
         if (certificatePhoto != null && !certificatePhoto.isEmpty()) {
             String certificateFileName = System.currentTimeMillis() + "_" + certificatePhoto.getOriginalFilename().replaceAll("\\s+", "_");
-            certificatePhoto.transferTo(new File(uploadFolder, certificateFileName));
-            caregiver.setCertificatePhoto(certificateFileName);
             
-            // Encode certificate to Base64
+            // Read bytes BEFORE transferTo() to avoid temp file cleanup issues
             String certificatePhotoBase64 = Base64Utils.encodeFileToBase64(certificatePhoto);
+            certificatePhoto.transferTo(new File(uploadFolder, certificateFileName));
+            
+            caregiver.setCertificatePhoto(certificateFileName);
             caregiver.setCertificatePhotoBase64(certificatePhotoBase64);
         }
 
@@ -298,7 +292,7 @@ public class CaregiverController {
         caregiver.setAddress(address);
         caregiver.setPhoneNumber(phoneNumber);
         caregiver.setGender(gender);
-        System.out.println("✅ Gender set to: " + gender);
+        System.out.println(" Gender set to: " + gender);
         Users user = userRepo.findById(userId).orElseThrow();
         caregiver.setEmail(user.getEmail());
 
@@ -309,34 +303,39 @@ public class CaregiverController {
         caregiver.setChargeMax(chargeMax);
         caregiver.setCertification(certification);
 
+        Path uploadPath = UploadDirectory.getOrCreateUploadsDir();
+
         // Handle optional photos with spaces replaced
         if (profilePhoto != null) {
             String profileFileName = System.currentTimeMillis() + "_" + profilePhoto.getOriginalFilename().replaceAll("\\s+", "_");
-            profilePhoto.transferTo(new File(getUploadDir(), profileFileName));
-            caregiver.setProfilePhoto(profileFileName);
             
-            // Also save Base64 version
+            // Read bytes BEFORE transferTo() to avoid temp file cleanup issues
             String profilePhotoBase64 = Base64Utils.encodeFileToBase64(profilePhoto);
+            profilePhoto.transferTo(new File(uploadPath.toFile(), profileFileName));
+            
+            caregiver.setProfilePhoto(profileFileName);
             caregiver.setProfilePhotoBase64(profilePhotoBase64);
         }
 
         if (citizenshipPhoto != null) {
             String citizenshipFileName = System.currentTimeMillis() + "_" + citizenshipPhoto.getOriginalFilename().replaceAll("\\s+", "_");
-            citizenshipPhoto.transferTo(new File(getUploadDir(), citizenshipFileName));
-            caregiver.setCitizenshipPhoto(citizenshipFileName);
             
-            // Also save Base64 version
+            // Read bytes BEFORE transferTo() to avoid temp file cleanup issues
             String citizenshipPhotoBase64 = Base64Utils.encodeFileToBase64(citizenshipPhoto);
+            citizenshipPhoto.transferTo(new File(uploadPath.toFile(), citizenshipFileName));
+            
+            caregiver.setCitizenshipPhoto(citizenshipFileName);
             caregiver.setCitizenshipPhotoBase64(citizenshipPhotoBase64);
         }
 
         if (certificatePhoto != null && !certificatePhoto.isEmpty()) {
             String certificateFileName = System.currentTimeMillis() + "_" + certificatePhoto.getOriginalFilename().replaceAll("\\s+", "_");
-            certificatePhoto.transferTo(new File(getUploadDir(), certificateFileName));
-            caregiver.setCertificatePhoto(certificateFileName);
             
-            // Also save Base64 version
+            // Read bytes BEFORE transferTo() to avoid temp file cleanup issues
             String certificatePhotoBase64 = Base64Utils.encodeFileToBase64(certificatePhoto);
+            certificatePhoto.transferTo(new File(uploadPath.toFile(), certificateFileName));
+            
+            caregiver.setCertificatePhoto(certificateFileName);
             caregiver.setCertificatePhotoBase64(certificatePhotoBase64);
         }
 
@@ -379,10 +378,8 @@ public class CaregiverController {
         if (proofFile != null && !proofFile.isEmpty()) {
             try {
                 String proofFileName = System.currentTimeMillis() + "_" + proofFile.getOriginalFilename().replaceAll("\\s+", "_");
-                File proofDir = new File(getUploadDir());
-                if (!proofDir.exists() && !proofDir.mkdirs()) {
-                    throw new IOException("Could not create upload directory: " + proofDir.getAbsolutePath());
-                }
+                Path uploadPath = UploadDirectory.getOrCreateUploadsDir();
+                File proofDir = uploadPath.toFile();
                 proofFile.transferTo(new File(proofDir, proofFileName));
                 proofValue = proofFileName;
             } catch (IOException e) {
@@ -529,6 +526,45 @@ public class CaregiverController {
             } catch (Exception notifErr) {
                 System.err.println("⚠️ Failed to create notification: " + notifErr.getMessage());
             }
+
+            // Remove stale interest notifications from caregiver profile after acceptance
+            if (caregiver != null && caregiver.getNotifications() != null) {
+                caregiver.getNotifications().removeIf(raw -> {
+                    if (raw == null) return false;
+                    try {
+                        String json = raw.toString();
+                        if (!json.trim().startsWith("{")) return false;
+                        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                        Map<?, ?> notifMap = mapper.readValue(json, Map.class);
+                        Object type = notifMap.get("type");
+                        Object senderId = notifMap.get("senderId");
+                        Object userIdValue = notifMap.get("userId");
+                        return type != null && type.toString().toLowerCase().contains("interest")
+                                && (userId.equals(senderId) || userId.equals(userIdValue));
+                    } catch (Exception ex) {
+                        return false;
+                    }
+                });
+                caregiverService.saveCaregiver(caregiver);
+            }
+            
+            // Clean up stale interest notification documents sent to the caregiver after acceptance
+            if (caregiver != null && caregiver.getUserId() != null) {
+                List<Notification> notifications = notificationRepository.findByUserId(caregiver.getUserId());
+                if (notifications != null && !notifications.isEmpty()) {
+                    List<Notification> toDelete = new java.util.ArrayList<>();
+                    for (Notification notification : notifications) {
+                        if (notification == null) continue;
+                        if (notification.getType() != null && notification.getType().toLowerCase().contains("interest")
+                                && (userId.equals(notification.getSenderId()) || userId.equals(notification.getUserId()))) {
+                            toDelete.add(notification);
+                        }
+                    }
+                    if (!toDelete.isEmpty()) {
+                        notificationRepository.deleteAll(toDelete);
+                    }
+                }
+            }
             
             return ResponseEntity.ok(Map.of(
                 "message", "Request accepted successfully",
@@ -562,6 +598,45 @@ public class CaregiverController {
                     interest.setStatus("REJECTED");
                     interest.setRespondedAt(java.time.LocalDateTime.now().toString());
                     interestRequestRepository.save(interest);
+                }
+            }
+
+            // Remove stale interest notifications from caregiver profile
+            if (caregiver != null && caregiver.getNotifications() != null) {
+                caregiver.getNotifications().removeIf(raw -> {
+                    if (raw == null) return false;
+                    try {
+                        String json = raw.toString();
+                        if (!json.trim().startsWith("{")) return false;
+                        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                        Map<?, ?> notifMap = mapper.readValue(json, Map.class);
+                        Object type = notifMap.get("type");
+                        Object senderId = notifMap.get("senderId");
+                        Object userIdValue = notifMap.get("userId");
+                        return type != null && type.toString().toLowerCase().contains("interest")
+                                && (userId.equals(senderId) || userId.equals(userIdValue));
+                    } catch (Exception ex) {
+                        return false;
+                    }
+                });
+                caregiverService.saveCaregiver(caregiver);
+            }
+            
+            // Clean up stale interest notification documents sent to the caregiver
+            if (caregiver != null && caregiver.getUserId() != null) {
+                List<Notification> notifications = notificationRepository.findByUserId(caregiver.getUserId());
+                if (notifications != null && !notifications.isEmpty()) {
+                    List<Notification> toDelete = new java.util.ArrayList<>();
+                    for (Notification notification : notifications) {
+                        if (notification == null) continue;
+                        if (notification.getType() != null && notification.getType().toLowerCase().contains("interest")
+                                && (userId.equals(notification.getSenderId()) || userId.equals(notification.getUserId()))) {
+                            toDelete.add(notification);
+                        }
+                    }
+                    if (!toDelete.isEmpty()) {
+                        notificationRepository.deleteAll(toDelete);
+                    }
                 }
             }
             
