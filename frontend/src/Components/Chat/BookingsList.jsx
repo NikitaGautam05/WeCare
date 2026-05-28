@@ -171,6 +171,20 @@ const BookingsList = ({ userType, userId: propUserId }) => {
     setNoteInputs((prev) => ({ ...prev, [bookingId]: value }));
   };
 
+  const normalizeBookingDateTime = (dateTime) => {
+    if (!dateTime || typeof dateTime !== "string") {
+      return { date: "—", time: "—" };
+    }
+
+    // Accept both space-separated and ISO date-time strings
+    const normalized = dateTime.replace("T", " ").trim();
+    const [date, time] = normalized.split(" ");
+    return {
+      date: date || "—",
+      time: time || "—",
+    };
+  };
+
   const getStatus = (status) => {
     const cfg = {
       PENDING: { bg: "bg-amber-50", text: "text-amber-700", icon: FaHourglassHalf },
@@ -253,9 +267,9 @@ const BookingsList = ({ userType, userId: propUserId }) => {
 
               <div className="flex flex-col gap-3 items-start xl:items-end text-left xl:text-right">
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Request date</p>
+                  <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Service date</p>
                   <p className="text-sm font-semibold text-slate-900 mt-1">
-                    {b.createdAt?.split("T")[0] || b.startTime?.split(" ")[0]}
+                    {normalizeBookingDateTime(b.startTime).date || b.createdAt?.split("T")[0]}
                   </p>
                 </div>
                 <div>{getStatus(b.status)}</div>
@@ -264,42 +278,37 @@ const BookingsList = ({ userType, userId: propUserId }) => {
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4 text-sm text-slate-700">
               <div className="rounded-3xl bg-slate-50 p-4 border border-slate-100">
-                <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400 mb-2">Start</p>
-                <p className="font-semibold text-slate-900">{b.startTime?.split(" ")[0]}</p>
-                <p className="text-xs text-slate-500 mt-1">{b.startTime?.split(" ")[1]}</p>
+                <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400 mb-2">Service</p>
+                <p className="font-semibold text-slate-900">{b.serviceType || "—"}</p>
               </div>
               <div className="rounded-3xl bg-slate-50 p-4 border border-slate-100">
-                <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400 mb-2">End</p>
-                {b.status === "COMPLETED" ? (
+                <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400 mb-2">Start time</p>
+                <p className="font-semibold text-slate-900">{normalizeBookingDateTime(b.startTime).time}</p>
+                <p className="text-xs text-slate-500 mt-1">{b.startTime ? "Booked start time" : "No start time set"}</p>
+              </div>
+              <div className="rounded-3xl bg-slate-50 p-4 border border-slate-100">
+                <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400 mb-2">End time</p>
+                {b.endTime ? (
                   <>
-                    <p className="font-semibold text-slate-900">{b.endTime?.split(" ")[0] || "—"}</p>
-                    <p className="text-xs text-slate-500 mt-1">{b.endTime?.split(" ")[1] || "—"}</p>
+                    <p className="font-semibold text-slate-900">{normalizeBookingDateTime(b.endTime).time}</p>
+                    <p className="text-xs text-slate-500 mt-1">Booked end time</p>
                   </>
                 ) : (
                   <>
                     <p className="font-semibold text-slate-900">Pending</p>
-                    <p className="text-xs text-slate-500 mt-1">Complete first</p>
+                    <p className="text-xs text-slate-500 mt-1">End time is not yet set</p>
                   </>
                 )}
               </div>
               <div className="rounded-3xl bg-slate-50 p-4 border border-slate-100">
                 <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400 mb-2">Rate</p>
                 <p className="font-semibold text-slate-900">Rs {b.hourlyRate}/hr</p>
-                {b.location && (
-                  <p className="text-xs text-slate-500 mt-1 truncate">{b.location}</p>
-                )}
               </div>
               <div className="rounded-3xl bg-slate-50 p-4 border border-slate-100">
-                <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400 mb-2">Client</p>
-                {userType === "caregiver" ? (
-                  <>
-                    <p className="font-semibold text-slate-900">{b.userName}</p>
-                    <p className="text-xs text-slate-500 mt-1">{b.userPhone || "No phone"}</p>
-                  </>
-                ) : (
-                  <p className="font-semibold text-slate-900">{b.caregiverName}</p>
-                )}
+                <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400 mb-2">Location</p>
+                <p className="font-semibold text-slate-900 truncate">{b.location || "—"}</p>
               </div>
+              
             </div>
 
             {b.notes && (
@@ -346,35 +355,23 @@ const BookingsList = ({ userType, userId: propUserId }) => {
             )}
 
             {userType === "caregiver" && b.status === "PENDING" && (
-              <div className="relative mt-5 text-right">
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
                 <button
                   type="button"
-                  onClick={() => setOpenBookingMenu((prev) => (prev === b.id ? null : b.id))}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition"
+                  disabled={actionLoading}
+                  onClick={() => updateBookingStatus(b.id, "CONFIRMED")}
+                  className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm hover:bg-emerald-50 transition disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  Update status
-                  <FaChevronDown size={12} />
+                  Accept booking
                 </button>
-                {openBookingMenu === b.id && (
-                  <div className="absolute right-0 z-20 mt-2 w-44 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
-                    <button
-                      type="button"
-                      disabled={actionLoading}
-                      onClick={() => updateBookingStatus(b.id, "CONFIRMED")}
-                      className="w-full px-4 py-3 text-left text-sm font-semibold text-emerald-700 hover:bg-emerald-50 transition disabled:cursor-not-allowed disabled:opacity-70"
-                    >
-                      Accept booking
-                    </button>
-                    <button
-                      type="button"
-                      disabled={actionLoading}
-                      onClick={() => updateBookingStatus(b.id, "CANCELLED")}
-                      className="w-full px-4 py-3 text-left text-sm font-semibold text-red-700 hover:bg-red-50 transition disabled:cursor-not-allowed disabled:opacity-70"
-                    >
-                      Decline booking
-                    </button>
-                  </div>
-                )}
+                <button
+                  type="button"
+                  disabled={actionLoading}
+                  onClick={() => updateBookingStatus(b.id, "CANCELLED")}
+                  className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 shadow-sm hover:bg-red-50 transition disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  Decline booking
+                </button>
               </div>
             )}
             {userType === "caregiver" && b.status === "CONFIRMED" && (

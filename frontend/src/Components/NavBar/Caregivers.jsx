@@ -23,6 +23,20 @@ const Caregivers = () => {
   const userId = localStorage.getItem("userId");
   const axiosConfig = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
+  const fetchSentInterests = async () => {
+    if (!userId) return;
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/interest/sent-interests/${userId}`, axiosConfig);
+      const ids = Array.isArray(res.data)
+        ? res.data.map((interest) => interest.caregiver?.id).filter(Boolean)
+        : [];
+      setSentIds(ids);
+    } catch (err) {
+      console.error("Failed to fetch sent interests", err);
+      setSentIds([]);
+    }
+  };
+
   useEffect(() => {
     if (!token) { navigate("/login"); return; }
 
@@ -50,6 +64,12 @@ const Caregivers = () => {
     };
 
     fetchData();
+
+    const handleRequestsChanged = () => {
+      fetchSentInterests();
+    };
+    window.addEventListener('requestsChanged', handleRequestsChanged);
+    return () => window.removeEventListener('requestsChanged', handleRequestsChanged);
   }, [navigate, token, userId]);
 
   const filteredCaregivers = Array.isArray(caregivers) ? caregivers.filter(

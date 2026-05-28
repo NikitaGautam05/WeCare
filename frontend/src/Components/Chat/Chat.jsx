@@ -653,7 +653,6 @@ if (isFullPage) {
           </div>
 
           {/* ── INPUT ── */}
-          {/* ── INPUT ── */}
 <div className="px-3 py-2.5 bg-white border-t border-gray-100">
   <form onSubmit={handleSendMessage} className="flex items-center gap-2">
     <input
@@ -661,7 +660,7 @@ if (isFullPage) {
       value={newMessage}
       onChange={(e) => setNewMessage(e.target.value)}
       placeholder="Type a message..."
-      /* text-gray-900 ensures the words you type are solid black/dark gray */
+      
       className="flex-1 px-4 py-2 text-sm text-gray-900 bg-gray-100 border border-transparent rounded-full focus:outline-none focus:ring-1 focus:ring-gray-300 transition-all placeholder-gray-500"
     />
  <button

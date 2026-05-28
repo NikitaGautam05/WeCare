@@ -251,7 +251,7 @@ export default function Blocked() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {filtered.map((c, idx) => {
                 const busy        = actionLoading === c.id;
-                const photo       = c.profilePhoto?.replace(/\s+/g, "_").trim();
+                const photo       = c.profilePhoto?.startsWith('data:') ? c.profilePhoto : c.profilePhoto?.replace(/\s+/g, "_").trim();
                 const initials    = (c.fullName || "?").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
                 return (
@@ -370,7 +370,7 @@ export default function Blocked() {
               {/* Avatar + name */}
               <div className="flex items-center gap-4">
                 <img
-                  src={selected.profilePhoto?.startsWith('http') ? selected.profilePhoto : `${import.meta.env.VITE_API_URL}/uploads/${selected.profilePhoto?.replace(/\s+/g, "_")}`}
+                  src={selected.profilePhoto?.startsWith('data:') ? selected.profilePhoto : selected.profilePhoto?.startsWith('http') ? selected.profilePhoto : `${import.meta.env.VITE_API_URL}/uploads/${selected.profilePhoto?.replace(/\s+/g, "_")}`}
                   alt={selected.fullName}
                   className="w-20 h-20 rounded-2xl object-cover border-2 border-red-100 shadow-sm"
                   onError={(e) => {

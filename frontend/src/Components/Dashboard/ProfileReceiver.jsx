@@ -448,14 +448,12 @@ const ProfileReceiver = () => {
                             <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Location</p>
                             <p className="font-semibold text-slate-900">{userProfile?.address || 'Not specified'}</p>
                           </div>
-                          <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
-                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Phone</p>
-                            <p className="font-semibold text-slate-900">{userProfile?.phoneNumber || 'Not specified'}</p>
-                          </div>
-                          <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
-                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Gender</p>
-                            <p className="font-semibold text-slate-900">{userProfile?.gender || 'Not specified'}</p>
-                          </div>
+                          {userProfile?.receiverType !== 'other' && (
+                            <div className="space-y-1 rounded-3xl bg-slate-50 p-4">
+                              <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400">Gender</p>
+                              <p className="font-semibold text-slate-900">{userProfile?.gender || 'Not specified'}</p>
+                            </div>
+                          )}
                           {userProfile?.receiverType === 'other' && (
                             <>
                               <div className="space-y-1 rounded-3xl bg-slate-50 p-4">

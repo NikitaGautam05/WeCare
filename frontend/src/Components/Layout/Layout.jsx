@@ -250,9 +250,9 @@ const navItems = [
 
 { name: "♥ Favourites", link: "/favourites" },
 
-{ name: "� Care Logs", link: "/care-logs" },
+{ name: "📝 Care Logs", link: "/care-logs" },
 
-{ name: "�🔔 Notifications", link: "/notifications" },
+{ name: "🔔 Notifications", link: "/notifications" },
 
 { name: "👤 Profile", link: "/my-profile" },
 

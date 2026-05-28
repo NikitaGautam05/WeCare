@@ -195,9 +195,11 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
     const token = localStorage.getItem("jwtToken");
     formData.append("userId", uid);
 
-    const config = { headers: {} };
+    // For FormData, do NOT explicitly set Content-Type header
+    // Let axios/browser handle it with proper boundary parameter
+    const config = {};
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers = { Authorization: `Bearer ${token}` };
     }
 
     try {
@@ -286,6 +288,18 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
   const onBlur  = (name) => e => { e.target.style.borderColor = errors[name] ? "#ef4444" : "#e2e8f0"; };
 
   const getUploadUrl = (filename) => filename ? `${import.meta.env.VITE_API_URL}/uploads/` + filename : "";
+  
+  // Helper function to get photo source (Base64 if available, else file URL)
+  const getPhotoSource = (photoFieldName) => {
+    const base64Field = photoFieldName + "Base64";
+    const base64Data = submittedProfile?.[base64Field];
+    const filename = submittedProfile?.[photoFieldName];
+    
+    if (base64Data) {
+      return `data:image/jpeg;base64,${base64Data}`;
+    }
+    return filename ? getUploadUrl(filename) : "";
+  };
   const certificatePreviewStyle = { width:120, minWidth:120, height:120, borderRadius:12, overflow:"hidden", background:"#f8fafc", border:"1.5px solid #cbd5e1" };
   const certificateWrapperStyle = { display:"flex", gap:14, flexWrap:"wrap" };
 
@@ -309,12 +323,23 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
   // PROFILE CARD (after submission)
   // ══════════════════════════════════════════
   if (submittedProfile && !editMode) {
+    // Use Base64 if available (more reliable across refreshes), fallback to file endpoint
+    const profilePhotoBase64 = submittedProfile.profilePhotoBase64;
     const photo = submittedProfile.profilePhoto;
+    const photoSrc = profilePhotoBase64 
+      ? `data:image/jpeg;base64,${profilePhotoBase64}` 
+      : `${import.meta.env.VITE_API_URL}/uploads/${photo}`;
+    
     const statusColor = { VERIFIED:"#15803d", PENDING:"#854d0e", BLOCKED:"#b91c1c" };
     const statusBg    = { VERIFIED:"#f0fdf4", PENDING:"#fefce8", BLOCKED:"#fef2f2" };
     const statusBorder= { VERIFIED:"#bbf7d0", PENDING:"#fde68a", BLOCKED:"#fecaca" };
     const s = submittedProfile.status || "PENDING";
-    const certificatePhotoUrl = submittedProfile.certificatePhoto ? getUploadUrl(submittedProfile.certificatePhoto) : "";
+    
+    const certificatePhotoBase64 = submittedProfile.certificatePhotoBase64;
+    const certificatePhoto = submittedProfile.certificatePhoto;
+    const certificatePhotoUrl = certificatePhotoBase64
+      ? `data:image/jpeg;base64,${certificatePhotoBase64}`
+      : (certificatePhoto ? `${import.meta.env.VITE_API_URL}/uploads/${certificatePhoto}` : "");
 
     return (
       <div style={{ fontFamily:"'Outfit', sans-serif" }}>
@@ -349,7 +374,7 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
           <div style={{ display:"flex", gap:20, alignItems:"flex-start", marginBottom:28, paddingBottom:24, borderBottom:"1px solid #e2e8f0" }}>
             <div style={{ width:88, height:88, borderRadius:8, overflow:"hidden", background:"#f8fafc", flexShrink:0, border:"1.5px solid #cbd5e1" }}>
               <img
-                src={`${import.meta.env.VITE_API_URL}/uploads/${photo}`}
+                src={photoSrc}
                 alt={submittedProfile.fullName}
                 style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"top" }}
                 onError={e => {
@@ -535,7 +560,7 @@ const ProfileForm = ({ onSubmitSuccess, userId }) => {
                 { name:"certificatePhoto",label:"Certification Proof",   icon:"🧾", hint:"Training certificate or any experience proof", canEdit: true },
               ].map(({ name, label, icon, hint, canEdit }) => {
                 const isLocked = editMode && !canEdit && submittedProfile?.[name];
-                const displayImage = filePreviews[name] || (isLocked && submittedProfile?.[name] ? getUploadUrl(submittedProfile[name]) : "");
+                const displayImage = filePreviews[name] || (isLocked && submittedProfile?.[name] ? getPhotoSource(name) : "");
                 return (
                   <div key={name} className="field-group">
                     <label style={{ fontSize:12, fontWeight:600, color:"#111", display:"block", marginBottom:6 }}>

@@ -27,6 +27,7 @@ const Signup = () => {
     confirmPassword: "",
   });
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState(null);
 
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [setupForm, setSetupForm] = useState({
@@ -123,6 +124,11 @@ const Signup = () => {
     }
   };
 
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3500);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -150,14 +156,14 @@ const Signup = () => {
       }
 
       const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/users/register`, payload);
-      alert(res.data.message || "Registration successful");
-      navigate("/login", { state: { role: selectedRole, registeredUser: user } });
+      showToast(res.data.message || "Registration successful");
+      setTimeout(() => navigate("/login", { state: { role: selectedRole, registeredUser: user } }), 700);
     } catch (err) {
       const errorMessage = err.response?.data?.error || "Signup failed";
       if (errorMessage.toLowerCase().includes("email")) {
         setUserErrors({ ...userErrors, email: errorMessage });
       } else {
-        alert(errorMessage);
+        showToast(errorMessage);
       }
     } finally {
       setLoading(false);
@@ -177,7 +183,7 @@ const Signup = () => {
             });
 
             if (res.data.error) {
-              alert(res.data.error);
+              showToast(res.data.error);
               return;
             }
 
@@ -197,15 +203,15 @@ const Signup = () => {
                   localStorage.setItem("caregiverId", res.data.caregiverId);
                 }
                 const userRole = res.data.role.toLowerCase();
-                alert("Google login successful!");
-                navigate(userRole.includes("caregiver") ? "/welcome" : "/dash");
+                showToast("Google login successful!");
+                setTimeout(() => navigate(userRole.includes("caregiver") ? "/welcome" : "/dash"), 700);
               }
             }
           } catch (err) {
-            alert("Google login failed");
+            showToast("Google login failed");
           }
         }}
-        onError={() => alert("Google login failed")}
+        onError={() => showToast("Google login failed")}
       />
     ),
     [selectedRole, navigate]
@@ -249,10 +255,10 @@ const Signup = () => {
       localStorage.setItem("userId", response.data.userId || userId);
       localStorage.removeItem("tempGoogleUserId");
 
-      alert("Profile setup complete!");
+      showToast("Profile setup complete!");
       setShowSetupModal(false);
       const targetPath = selectedRole.toLowerCase().includes("caregiver") ? "/welcome" : "/dash";
-      navigate(targetPath);
+      setTimeout(() => navigate(targetPath), 700);
     } catch (err) {
       setSetupError(err.response?.data?.error || "Setup failed.");
     }
@@ -260,6 +266,12 @@ const Signup = () => {
 
   return (
     <div className="w-screen h-screen relative overflow-hidden bg-gradient-to-br from-slate-90 via-blue-50 to-emerald-50">
+      {toast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[200] bg-slate-900 text-white text-sm font-bold px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-2 pointer-events-none">
+          <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+          {toast}
+        </div>
+      )}
       {/* ─── BLURRY BACKGROUND IMAGE ─── */}
       <div 
         className="absolute inset-0 z-0"

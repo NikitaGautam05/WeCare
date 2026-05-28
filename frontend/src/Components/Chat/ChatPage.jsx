@@ -383,7 +383,7 @@ const ChatPage = () => {
     <Layout>
       <div className="max-w-7xl mx-auto px-6 pb-8">
 
-        {/* ── PAGE TITLE ROW ─────────────────────────────────────────── */}
+        {/* PAGE TITLE ROW */}
         <div className="flex items-center justify-between mb-5 pt-2">
           <div>
             <div className="flex items-center gap-2.5 mb-0.5">

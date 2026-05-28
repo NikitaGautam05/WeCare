@@ -128,22 +128,40 @@ export default function Reports() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const blockCaregiver = async (caregiverId) => {
-    setActionLoading(caregiverId + "_block");
+  const doAction = async (id, action, newStatus) => {
+    setActionLoading(id);
     try {
-      await axios.put(`${BASE_URL}/admin/caregivers/${caregiverId}/block`, {}, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` },
+      await axios.put(`${BASE_URL}/admin/caregivers/${id}/${action}`, {}, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("adminToken")}` }
       });
-      setReports((prev) => prev.filter((r) => r.caregiverId !== caregiverId));
-      if (selected?.caregiverId === caregiverId) setSelected(null);
-      showToast("Caregiver blocked successfully. 🚫", "warning");
+      
+      // Update reports with new status
+      setReports((prev) =>
+        prev.map((r) =>
+          r.caregiverId === id ? { ...r, status: newStatus } : r
+        )
+      );
+      
+      // Update selected if it's the one being modified
+      if (selected?.caregiverId === id) {
+        setSelected((p) => ({ ...p, status: newStatus }));
+      }
+
+      const actionNames = { verify: "Verified ✅", block: "Blocked 🚫", unblock: "Unblocked ↩️" };
+      showToast(`Caregiver ${actionNames[action]}.`, "success");
     } catch (err) {
       console.error(err);
-      showToast("Failed to block. Try again.", "error");
+      showToast("Action failed. Try again.", "error");
     } finally {
       setActionLoading(null);
     }
   };
+
+  const verify  = (id) => doAction(id, "verify",  "VERIFIED");
+  const block   = (id) => doAction(id, "block",   "BLOCKED");
+  const unblock = (id) => doAction(id, "unblock", "PENDING");
+
+  const blockCaregiver = (caregiverId) => block(caregiverId);
 
   const filtered = reports.filter((r) =>
     !search ||
@@ -242,12 +260,62 @@ export default function Reports() {
             <button onClick={() => setSelected(r)} className="text-xs text-orange-400 hover:text-orange-700 font-semibold underline underline-offset-2 transition-colors">
               View Details
             </button>
-            <button onClick={() => blockCaregiver(r.id)} disabled={busy}
-              className="text-xs font-bold px-3 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 active:scale-95 text-white shadow-sm transition-all disabled:opacity-40">
-              {busy ? "..." : "🚫 Block"}
-            </button>
           </div>
         </div>
+      </div>
+    );
+  };
+
+  // Status config
+  const STATUS_CFG = {
+    PENDING:  { badge: "bg-amber-100 text-amber-700 border-amber-200",       dot: "bg-amber-400",   label: "Pending",  icon: "⏳" },
+    VERIFIED: { badge: "bg-emerald-100 text-emerald-700 border-emerald-200", dot: "bg-emerald-400", label: "Verified", icon: "✅" },
+    BLOCKED:  { badge: "bg-red-100 text-red-600 border-red-200",             dot: "bg-red-400",     label: "Blocked",  icon: "🚫" },
+  };
+
+  const StatusBadge = ({ status = "PENDING" }) => {
+    const cfg = STATUS_CFG[status] ?? { badge: "bg-gray-100 text-gray-500 border-gray-200", dot: "bg-gray-400", label: status, icon: "" };
+    return (
+      <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border backdrop-blur-sm ${cfg.badge}`}>
+        <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+        {cfg.label}
+      </span>
+    );
+  };
+
+  const ActionButtons = ({ r, size = "sm" }) => {
+    const busy   = actionLoading === r.caregiverId;
+    const status = r.status || "PENDING";
+    const base   = size === "sm"
+      ? "text-xs font-bold px-3 py-1.5 rounded-lg transition-all disabled:opacity-40 flex items-center gap-1"
+      : "text-sm font-bold px-4 py-2.5 rounded-xl transition-all disabled:opacity-40 flex items-center gap-1.5";
+
+    return (
+      <div className="flex gap-2 flex-wrap">
+        {status !== "VERIFIED" && status !== "BLOCKED" && (
+          <button onClick={() => verify(r.caregiverId)} disabled={busy}
+            className={`${base} bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white shadow-sm shadow-emerald-200`}>
+            {busy ? <span className="animate-spin inline-block">⏳</span> : <span>✓</span>} Verify
+          </button>
+        )}
+        {status === "VERIFIED" && (
+          <button onClick={() => block(r.caregiverId)} disabled={busy}
+            className={`${base} bg-red-500 hover:bg-red-600 active:scale-95 text-white shadow-sm shadow-red-200`}>
+            {busy ? <span className="animate-spin inline-block">⏳</span> : <span>✕</span>} Block
+          </button>
+        )}
+        {status === "PENDING" && (
+          <button onClick={() => block(r.caregiverId)} disabled={busy}
+            className={`${base} bg-gray-400 hover:bg-gray-500 active:scale-95 text-white shadow-sm`}>
+            {busy ? <span className="animate-spin inline-block">⏳</span> : <span>✕</span>} Block
+          </button>
+        )}
+        {status === "BLOCKED" && (
+          <button onClick={() => unblock(r.caregiverId)} disabled={busy}
+            className={`${base} bg-blue-500 hover:bg-blue-600 active:scale-95 text-white shadow-sm shadow-blue-200`}>
+            {busy ? <span className="animate-spin inline-block">⏳</span> : <span>↩</span>} Unblock
+          </button>
+        )}
       </div>
     );
   };
@@ -351,7 +419,10 @@ export default function Reports() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={(e) => { if (e.target === e.currentTarget) setSelected(null); }}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white flex items-center justify-between px-6 pt-5 pb-4 border-b border-orange-100 z-10">
-              <h3 className="text-base font-bold text-gray-800">Report Details</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-gray-800">Report Details</h3>
+                <StatusBadge status={selected.status || "PENDING"} />
+              </div>
               <button onClick={() => setSelected(null)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-orange-50 text-gray-400 hover:text-gray-700 transition">
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
@@ -495,10 +566,7 @@ export default function Reports() {
               )}
 
               <div className="pt-3 border-t border-orange-100">
-                <button onClick={() => blockCaregiver(selected.id)} disabled={!!actionLoading}
-                  className="w-full py-2.5 rounded-xl text-sm font-bold bg-red-500 hover:bg-red-600 text-white shadow-sm transition-all disabled:opacity-40">
-                  {actionLoading === selected.id + "_block" ? "Blocking..." : "🚫  Block Caregiver"}
-                </button>
+                <ActionButtons r={selected} size="md" />
               </div>
             </div>
           </div>

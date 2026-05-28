@@ -26,9 +26,29 @@ export default function Favourites() {
     setTimeout(() => setToast(null), 2800);
   };
 
+  const fetchSentInterests = async () => {
+    if (!userId) return;
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/interest/sent-interests/${userId}`, axiosConfig);
+      const ids = Array.isArray(res.data)
+        ? res.data.map((interest) => interest.caregiver?.id).filter(Boolean)
+        : [];
+      setSentIds(ids);
+    } catch (err) {
+      console.error("Failed to fetch sent interests", err);
+      setSentIds([]);
+    }
+  };
+
   useEffect(() => {
     if (!userId || !token) { navigate("/login"); return; }
     fetchData();
+
+    const handleRequestsChanged = () => {
+      fetchSentInterests();
+    };
+    window.addEventListener('requestsChanged', handleRequestsChanged);
+    return () => window.removeEventListener('requestsChanged', handleRequestsChanged);
   }, [navigate, userId, token]);
 
   const fetchData = async () => {
@@ -84,7 +104,8 @@ export default function Favourites() {
           userName: localStorage.getItem('userName') || 'User'
         }
       });
-      setSentIds((s) => Array.from(new Set([...s, caregiver.id])));
+      setSentIds((s) => Array.from(new Set([...s.map(String), String(caregiver.id)])));
+      try { window.dispatchEvent(new Event('requestsChanged')); } catch (e) { console.warn(e); }
       showToast(`${caregiver.fullName} has been notified!`);
     } catch (err) {
       console.error('Failed to send interest', err);

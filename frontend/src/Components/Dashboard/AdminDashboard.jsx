@@ -235,7 +235,7 @@ export default function AdminDashboard() {
 
   const CaregiverCard = ({ c }) => {
     const status  = c.status || "PENDING";
-    const photo   = c.profilePhoto?.replace(/\s+/g, "_").trim();
+    const photo   = c.profilePhoto?.startsWith('data:') ? c.profilePhoto : c.profilePhoto?.replace(/\s+/g, "_").trim();
     const initials = (c.fullName || "C").split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
     const gradient = cardGradient[status] ?? "from-gray-100 to-gray-50";
 
@@ -268,7 +268,7 @@ export default function AdminDashboard() {
             }`} />
             <div className="relative w-24 h-24 rounded-full ring-4 ring-white shadow-lg overflow-hidden bg-gray-200">
               <img
-                src={`${import.meta.env.VITE_API_URL}/uploads/${photo}`}
+                src={photo?.startsWith('data:') ? photo : `${import.meta.env.VITE_API_URL}/uploads/${photo}`}
                 alt={c.fullName}
                 className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-400"
                 onError={(e) => {

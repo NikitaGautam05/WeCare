@@ -40,16 +40,59 @@ const CareGiverDash = () => {
   const token = localStorage.getItem("jwtToken");
   const axiosConfig = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
+  const getNotificationId = (notif) => {
+    if (!notif || typeof notif !== "object") return "";
+    const idValue = notif.id ?? notif._id ?? notif?.notificationId;
+    return idValue?.toString?.() ?? "";
+  };
+
+  const isNotificationRead = (notif) => notif?.read === true || notif?.read === "true";
+
+  const normalizeNotification = (notif) => {
+    if (!notif || typeof notif !== "object") {
+      return { id: "", read: false, message: "", type: "general" };
+    }
+    return {
+      ...notif,
+      id: getNotificationId(notif) || notif.id || notif._id || "",
+      read: notif.read === true || notif.read === "true",
+      message: typeof notif.message === "string"
+        ? notif.message
+        : typeof notif.title === "string"
+        ? notif.title
+        : String(notif.message ?? notif.title ?? ""),
+    };
+  };
+
   const markNotificationAsRead = async (notification) => {
-    if (!notification?.id || notification.read) return;
+    if (!getNotificationId(notification) || isNotificationRead(notification)) return;
     try {
       await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/notifications/${notification.id}/read`,
+        `${import.meta.env.VITE_API_URL}/api/notifications/${notification.id || notification._id}/read`,
         {},
         axiosConfig
       );
     } catch (err) {
       console.error("Failed to mark notification as read:", err);
+    }
+  };
+
+  const markAllNotificationsAsRead = async () => {
+    if (!userId || notifications.length === 0) return;
+    const unread = notifications.filter((notif) => !isNotificationRead(notif));
+    if (unread.length === 0) return;
+
+    try {
+      await axios.put(
+        `${import.meta.env.VITE_API_URL}/api/notifications/${userId}/read-all`,
+        {},
+        axiosConfig
+      );
+      setNotifications((current) =>
+        current.map((item) => ({ ...item, read: true }))
+      );
+    } catch (err) {
+      console.error("Failed to mark all notifications as read:", err);
     }
   };
 
@@ -76,9 +119,10 @@ const CareGiverDash = () => {
         const parsed = Array.isArray(rawNotifications)
           ? rawNotifications.map((notif) => {
               try {
-                return typeof notif === "string" ? JSON.parse(notif) : notif;
+                const parsedItem = typeof notif === "string" ? JSON.parse(notif) : notif;
+                return normalizeNotification(parsedItem);
               } catch {
-                return { message: notif, type: "general", userId: null };
+                return normalizeNotification({ message: notif, type: "general", userId: null });
               }
             })
           : [];
@@ -89,12 +133,13 @@ const CareGiverDash = () => {
         axios.get(`${import.meta.env.VITE_API_URL}/api/notifications/${userId}`, axiosConfig)
           .then((notifRes) => {
             const remoteNotifs = Array.isArray(notifRes.data) ? notifRes.data : [];
-            const merged = [...remoteNotifs];
+            const merged = remoteNotifs.map(normalizeNotification);
 
-            const existingIds = new Set(remoteNotifs.filter((n) => n && n.id).map((n) => n.id));
+            const existingIds = new Set(merged.filter((n) => getNotificationId(n)).map((n) => getNotificationId(n)));
             parsed.forEach((notif) => {
-              if (!notif || !notif.id || !existingIds.has(notif.id)) {
-                merged.push(notif);
+              const notifId = getNotificationId(notif);
+              if (!notifId || !existingIds.has(notifId)) {
+                merged.push(normalizeNotification(notif));
               }
             });
 
@@ -117,36 +162,7 @@ const CareGiverDash = () => {
           axios.get(`${import.meta.env.VITE_API_URL}/api/interest/pending-requests/${caregiverId}`, axiosConfig)
             .then((intRes) => {
               const interestData = Array.isArray(intRes.data) ? intRes.data : [];
-              if (interestData.length > 0) {
-                setInterestRequests(interestData);
-                return;
-              }
-
-              const fallbackFromNotifications = parsed
-                .filter((notif) => {
-                  const type = (notif?.type || "").toString().toLowerCase();
-                  return type.includes("interest") || type.includes("interest_sent");
-                })
-                .map((notif, index) => ({
-                  id: notif.actionId || notif.id || `interest-fallback-${index}`,
-                  status: "PENDING",
-                  sentAt: notif.createdAt || new Date().toISOString(),
-                  caregiverId,
-                  caregiverName,
-                  userId: notif.senderId || notif.userId || "",
-                  userName: notif.senderName || notif.userName || notif.message?.split(" is interested")[0] || "Care receiver",
-                  user: {
-                    id: notif.senderId || notif.userId || "",
-                    userName: notif.senderName || notif.userName || notif.message?.split(" is interested")[0] || "Care receiver",
-                    email: "",
-                    photo: "",
-                    address: "",
-                    serviceType: "Interest request",
-                    accountType: "INDIVIDUAL",
-                  },
-                }));
-
-              setInterestRequests(fallbackFromNotifications);
+              setInterestRequests(interestData);
             })
             .catch((err) => {
               console.error("Interest fetch error:", err);
@@ -246,14 +262,13 @@ const CareGiverDash = () => {
   };
 
   const handleNotificationClick = async (notif) => {
-    if (notif?.id && !notif.read) {
+    const notifId = getNotificationId(notif);
+    if (notifId && !isNotificationRead(notif)) {
       await markNotificationAsRead(notif);
+      setNotifications((current) => current.map((item) =>
+        getNotificationId(item) === notifId ? { ...item, read: true } : item
+      ));
     }
-
-    setNotifications((current) => current.filter((item) => {
-      if (notif.id) return item.id !== notif.id;
-      return item !== notif;
-    }));
 
     const targetUserId = notif.senderId || notif.userId;
     if (isInterestNotification(notif.type) && targetUserId) {
@@ -267,9 +282,10 @@ const CareGiverDash = () => {
   const initials    = displayName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
   const totalRequestCount = (Array.isArray(interestRequests) ? interestRequests.length : 0) +
                             (Array.isArray(bookingRequests) ? bookingRequests.length : 0);
-  const unreadNotifications = Array.isArray(notifications) ? notifications.filter((notif) => !notif.read) : [];
+  const allNotifications = Array.isArray(notifications) ? sortNotificationsNewestFirst(notifications) : [];
+  const unreadNotifications = allNotifications.filter((notif) => !isNotificationRead(notif));
   const unreadNotificationCount = unreadNotifications.length;
-  const notificationCount = unreadNotificationCount + totalRequestCount;
+  const notificationCount = unreadNotificationCount;
 
   const parseRequestDate = (request) => {
     const dateString = request.date || request.sentAt || request.createdAt || request.startTime;
@@ -346,7 +362,7 @@ const CareGiverDash = () => {
   const sc = statusCfg[profile?.status] || statusCfg.PENDING;
 
   return (
-    <div className="min-h-screen w-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50 font-sans text-gray-900 antialiased">
+    <div className="min-h-screen w-screen overflow-y-scroll bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50 font-sans text-gray-900 antialiased">
 
       {/* ═══════════════════ HEADER ═══════════════════ */}
       <header className="fixed top-0 inset-x-0 z-50 h-21 bg-gradient-to-r from-slate-900 via-blue-900 to-teal-900 border-b border-teal-700/30 flex items-center justify-between px-7 shadow-lg">
@@ -366,7 +382,10 @@ const CareGiverDash = () => {
         <div className="flex items-center gap-9 text-blue-100">
           {/* Bell */}
           <div
-            onClick={() => setActiveTab("notifications")}
+            onClick={async () => {
+              setActiveTab("notifications");
+              await markAllNotificationsAsRead();
+            }}
             className="relative cursor-pointer text-3xl leading-none text-white hover:text-white transition-colors"
             role="button"
             aria-label="Notifications"
@@ -386,7 +405,7 @@ const CareGiverDash = () => {
           >
             {profile?.profilePhoto ? (
               <img 
-                src={`${import.meta.env.VITE_API_URL}/uploads/${profile.profilePhoto}`}
+                src={profile.profilePhoto?.startsWith('data:') ? profile.profilePhoto : `${import.meta.env.VITE_API_URL}/uploads/${profile.profilePhoto}`}
                 alt={displayName}
                 className="w-6 h-6 rounded-full object-cover object-center border border-blue-300"
                 onError={(e) => {
@@ -429,7 +448,7 @@ const CareGiverDash = () => {
             <div className="relative w-fit mb-7">
               {profile?.profilePhoto ? (
                 <img 
-                  src={`${import.meta.env.VITE_API_URL}/uploads/${profile.profilePhoto}`}
+                  src={profile.profilePhoto?.startsWith('data:') ? profile.profilePhoto : `${import.meta.env.VITE_API_URL}/uploads/${profile.profilePhoto}`}
                   alt={displayName}
                   className="w-[54px] h-[54px] rounded-2xl object-cover object-center shadow-lg border-2 border-white"
                   onError={(e) => {
@@ -733,13 +752,13 @@ const CareGiverDash = () => {
                       {unreadNotificationCount}
                     </span>
                   </div>
-                  {unreadNotifications.length === 0 ? (
+                  {allNotifications.length === 0 ? (
                     <div className="p-6 bg-slate-50/50 border border-dashed border-slate-200 rounded-xl text-center">
-                      <p className="text-[13px] text-slate-500">No unread notifications</p>
+                      <p className="text-[13px] text-slate-500">No notifications yet</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {unreadNotifications.map((notif) => (
+                      {allNotifications.map((notif) => (
                         <div
                           key={notif.id || notif.message}
                           className="flex items-center gap-4 p-5 bg-gradient-to-r from-blue-50/50 to-blue-100/50 border border-blue-200/50 rounded-xl hover:border-blue-300 hover:shadow-md transition-all group cursor-pointer"

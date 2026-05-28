@@ -265,15 +265,8 @@ const Login = () => {
                 </div>
               </div>
 
-              {/* ─── REMEMBER & FORGOT ─── */}
-              <div className="flex items-center justify-between pt-1">
-                <label className="text-sm font-medium text-slate-700 flex items-center gap-2 cursor-pointer hover:text-slate-900 transition-colors duration-200">
-                  <input 
-                    type="checkbox" 
-                    className="w-3 h-3 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600"
-                  /> 
-                  Remember me
-                </label>
+              {/* ─── FORGOT PASSWORD ─── */}
+              <div className="flex justify-end pt-1">
                 <span
                   role="button"
                   tabIndex={0}

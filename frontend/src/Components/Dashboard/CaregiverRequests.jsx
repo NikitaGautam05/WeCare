@@ -54,9 +54,6 @@ const CaregiverRequests = ({ caregiverId }) => {
   const handleAccept = async (requestId) => {
     try {
       setActingOn(requestId);
-      // Immediately remove from UI for better UX
-      setRequests(prevRequests => prevRequests.filter(req => req.id !== requestId));
-      
       const response = await axios.put(
         `${import.meta.env.VITE_API_URL}/api/interest/accept/${requestId}`,
         {},
@@ -65,12 +62,11 @@ const CaregiverRequests = ({ caregiverId }) => {
       try { window.dispatchEvent(new Event('acceptedConnectionsChanged')); } catch(e) { console.warn(e); }
       try { window.dispatchEvent(new Event('requestsChanged')); } catch(e) { console.warn(e); }
       alert('✅ Interest accepted! You can now chat with this care receiver.');
-      // Refresh to ensure we have the latest data
+      // Refresh to ensure we have the latest data only after the action succeeds
       fetchRequests();
     } catch (err) {
       console.error('❌ Error accepting request:', err);
       alert('Failed to accept request');
-      // Re-fetch to restore the list if there was an error
       fetchRequests();
     } finally {
       setActingOn(null);
@@ -80,9 +76,6 @@ const CaregiverRequests = ({ caregiverId }) => {
   const handleReject = async (requestId) => {
     try {
       setActingOn(requestId);
-      // Immediately remove from UI for better UX
-      setRequests(prevRequests => prevRequests.filter(req => req.id !== requestId));
-      
       const response = await axios.put(
         `${import.meta.env.VITE_API_URL}/api/interest/reject/${requestId}`,
         {},
@@ -91,12 +84,11 @@ const CaregiverRequests = ({ caregiverId }) => {
       try { window.dispatchEvent(new Event('acceptedConnectionsChanged')); } catch(e) { console.warn(e); }
       try { window.dispatchEvent(new Event('requestsChanged')); } catch(e) { console.warn(e); }
       alert('Request declined');
-      // Refresh to ensure we have the latest data
+      // Refresh to ensure we have the latest data only after the action succeeds
       fetchRequests();
     } catch (err) {
       console.error('❌ Error rejecting request:', err);
       alert('Failed to reject request');
-      // Re-fetch to restore the list if there was an error
       fetchRequests();
     } finally {
       setActingOn(null);

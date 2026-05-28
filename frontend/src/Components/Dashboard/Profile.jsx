@@ -60,6 +60,7 @@ const Profile = () => {
     location: '',
     notes: ''
   });
+  const today = new Date().toISOString().slice(0, 10);
   const [bookingLoading,      setBookingLoading]      = useState(false);
   const [isFavourited,        setIsFavourited]        = useState(false);
   const [interestSent,        setInterestSent]        = useState(false);
@@ -69,6 +70,7 @@ const Profile = () => {
   const [reportReason,        setReportReason]        = useState("");
   const [reportProofFile,     setReportProofFile]     = useState(null);
   const [reportProofPreview,  setReportProofPreview]  = useState(null);
+  const [currentUser,         setCurrentUser]         = useState(null);
 
   const userId      = localStorage.getItem("userId");
   const token       = localStorage.getItem("jwtToken");
@@ -87,6 +89,24 @@ const Profile = () => {
         params: { userId, caregiverId: id, action: actionType }
       });
     } catch (err) { console.error(`Failed to log ${actionType}:`, err); }
+  };
+
+  const fetchCurrentUser = async () => {
+    try {
+      const res = await axios.get(`${BASE}/users/${userId}`, axiosConfig);
+      const user = res.data;
+      setCurrentUser(user);
+      if (user?.phoneNumber) {
+        localStorage.setItem("userPhone", user.phoneNumber);
+      }
+      if (user?.userName) {
+        localStorage.setItem("userName", user.userName);
+      }
+      return user;
+    } catch (err) {
+      console.warn("Failed to fetch current user profile:", err);
+      return null;
+    }
   };
 
   const fetchProfileData = async () => {
@@ -150,6 +170,7 @@ const Profile = () => {
   useEffect(() => {
     if (!token || !userId) { navigate("/login"); return; }
     fetchProfileData();
+    fetchCurrentUser();
   }, [id, userId, token, navigate]);
 
   // Refresh profile data when accepted connections change (e.g., booking completed)
@@ -157,8 +178,13 @@ const Profile = () => {
     const handler = () => {
       fetchProfileData();
     };
+    // Refresh when accepted connections or requests change elsewhere
     window.addEventListener('acceptedConnectionsChanged', handler);
-    return () => window.removeEventListener('acceptedConnectionsChanged', handler);
+    window.addEventListener('requestsChanged', handler);
+    return () => {
+      window.removeEventListener('acceptedConnectionsChanged', handler);
+      window.removeEventListener('requestsChanged', handler);
+    };
   }, []);
 
   /* ── actions ──────────────────────────────────────────────── */
@@ -192,6 +218,7 @@ const Profile = () => {
       });
       setInterestSent(true);
       setDialogue({ caregiver: profile });
+      try { window.dispatchEvent(new Event('requestsChanged')); } catch (e) { console.warn(e); }
     } catch (err) {
       console.error("Failed to send interest:", err);
       showToast("Failed to send interest. Please try again.");
@@ -264,13 +291,22 @@ const Profile = () => {
     if (!bookingForm.serviceType || !bookingForm.serviceDate || !bookingForm.startTime || !bookingForm.endTime || !bookingForm.hourlyRate || !bookingForm.location) {
       return showToast("Please complete all required booking fields.");
     }
+    if (bookingForm.serviceDate < today) {
+      return showToast("Please select today or a future date for booking.");
+    }
     if (bookingForm.startTime >= bookingForm.endTime) {
       return showToast("End time must be after start time.");
     }
 
+    let userProfile = currentUser;
+    if (!userProfile && userId) {
+      userProfile = await fetchCurrentUser();
+    }
+
     const startDateTime = `${bookingForm.serviceDate} ${bookingForm.startTime}`;
     const endDateTime = `${bookingForm.serviceDate} ${bookingForm.endTime}`;
-    const notesPayload = bookingForm.notes ? `${bookingForm.notes}\nLocation: ${bookingForm.location}` : `Location: ${bookingForm.location}`;
+    const userPhoneValue = userProfile?.phoneNumber || localStorage.getItem("userPhone") || "";
+    const userNameValue = userProfile?.userName || localStorage.getItem("userName") || "";
 
     try {
       setBookingLoading(true);
@@ -280,13 +316,13 @@ const Profile = () => {
           caregiverId: profile.id,
           caregiverName: profile.fullName || profile.userName,
           userId,
-          userName: localStorage.getItem("userName") || "",
-          userPhone: localStorage.getItem("userPhone") || "",
+          userName: userNameValue,
+          userPhone: userPhoneValue,
           serviceType: bookingForm.serviceType,
           startTime: startDateTime,
           endTime: endDateTime,
           hourlyRate: Number(bookingForm.hourlyRate),
-          notes: notesPayload,
+          notes: bookingForm.notes || "",
           location: bookingForm.location
         }
       });
@@ -311,11 +347,11 @@ const Profile = () => {
     </Layout>
   );
 
-  const photo             = profile.profilePhoto?.replace(/\s+/g, "_");
-  const citizenshipPhoto  = profile.citizenshipPhoto?.replace(/\s+/g, "_");
-  const certificatePhoto  = profile.certificatePhoto?.replace(/\s+/g, "_");
-  const photoUrl          = photo ? `${import.meta.env.VITE_API_URL}/uploads/${photo}` : null;
-  const certificateUrl    = certificatePhoto ? `${import.meta.env.VITE_API_URL}/uploads/${certificatePhoto}` : null;
+  const photo             = profile.profilePhoto?.startsWith('data:') ? profile.profilePhoto : profile.profilePhoto?.replace(/\s+/g, "_");
+  const citizenshipPhoto  = profile.citizenshipPhoto?.startsWith('data:') ? profile.citizenshipPhoto : profile.citizenshipPhoto?.replace(/\s+/g, "_");
+  const certificatePhoto  = profile.certificatePhoto?.startsWith('data:') ? profile.certificatePhoto : profile.certificatePhoto?.replace(/\s+/g, "_");
+  const photoUrl          = photo ? (photo.startsWith('data:') ? photo : `${import.meta.env.VITE_API_URL}/uploads/${photo}`) : null;
+  const certificateUrl    = certificatePhoto ? (certificatePhoto.startsWith('data:') ? certificatePhoto : `${import.meta.env.VITE_API_URL}/uploads/${certificatePhoto}`) : null;
 
   return (
     <Layout>
@@ -380,6 +416,7 @@ const Profile = () => {
                   Desired date
                   <input
                     type="date"
+                    min={today}
                     value={bookingForm.serviceDate}
                     onChange={(e) => setBookingForm({ ...bookingForm, serviceDate: e.target.value })}
                     className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-400"

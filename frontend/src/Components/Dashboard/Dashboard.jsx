@@ -20,6 +20,79 @@ const Dashboard = () => {
   const token = localStorage.getItem("jwtToken");
   const axiosConfig = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
+  const fetchSentInterests = async (completedOrCancelledIds = []) => {
+    if (!userId) return [];
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/interest/sent-interests/${userId}`, axiosConfig);
+      const ids = Array.isArray(res.data)
+        ? res.data
+            .map((interest) => interest.caregiver?.id)
+            .filter(Boolean)
+            .map((id) => String(id))
+            .filter((caregiverId) => !completedOrCancelledIds.map(String).includes(caregiverId))
+        : [];
+      setSentIds(ids);
+      return ids;
+    } catch (err) {
+      console.error("Failed to fetch sent interests", err);
+      setSentIds([]);
+      return [];
+    }
+  };
+
+  const refreshInterestAndBookings = async () => {
+    if (!userId) return;
+    try {
+      const [bookingRes, interestRes] = await Promise.all([
+        axios.get(`${import.meta.env.VITE_API_URL}/api/bookings/user/${userId}`, axiosConfig),
+        axios.get(`${import.meta.env.VITE_API_URL}/api/interest/sent-interests/${userId}`, axiosConfig),
+      ]);
+
+      const bookings = Array.isArray(bookingRes.data) ? bookingRes.data : [];
+      const bookedCaregiverIds = bookings
+        .filter((booking) => (booking?.status || "").toUpperCase() === "CONFIRMED")
+        .map((booking) => booking?.caregiverId)
+        .filter(Boolean)
+        .map((id) => String(id));
+      setBookedIds(bookedCaregiverIds);
+
+      const completedOrCancelledCaregiverIds = bookings
+        .filter((booking) => {
+          const status = (booking?.status || "").toUpperCase();
+          return status === "COMPLETED" || status === "CANCELLED" || status === "DECLINED";
+        })
+        .map((booking) => booking?.caregiverId)
+        .filter(Boolean)
+        .map((id) => String(id));
+
+      const sentIdsFromInterests = Array.isArray(interestRes.data)
+        ? interestRes.data
+            .map((interest) => interest.caregiver?.id)
+            .filter(Boolean)
+            .map((id) => String(id))
+            .filter((caregiverId) => !completedOrCancelledCaregiverIds.includes(caregiverId))
+        : [];
+      setSentIds(sentIdsFromInterests);
+    } catch (err) {
+      console.error("Failed to refresh interests and bookings", err);
+      setBookedIds([]);
+      setSentIds([]);
+    }
+  };
+
+  const getPhotoUrl = (profilePhoto) => {
+    if (!profilePhoto) return null;
+    
+    // Check if it's already a Base64 data URL
+    if (profilePhoto.startsWith('data:')) {
+      return profilePhoto;
+    }
+    
+    // Otherwise treat as a filename and construct the URL
+    const photo = profilePhoto.replace(/\s+/g, "_");
+    return `${import.meta.env.VITE_API_URL}/uploads/${photo}`;
+  };
+
   useEffect(() => {
     if (!token || !userId) {
       navigate("/login");
@@ -62,33 +135,22 @@ const Dashboard = () => {
       .catch((err) => console.error("Failed to fetch favourites", err));
 
     if (userId) {
-      axios.get(`${import.meta.env.VITE_API_URL}/api/interest/sent-interests/${userId}`, axiosConfig)
-        .then((res) => {
-          const ids = Array.isArray(res.data)
-            ? res.data.map((interest) => interest.caregiver?.id).filter(Boolean)
-            : [];
-          setSentIds(ids);
-        })
-        .catch((err) => {
-          console.error("Failed to fetch sent interests", err);
-          setSentIds([]);
-        });
-
-      // Fetch user's confirmed/completed bookings
-      axios.get(`${import.meta.env.VITE_API_URL}/api/bookings/user/${userId}`, axiosConfig)
-        .then((res) => {
-          const bookings = Array.isArray(res.data) ? res.data : [];
-          const bookedCaregiverIds = bookings
-            .filter((booking) => (booking?.status || "").toUpperCase() === "CONFIRMED")
-            .map((booking) => booking?.caregiverId)
-            .filter(Boolean);
-          setBookedIds(bookedCaregiverIds);
-        })
-        .catch((err) => {
-          console.error("Failed to fetch user bookings", err);
-          setBookedIds([]);
-        });
+      refreshInterestAndBookings();
     }
+
+    const handleRequestsChanged = () => {
+      if (userId) {
+        refreshInterestAndBookings();
+      }
+    };
+
+    // Refresh when requests or accepted connections change elsewhere in the app
+    window.addEventListener("requestsChanged", handleRequestsChanged);
+    window.addEventListener("acceptedConnectionsChanged", handleRequestsChanged);
+    return () => {
+      window.removeEventListener("requestsChanged", handleRequestsChanged);
+      window.removeEventListener("acceptedConnectionsChanged", handleRequestsChanged);
+    };
   }, [userId, token]);
 
   const handleInterest = async (caregiver) => {
@@ -106,8 +168,9 @@ const Dashboard = () => {
           ...axiosConfig,
         }
       );
-      setSentIds((prev) => Array.from(new Set([...prev, caregiver.id])));
+      setSentIds((prev) => Array.from(new Set([...prev.map(String), String(caregiver.id)])));
       setDialogue({ type: "interest", caregiver });
+      try { window.dispatchEvent(new Event('requestsChanged')); } catch (e) { console.warn(e); }
     } catch (err) {
       console.error("Interest send failed:", err);
       alert("Could not send interest.");
@@ -177,7 +240,7 @@ const Dashboard = () => {
               <div key={c.id} className="group bg-white rounded-3xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col min-w-0">
                 <div className="relative h-72 overflow-hidden">
                   <img
-                    src={`${import.meta.env.VITE_API_URL}/uploads/${c.profilePhoto?.replace(/\s+/g, "_")}`}
+                    src={getPhotoUrl(c.profilePhoto) || `https://ui-avatars.com/api/?name=${c.fullName}`}
                     alt={c.fullName}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     onError={(e) => (e.target.src = `https://ui-avatars.com/api/?name=${c.fullName}`)}
@@ -204,8 +267,8 @@ const Dashboard = () => {
                     </div>
                     <div className="text-right">
                       <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest">Status</p>
-                      <p className={`text-[11px] font-black ${bookedIds.includes(c.id) ? 'text-emerald-600' : 'text-green-600'}`}>
-                        {bookedIds.includes(c.id) ? 'Booked ✓' : 'Verified ✓'}
+                      <p className={`text-[11px] font-black ${bookedIds.includes(String(c.id)) ? 'text-emerald-600' : 'text-green-600'}`}>
+                        {bookedIds.includes(String(c.id)) ? 'Booked ✓' : 'Verified ✓'}
                       </p>
                     </div>
                   </div>
@@ -216,10 +279,10 @@ const Dashboard = () => {
                     </button>
                     <button
                       onClick={() => handleInterest(c)}
-                      disabled={sentIds.includes(c.id) || bookedIds.includes(c.id)}
-                      className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${sentIds.includes(c.id) || bookedIds.includes(c.id) ? 'bg-slate-100 text-slate-400 border border-slate-100 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-700'}`}
+                      disabled={sentIds.includes(String(c.id)) || bookedIds.includes(String(c.id))}
+                      className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${sentIds.includes(String(c.id)) || bookedIds.includes(String(c.id)) ? 'bg-slate-100 text-slate-400 border border-slate-100 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-700'}`}
                     >
-                      {bookedIds.includes(c.id) ? 'Booked ✓' : sentIds.includes(c.id) ? 'Sent ✓' : 'Interest'}
+                      {bookedIds.includes(String(c.id)) ? 'Booked ✓' : sentIds.includes(String(c.id)) ? 'Sent ✓' : 'Interest'}
                     </button>
                   </div>
                 </div>
@@ -254,7 +317,7 @@ const Dashboard = () => {
                 >
                   <div className="relative h-50 w-full overflow-hidden">
                     <img
-                      src={`${import.meta.env.VITE_API_URL}/uploads/${c.profilePhoto?.replace(/\s+/g, "_")}`}
+                      src={getPhotoUrl(c.profilePhoto) || `https://ui-avatars.com/api/?name=${c.fullName}&background=f1f5f9&color=475569&bold=true`}
                       alt={c.fullName}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       onError={(e) => (e.target.src = `https://ui-avatars.com/api/?name=${c.fullName}&background=f1f5f9&color=475569&bold=true`)}
@@ -305,9 +368,7 @@ const Dashboard = () => {
         </section>
       </div>
 
-      {/* ══════════════════════════════════════════════
-          PROFILE REMINDER MODAL — redesigned
-      ══════════════════════════════════════════════ */}
+      {/* PROFILE REMINDER MODAL */}
       {showProfileReminder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
           {/* Backdrop */}
@@ -388,9 +449,7 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════
-          INTEREST SENT MODAL — redesigned
-      ══════════════════════════════════════════════ */}
+      {/* INTEREST SENT MODAL */}
       {dialogue && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
           {/* Backdrop */}
@@ -407,14 +466,7 @@ const Dashboard = () => {
               <div className="absolute -top-10 -right-10 w-40 h-40 bg-green-500/15 rounded-full blur-2xl" />
               <div className="absolute -bottom-6 -left-6 w-32 h-32 bg-green-600/10 rounded-full blur-xl" />
 
-              {/* Close */}
-              <button
-                onClick={() => setDialogue(null)}
-                className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-500 hover:text-white hover:bg-slate-700 transition-all"
-              >
-                <FaTimes size={12} />
-              </button>
-
+             
               <div className="relative z-10 flex flex-col items-center text-center gap-4">
                 <div className="w-16 h-16 rounded-2xl bg-green-500/20 border border-green-500/30 flex items-center justify-center">
                   <FaCheck size={26} className="text-green-400" />
